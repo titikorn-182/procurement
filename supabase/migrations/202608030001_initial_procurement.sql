@@ -2,18 +2,22 @@ begin;
 
 create schema if not exists private;
 
-create type public.app_role as enum (
-  'user', 'procurement_staff', 'finance_staff', 'head_procurement',
-  'deputy_secretary', 'deputy_finance', 'dean', 'head_office', 'admin'
-);
-create type public.request_kind as enum ('purchase', 'hire');
-create type public.request_status as enum (
-  'draft', 'submitted', 'under_review', 'returned', 'not_approved',
-  'approved', 'budget_control', 'sourcing', 'ordered', 'completed', 'cancelled'
-);
-create type public.task_status as enum ('pending', 'completed', 'returned', 'rejected', 'cancelled');
-create type public.workflow_action as enum ('submit', 'approve', 'return', 'reject', 'budget_control', 'complete', 'cancel');
-create type public.payment_status as enum ('draft', 'submitted', 'under_review', 'returned', 'approved', 'voucher_submitted', 'completed', 'cancelled');
+do $$ begin
+  create type public.app_role as enum (
+    'user', 'procurement_staff', 'finance_staff', 'head_procurement',
+    'deputy_secretary', 'deputy_finance', 'dean', 'head_office', 'admin'
+  );
+exception when duplicate_object then null; end $$;
+do $$ begin create type public.request_kind as enum ('purchase', 'hire'); exception when duplicate_object then null; end $$;
+do $$ begin
+  create type public.request_status as enum (
+    'draft', 'submitted', 'under_review', 'returned', 'not_approved',
+    'approved', 'budget_control', 'sourcing', 'ordered', 'completed', 'cancelled'
+  );
+exception when duplicate_object then null; end $$;
+do $$ begin create type public.task_status as enum ('pending', 'completed', 'returned', 'rejected', 'cancelled'); exception when duplicate_object then null; end $$;
+do $$ begin create type public.workflow_action as enum ('submit', 'approve', 'return', 'reject', 'budget_control', 'complete', 'cancel'); exception when duplicate_object then null; end $$;
+do $$ begin create type public.payment_status as enum ('draft', 'submitted', 'under_review', 'returned', 'approved', 'voucher_submitted', 'completed', 'cancelled'); exception when duplicate_object then null; end $$;
 
 create table public.departments (
   id uuid primary key default gen_random_uuid(),
