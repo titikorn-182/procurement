@@ -1,0 +1,70 @@
+@import "tailwindcss";
+
+:root {
+  --ink: #171b20;
+  --graphite: #18232d;
+  --graphite-2: #22313d;
+  --paper: #fffdf9;
+  --paper-warm: #f7f3ec;
+  --line: #c7c4bd;
+  --line-dark: #6b7075;
+  --orange: #c2410c;
+  --orange-dark: #9a3412;
+  --orange-soft: #fff0e7;
+  --green: #18794e;
+  --green-soft: #eaf7ef;
+  --red: #b42318;
+  --red-soft: #fff0ee;
+  --amber: #9a5b00;
+  --amber-soft: #fff5db;
+  --blue: #175cd3;
+  --blue-soft: #eff5ff;
+  --focus: #005fcc;
+}
+
+* { box-sizing: border-box; }
+html { background: var(--paper-warm); }
+body {
+  margin: 0;
+  color: var(--ink);
+  background: var(--paper-warm);
+  font-family: var(--font-sarabun), "Sarabun", sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+}
+button, input, select, textarea { font: inherit; }
+button, a, input, select, textarea { outline: none; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  box-shadow: 0 0 0 3px var(--focus);
+  border-color: var(--focus) !important;
+}
+button, a { -webkit-tap-highlight-color: transparent; }
+
+.hazard {
+  background-image: repeating-linear-gradient(-45deg, var(--orange) 0 8px, #ffd9c5 8px 16px);
+}
+.paper-grid {
+  background-color: var(--paper);
+  background-image: linear-gradient(to right, rgba(23,27,32,.035) 1px, transparent 1px), linear-gradient(to bottom, rgba(23,27,32,.035) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+.fasteners { position: relative; }
+.fasteners::before, .fasteners::after {
+  content: ""; position: absolute; width: 5px; height: 5px; border: 1px solid currentColor; border-radius: 50%; opacity: .55; top: 7px;
+}
+.fasteners::before { left: 7px; }
+.fasteners::after { right: 7px; }
+.scrollbar-thin { scrollbar-width: thin; scrollbar-color: #7c8790 transparent; }
+
+@keyframes signal-in {
+  from { clip-path: inset(0 100% 0 0); }
+  to { clip-path: inset(0 0 0 0); }
+}
+.signal-in { animation: signal-in 420ms cubic-bezier(.16,1,.3,1) both; }
+@media (prefers-reduced-motion: reduce) { .signal-in { animation: none; } }
+
+@media print {
+  aside, header, .no-print { display: none !important; }
+  main { margin: 0 !important; padding: 0 !important; }
+  body { background: white; }
+}
