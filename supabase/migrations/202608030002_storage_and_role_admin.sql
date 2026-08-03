@@ -5,6 +5,11 @@ values ('procurement-documents', 'procurement-documents', false, 20971520,
   array['application/pdf','image/jpeg','image/png','application/vnd.openxmlformats-officedocument.wordprocessingml.document','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'])
 on conflict (id) do update set public = false, file_size_limit = excluded.file_size_limit, allowed_mime_types = excluded.allowed_mime_types;
 
+drop policy if exists procurement_documents_read on storage.objects;
+drop policy if exists procurement_documents_insert on storage.objects;
+drop policy if exists procurement_documents_owner_update on storage.objects;
+drop policy if exists procurement_documents_owner_delete on storage.objects;
+
 create policy procurement_documents_read on storage.objects for select to authenticated
 using (bucket_id = 'procurement-documents' and (owner_id = (select auth.uid())::text or private.is_privileged()));
 create policy procurement_documents_insert on storage.objects for insert to authenticated
@@ -15,7 +20,7 @@ with check (bucket_id = 'procurement-documents' and owner_id = (select auth.uid(
 create policy procurement_documents_owner_delete on storage.objects for delete to authenticated
 using (bucket_id = 'procurement-documents' and owner_id = (select auth.uid())::text);
 
-create function public.set_user_role(target_user_id uuid, new_role public.app_role, new_department_id uuid default null)
+create or replace function public.set_user_role(target_user_id uuid, new_role public.app_role, new_department_id uuid default null)
 returns void language plpgsql security definer set search_path = '' as $$
 begin
   if not private.is_admin() then raise exception 'administrator permission required'; end if;

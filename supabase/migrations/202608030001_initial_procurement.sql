@@ -19,7 +19,7 @@ do $$ begin create type public.task_status as enum ('pending', 'completed', 'ret
 do $$ begin create type public.workflow_action as enum ('submit', 'approve', 'return', 'reject', 'budget_control', 'complete', 'cancel'); exception when duplicate_object then null; end $$;
 do $$ begin create type public.payment_status as enum ('draft', 'submitted', 'under_review', 'returned', 'approved', 'voucher_submitted', 'completed', 'cancelled'); exception when duplicate_object then null; end $$;
 
-create table public.departments (
+create table if not exists public.departments (
   id uuid primary key default gen_random_uuid(),
   code text not null unique,
   name_th text not null,
@@ -27,7 +27,7 @@ create table public.departments (
   created_at timestamptz not null default now()
 );
 
-create table public.profiles (
+create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   employee_code text unique,
   full_name text not null default '',
@@ -39,10 +39,10 @@ create table public.profiles (
   updated_at timestamptz not null default now()
 );
 
-create sequence public.procurement_request_no_seq start 1;
-create sequence public.payment_request_no_seq start 1;
+create sequence if not exists public.procurement_request_no_seq start 1;
+create sequence if not exists public.payment_request_no_seq start 1;
 
-create function private.next_request_no(prefix text, seq_name text)
+create or replace function private.next_request_no(prefix text, seq_name text)
 returns text language plpgsql security definer set search_path = '' as $$
 declare next_value bigint;
 begin
@@ -51,7 +51,7 @@ begin
 end;
 $$;
 
-create table public.procurement_requests (
+create table if not exists public.procurement_requests (
   id uuid primary key default gen_random_uuid(),
   request_no text not null unique default private.next_request_no('PR', 'public.procurement_request_no_seq'),
   requester_id uuid not null references public.profiles(id),
@@ -73,7 +73,7 @@ create table public.procurement_requests (
   updated_at timestamptz not null default now()
 );
 
-create table public.request_items (
+create table if not exists public.request_items (
   id uuid primary key default gen_random_uuid(),
   request_id uuid not null references public.procurement_requests(id) on delete cascade,
   line_no integer not null check (line_no > 0),
@@ -85,7 +85,7 @@ create table public.request_items (
   unique(request_id, line_no)
 );
 
-create table public.request_attachments (
+create table if not exists public.request_attachments (
   id uuid primary key default gen_random_uuid(),
   request_id uuid not null references public.procurement_requests(id) on delete cascade,
   storage_path text not null unique,
@@ -96,7 +96,7 @@ create table public.request_attachments (
   created_at timestamptz not null default now()
 );
 
-create table public.workflow_tasks (
+create table if not exists public.workflow_tasks (
   id uuid primary key default gen_random_uuid(),
   request_id uuid not null references public.procurement_requests(id) on delete cascade,
   step_no smallint not null,
@@ -110,7 +110,7 @@ create table public.workflow_tasks (
   unique(request_id, step_no)
 );
 
-create table public.workflow_actions (
+create table if not exists public.workflow_actions (
   id uuid primary key default gen_random_uuid(),
   request_id uuid not null references public.procurement_requests(id) on delete cascade,
   task_id uuid references public.workflow_tasks(id),
@@ -121,7 +121,7 @@ create table public.workflow_actions (
   created_at timestamptz not null default now()
 );
 
-create table public.payment_requests (
+create table if not exists public.payment_requests (
   id uuid primary key default gen_random_uuid(),
   payment_no text not null unique default private.next_request_no('PV', 'public.payment_request_no_seq'),
   procurement_request_id uuid not null references public.procurement_requests(id),
@@ -139,7 +139,7 @@ create table public.payment_requests (
   updated_at timestamptz not null default now()
 );
 
-create table public.payment_attachments (
+create table if not exists public.payment_attachments (
   id uuid primary key default gen_random_uuid(),
   payment_request_id uuid not null references public.payment_requests(id) on delete cascade,
   storage_path text not null unique,
@@ -150,29 +150,29 @@ create table public.payment_attachments (
   created_at timestamptz not null default now()
 );
 
-create index procurement_requests_requester_idx on public.procurement_requests(requester_id);
-create index procurement_requests_department_idx on public.procurement_requests(department_id);
-create index procurement_requests_status_idx on public.procurement_requests(status, current_step);
-create index workflow_tasks_assignee_idx on public.workflow_tasks(assignee_id, status);
-create index workflow_tasks_role_idx on public.workflow_tasks(required_role, status);
-create index payment_requests_requester_idx on public.payment_requests(requester_id);
+create index if not exists procurement_requests_requester_idx on public.procurement_requests(requester_id);
+create index if not exists procurement_requests_department_idx on public.procurement_requests(department_id);
+create index if not exists procurement_requests_status_idx on public.procurement_requests(status, current_step);
+create index if not exists workflow_tasks_assignee_idx on public.workflow_tasks(assignee_id, status);
+create index if not exists workflow_tasks_role_idx on public.workflow_tasks(required_role, status);
+create index if not exists payment_requests_requester_idx on public.payment_requests(requester_id);
 
-create function private.current_role()
+create or replace function private.current_role()
 returns public.app_role language sql stable security definer set search_path = '' as $$
   select role from public.profiles where id = (select auth.uid()) and active = true
 $$;
 
-create function private.is_privileged()
+create or replace function private.is_privileged()
 returns boolean language sql stable security definer set search_path = '' as $$
   select coalesce(private.current_role() in ('procurement_staff','finance_staff','head_procurement','deputy_secretary','deputy_finance','dean','head_office','admin'), false)
 $$;
 
-create function private.is_admin()
+create or replace function private.is_admin()
 returns boolean language sql stable security definer set search_path = '' as $$
   select coalesce(private.current_role() = 'admin', false)
 $$;
 
-create function public.handle_new_user()
+create or replace function public.handle_new_user()
 returns trigger language plpgsql security definer set search_path = '' as $$
 begin
   insert into public.profiles (id, employee_code, full_name)
@@ -181,18 +181,22 @@ begin
 end;
 $$;
 
+drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created after insert on auth.users
 for each row execute procedure public.handle_new_user();
 
-create function public.set_updated_at()
+create or replace function public.set_updated_at()
 returns trigger language plpgsql set search_path = '' as $$
 begin new.updated_at = now(); return new; end;
 $$;
+drop trigger if exists profiles_updated_at on public.profiles;
+drop trigger if exists requests_updated_at on public.procurement_requests;
+drop trigger if exists payments_updated_at on public.payment_requests;
 create trigger profiles_updated_at before update on public.profiles for each row execute procedure public.set_updated_at();
 create trigger requests_updated_at before update on public.procurement_requests for each row execute procedure public.set_updated_at();
 create trigger payments_updated_at before update on public.payment_requests for each row execute procedure public.set_updated_at();
 
-create function public.protect_request_workflow_fields()
+create or replace function public.protect_request_workflow_fields()
 returns trigger language plpgsql security definer set search_path = '' as $$
 begin
   if not private.is_privileged() and (
@@ -206,10 +210,11 @@ begin
   return new;
 end;
 $$;
+drop trigger if exists protect_request_workflow on public.procurement_requests;
 create trigger protect_request_workflow before update on public.procurement_requests
 for each row execute procedure public.protect_request_workflow_fields();
 
-create function public.protect_payment_workflow_fields()
+create or replace function public.protect_payment_workflow_fields()
 returns trigger language plpgsql security definer set search_path = '' as $$
 begin
   if not private.is_privileged() and (
@@ -221,6 +226,7 @@ begin
   return new;
 end;
 $$;
+drop trigger if exists protect_payment_workflow on public.payment_requests;
 create trigger protect_payment_workflow before update on public.payment_requests
 for each row execute procedure public.protect_payment_workflow_fields();
 
@@ -233,6 +239,30 @@ alter table public.workflow_tasks enable row level security;
 alter table public.workflow_actions enable row level security;
 alter table public.payment_requests enable row level security;
 alter table public.payment_attachments enable row level security;
+
+drop policy if exists departments_read on public.departments;
+drop policy if exists departments_admin on public.departments;
+drop policy if exists profiles_read on public.profiles;
+drop policy if exists profiles_self_update on public.profiles;
+drop policy if exists profiles_admin_all on public.profiles;
+drop policy if exists requests_read on public.procurement_requests;
+drop policy if exists requests_insert on public.procurement_requests;
+drop policy if exists requests_owner_update_draft on public.procurement_requests;
+drop policy if exists requests_staff_update on public.procurement_requests;
+drop policy if exists items_read on public.request_items;
+drop policy if exists items_owner_write on public.request_items;
+drop policy if exists request_files_read on public.request_attachments;
+drop policy if exists request_files_owner_write on public.request_attachments;
+drop policy if exists tasks_read on public.workflow_tasks;
+drop policy if exists tasks_privileged_write on public.workflow_tasks;
+drop policy if exists actions_read on public.workflow_actions;
+drop policy if exists actions_insert on public.workflow_actions;
+drop policy if exists payments_read on public.payment_requests;
+drop policy if exists payments_insert on public.payment_requests;
+drop policy if exists payments_owner_update on public.payment_requests;
+drop policy if exists payments_staff_update on public.payment_requests;
+drop policy if exists payment_files_read on public.payment_attachments;
+drop policy if exists payment_files_owner_write on public.payment_attachments;
 
 create policy departments_read on public.departments for select to authenticated using (active or private.is_admin());
 create policy departments_admin on public.departments for all to authenticated using (private.is_admin()) with check (private.is_admin());
