@@ -11,8 +11,8 @@ export type NewRequestInput = {
   fundSource: string;
   planName: string;
   expenseCategory: string;
-  formData: Record<string, unknown>;
-  items: Array<{ line_no: number; description: string; quantity: number; unit: string; unit_price: number; market_price: number; price_source: string }>;
+  formData?: Record<string, unknown>;
+  items: Array<{ line_no: number; description: string; quantity: number; unit: string; unit_price: number; market_price?: number; price_source?: string }>;
 };
 
 export async function submitRequest(input: NewRequestInput) {
@@ -31,7 +31,7 @@ export async function submitRequest(input: NewRequestInput) {
     request_fund_source: input.fundSource,
     request_plan_name: input.planName,
     request_expense_category: input.expenseCategory,
-    request_form_data: input.formData,
+    request_form_data: input.formData ?? {},
     request_items: input.items,
   });
   if (response.error?.code === "PGRST202") {
