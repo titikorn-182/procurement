@@ -1,5 +1,24 @@
 import { AppShell } from "../components/app-shell";
-import { Bell, Building2, FileText, Settings, ShieldCheck, SlidersHorizontal, UsersRound, WalletCards } from "../components/icons";
 import { PageHeader } from "../components/ui";
+import { createClient } from "@/lib/supabase/server";
+import { SettingsWorkspace } from "./settings-workspace";
 
-export default function SettingsPage(){const groups=[["ผู้ใช้และสิทธิ์","กำหนด Role, Sub-role, ขอบเขตข้อมูล และผู้รักษาการ",UsersRound],["หน่วยงานและตำแหน่ง","จัดการโครงสร้างหน่วยงานและ mapping จาก SSO",Building2],["Workflow และอำนาจอนุมัติ","ตั้งค่าลำดับขั้น เกณฑ์วงเงิน และผู้รับผิดชอบ",ShieldCheck],["งบประมาณ","ตั้งค่าปีงบ แหล่งเงิน แผนงาน และหมวดรายจ่าย",WalletCards],["เลขเอกสารและเทมเพลต","กำหนดรูปแบบเลข running number และแบบฟอร์ม",FileText],["การแจ้งเตือน","เทมเพลต In-app, Email และ LINE",Bell],["SLA และวันทำการ","ระยะเวลาดำเนินการ วันหยุด และ escalation",SlidersHorizontal],["Integration","สถานะ SSO, ระบบงบประมาณ และลายเซ็นดิจิทัล",Settings]];return <AppShell><PageHeader title="ตั้งค่าระบบ" description="พื้นที่สำหรับผู้ดูแลระบบ ข้อมูลทั้งหมดในหน้าปัจจุบันเป็นตัวอย่าง UI และยังไม่เชื่อมต่อ Supabase"/><div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{groups.map(([a,b,I])=>{const Icon=I as typeof Settings;return <button key={String(a)} className="group flex min-h-40 items-start gap-4 border border-[var(--line-dark)] bg-[var(--paper)] p-5 text-left hover:border-[var(--orange)] hover:bg-orange-50"><span className="flex h-11 w-11 shrink-0 items-center justify-center border border-[var(--line-dark)] bg-stone-100 group-hover:bg-[var(--orange)] group-hover:text-white"><Icon size={21}/></span><span><span className="block text-lg font-bold">{String(a)}</span><span className="mt-2 block text-sm text-stone-600">{String(b)}</span><span className="mt-4 block text-xs font-semibold text-[var(--orange-dark)]">เปิดการตั้งค่า →</span></span></button>})}</div></AppShell>}
+export default async function SettingsPage() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  const { data: profile } = user
+    ? await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle()
+    : { data: null };
+
+  if (profile?.role !== "admin") {
+    return <AppShell><PageHeader title="ตั้งค่าระบบ" description="พื้นที่สำหรับผู้ดูแลระบบ"/><div role="alert" className="mt-6 border border-amber-300 bg-[var(--amber-soft)] p-5 text-[var(--amber)]"><h2 className="font-bold">ไม่มีสิทธิ์แก้ไขการตั้งค่า</h2><p className="mt-1 text-sm">บัญชีนี้ต้องมีบทบาทผู้ดูแลระบบ (admin) กรุณาติดต่อผู้ดูแลระบบหลัก</p></div></AppShell>;
+  }
+
+  const [{ data: profiles }, { data: departments }, { data: settings, error: settingsError }] = await Promise.all([
+    supabase.from("profiles").select("id, full_name, role, department_id, active").order("full_name"),
+    supabase.from("departments").select("id, code, name_th, active").order("code"),
+    supabase.from("system_settings").select("key, value, updated_at"),
+  ]);
+
+  return <AppShell><PageHeader title="ตั้งค่าระบบ" description="จัดการสิทธิ์ ข้อมูลหลัก และนโยบายการทำงานจากจุดเดียว"/><SettingsWorkspace profiles={profiles ?? []} departments={departments ?? []} settings={settings ?? []} databaseReady={!settingsError}/></AppShell>;
+}
