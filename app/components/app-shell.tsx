@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { AlertTriangle, Bell, ChevronDown, ClipboardCheck, FileText, FolderKanban, Gauge, LayoutDashboard, Menu, ReceiptText, Search, Settings, UserRound, WalletCards, X } from "./icons";
+import { AlertTriangle, Bell, ChevronDown, ClipboardCheck, FilePlus2, FileText, FolderKanban, Gauge, LayoutDashboard, Menu, ReceiptText, Search, Settings, UserRound, WalletCards, X } from "./icons";
 import { createClient } from "@/lib/supabase/client";
 import { logout } from "../login/actions";
 
@@ -12,6 +12,7 @@ const nav = [
   { href: "/", label: "แผงควบคุม", icon: LayoutDashboard, roles: ["ผู้ดูแลระบบ","ผู้ยื่นคำขอ","เจ้าหน้าที่พัสดุ","ผู้บริหาร"] },
   { href: "/requests", label: "คำขอของฉัน", icon: FileText, roles: ["ผู้ดูแลระบบ","ผู้ยื่นคำขอ"] },
   { href: "/payments/new", label: "คำขอเบิกจ่าย", icon: ReceiptText, roles: ["ผู้ดูแลระบบ","ผู้ยื่นคำขอ"] },
+  { href: "/requests/w119", label: "คำขอซื้อ/จ้าง ว119", icon: FilePlus2, roles: ["ผู้ดูแลระบบ","ผู้ยื่นคำขอ"] },
   { href: "/tasks", label: "งานรอตรวจสอบ", icon: ClipboardCheck, badge: 5, roles: ["ผู้ดูแลระบบ","เจ้าหน้าที่พัสดุ"] },
   { href: "/process", label: "ภาพรวมกระบวนการ", icon: FolderKanban, roles: ["ผู้ดูแลระบบ","เจ้าหน้าที่พัสดุ","ผู้บริหาร"] },
   { href: "/reports", label: "รายงาน", icon: Gauge, roles: ["ผู้ดูแลระบบ","เจ้าหน้าที่พัสดุ","ผู้บริหาร"] },
@@ -70,7 +71,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </Link>
         <button className="absolute right-2 top-2 p-2 lg:hidden" onClick={() => setOpen(false)} aria-label="ปิดเมนู"><X size={20}/></button>
       </div>
-      <nav className="scrollbar-thin min-h-0 flex-1 space-y-2 overflow-y-auto p-3" aria-label="เมนูหลัก">{nav.filter(item=>item.roles.includes(contextRole)).map(({ href, label, icon: Icon, badge }) => { const active = href === "/" ? path === "/" : path.startsWith(href); return <Link key={href} href={href} onClick={() => setOpen(false)} className={`fasteners flex min-h-13 items-center gap-3 border px-4 transition-colors ${active ? "border-[#a93205] bg-[var(--orange)] text-white" : "border-white/25 bg-white/[.045] text-slate-100 hover:bg-white/10"}`}><Icon size={20} aria-hidden="true"/><span className="flex-1 font-semibold">{label}</span>{badge && <span className="min-w-6 bg-white px-1.5 text-center text-xs font-bold text-[var(--orange-dark)]">{badge}</span>}</Link>; })}</nav>
+      <nav className="scrollbar-thin min-h-0 flex-1 space-y-2 overflow-y-auto p-3" aria-label="เมนูหลัก">{nav.filter(item=>item.roles.includes(contextRole)).map(({ href, label, icon: Icon, badge }) => { const active = href === "/" ? path === "/" : href === "/requests" ? path === "/requests" : path.startsWith(href); return <Link key={href} href={href} onClick={() => setOpen(false)} className={`fasteners flex min-h-13 items-center gap-3 border px-4 transition-colors ${active ? "border-[#a93205] bg-[var(--orange)] text-white" : "border-white/25 bg-white/[.045] text-slate-100 hover:bg-white/10"}`}><Icon size={20} aria-hidden="true"/><span className="flex-1 font-semibold">{label}</span>{badge && <span className="min-w-6 bg-white px-1.5 text-center text-xs font-bold text-[var(--orange-dark)]">{badge}</span>}</Link>; })}</nav>
       <div className="shrink-0 p-3"><div className="hazard fasteners flex items-center gap-3 border border-[#9f3208] p-3 text-[var(--ink)]"><AlertTriangle size={22}/><div><div className="font-bold">งานเกินกำหนด</div><div className="text-xs">3 รายการต้องติดตาม</div></div></div></div>
       <div className="shrink-0 border-t border-white/15 px-4 py-3 text-xs leading-5 text-slate-300">
         <span className="block whitespace-nowrap">พัฒนาโดย สำนักงานเลขานุการ คณะรัฐศาสตร์</span>
