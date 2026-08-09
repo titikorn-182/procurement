@@ -5,7 +5,15 @@ import { inputClass } from "../components/ui";
 import { createClient } from "@/lib/supabase/server";
 import { login } from "./actions";
 
-const systemName = "ระบบการบริหารจัดการคำขอการจัดซื้อจัดจ้างและสารสนเทศการบริหารงานพัสดุ";
+const systemNameLineOne = "ระบบการบริหารจัดการคำขอการจัดซื้อจัดจ้าง";
+const systemNameLineTwo = "และสารสนเทศการบริหารงานพัสดุ";
+
+function SystemTitle({ compact = false }: { compact?: boolean }) {
+  return <h1 className={compact ? "text-2xl font-bold leading-9" : "text-2xl font-bold leading-[1.22] tracking-[-.025em] text-[var(--ink)] xl:text-4xl 2xl:text-5xl"}>
+    <span className={compact ? "block" : "block whitespace-nowrap"}>{systemNameLineOne}</span>
+    <span className={compact ? "block" : "block whitespace-nowrap"}>{systemNameLineTwo}</span>
+  </h1>;
+}
 
 function BrandLockup({ compact = false }: { compact?: boolean }) {
   return <div className={`flex items-center ${compact ? "gap-3" : "gap-4"}`}>
@@ -33,7 +41,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
     <section className="paper-grid hidden border-r border-[var(--line-dark)] p-10 lg:flex lg:flex-col lg:justify-between xl:p-14">
       <BrandLockup />
       <div className="max-w-3xl py-14">
-        <h1 className="max-w-[18ch] text-[clamp(2.35rem,4.4vw,4.5rem)] font-bold leading-[1.18] tracking-[-.025em] text-[var(--ink)]">{systemName}</h1>
+        <SystemTitle />
         <p className="mt-7 max-w-2xl text-lg leading-8 text-stone-700">พื้นที่ทำงานกลางสำหรับยื่นคำขอ ตรวจสอบเอกสาร ติดตามลำดับอนุมัติ และบริหารข้อมูลพัสดุอย่างเป็นระบบ</p>
       </div>
       <div className="flex items-center gap-2 text-sm font-semibold text-stone-600"><ShieldCheck size={18}/>เชื่อมต่อ Supabase Auth และควบคุมการเข้าถึงด้วยสิทธิ์ตามบทบาท</div>
@@ -41,7 +49,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
 
     <section className="flex items-center p-5 sm:p-10">
       <div className="w-full">
-        <div className="mb-7 lg:hidden"><BrandLockup compact /><h1 className="mt-6 text-2xl font-bold leading-9">{systemName}</h1></div>
+        <div className="mb-7 lg:hidden"><BrandLockup compact /><div className="mt-6"><SystemTitle compact /></div></div>
         <div className="border border-[var(--line-dark)] bg-[var(--paper)]">
           <div className="border-b border-[var(--line)] bg-[var(--graphite)] p-6 text-white"><h2 className="text-2xl font-bold">เข้าสู่ระบบ</h2><p className="mt-1 text-sm text-slate-200">ใช้บัญชีบุคลากรที่ผู้ดูแลระบบสร้างไว้</p></div>
           <form action={login} className="p-6 sm:p-8">
@@ -52,6 +60,10 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
             <button type="submit" className="mt-6 min-h-11 w-full border border-[var(--orange-dark)] bg-[var(--orange)] px-4 font-bold text-white transition-colors hover:bg-[var(--orange-dark)]">เข้าสู่ระบบงานพัสดุ</button>
             <p className="mt-5 border-t border-[var(--line)] pt-4 text-sm text-stone-600">หากยังไม่มีบัญชีหรือบทบาทไม่ถูกต้อง กรุณาติดต่อผู้ดูแลระบบ</p>
           </form>
+          <footer className="border-t border-[var(--line)] bg-stone-50 px-6 py-4 text-center text-xs leading-5 text-stone-600 sm:px-8">
+            <span className="block">พัฒนาโดย สำนักงานเลขานุการ คณะรัฐศาสตร์ มหาวิทยาลัยอุบลราชธานี</span>
+            <span className="block">ฐิติกรณ์รัศมิ์ ภัททสิริภูวดล เจ้าหน้าที่บริหารงานทั่วไปชำนาญการพิเศษ</span>
+          </footer>
         </div>
       </div>
     </section>
