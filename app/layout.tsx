@@ -13,10 +13,10 @@ const sarabun = Sarabun({
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
   title: {
-    default: "ระบบจัดซื้อจัดจ้าง",
-    template: "%s | ระบบจัดซื้อจัดจ้าง",
+    default: "ระบบการบริหารจัดการคำขอการจัดซื้อจัดจ้างและสารสนเทศการบริหารงานพัสดุ",
+    template: "%s | ระบบบริหารงานพัสดุ",
   },
-  description: "ระบบบริหารจัดการคำขอการจัดซื้อจัดจ้างและการบริหารพัสดุ",
+  description: "ระบบการบริหารจัดการคำขอการจัดซื้อจัดจ้างและสารสนเทศการบริหารงานพัสดุ",
   openGraph: {
     title: "ระบบจัดซื้อจัดจ้าง",
     description: "ทุกคำขอ เดินทางอย่างตรวจสอบได้",
