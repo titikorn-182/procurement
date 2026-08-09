@@ -10,8 +10,8 @@ const systemNameLineTwo = "และสารสนเทศการบริ�
 
 function SystemTitle({ compact = false }: { compact?: boolean }) {
   return <h1 className={compact ? "text-2xl font-bold leading-9" : "text-2xl font-bold leading-[1.22] tracking-[-.025em] text-[var(--ink)] xl:text-4xl 2xl:text-5xl"}>
-    <span className={compact ? "block" : "block whitespace-nowrap"}>{systemNameLineOne}</span>
-    <span className={compact ? "block" : "block whitespace-nowrap"}>{systemNameLineTwo}</span>
+    <span className={compact ? "block" : "block whitespace-nowrap text-[var(--graphite)]"}>{systemNameLineOne}</span>
+    <span className={compact ? "block" : "block whitespace-nowrap text-[var(--orange-dark)]"}>{systemNameLineTwo}</span>
   </h1>;
 }
 
@@ -20,7 +20,7 @@ function BrandLockup({ compact = false }: { compact?: boolean }) {
     <div className="flex shrink-0 items-center gap-2" aria-hidden="true">
       <Image src="/ubu-emblem.png" alt="" width={compact ? 48 : 62} height={compact ? 54 : 70} className="h-auto object-contain" priority />
       <span className="h-10 w-px bg-stone-300" />
-      <Image src="/political-science-ubu.png" alt="" width={compact ? 54 : 70} height={compact ? 54 : 70} className="h-auto bg-white object-contain" priority />
+      <Image src="/political-science-ubu.png" alt="" width={compact ? 54 : 70} height={compact ? 54 : 70} className="h-auto object-contain mix-blend-multiply" priority />
     </div>
     <div className="min-w-0">
       <p className={`${compact ? "text-sm" : "text-base"} font-bold text-[var(--ink)]`}>คณะรัฐศาสตร์ มหาวิทยาลัยอุบลราชธานี</p>
@@ -38,13 +38,21 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   const next = typeof params.next === "string" ? params.next : "/";
 
   return <main className="grid min-h-screen bg-[var(--paper-warm)] lg:grid-cols-[minmax(0,1fr)_520px]">
-    <section className="paper-grid hidden border-r border-[var(--line-dark)] p-10 lg:flex lg:flex-col lg:justify-between xl:p-14">
-      <BrandLockup />
-      <div className="max-w-3xl py-14">
+    <section className="relative hidden overflow-hidden border-r border-[var(--line-dark)] p-10 lg:flex lg:flex-col xl:p-14">
+      <Image
+        src="/political-science-building-clean.png"
+        alt=""
+        fill
+        sizes="(min-width: 1024px) calc(100vw - 520px), 0px"
+        className="pointer-events-none object-cover object-center opacity-50"
+        priority
+      />
+      <div className="relative z-10 w-fit drop-shadow-[0_2px_3px_rgba(255,255,255,0.95)]"><BrandLockup /></div>
+      <div className="absolute bottom-28 left-10 right-10 z-10 max-w-3xl drop-shadow-[0_2px_4px_rgba(255,255,255,0.95)] xl:left-14 xl:right-14">
         <SystemTitle />
         <p className="mt-7 max-w-2xl text-lg leading-8 text-stone-700">พื้นที่ทำงานกลางสำหรับยื่นคำขอ ตรวจสอบเอกสาร ติดตามลำดับอนุมัติ และบริหารข้อมูลพัสดุอย่างเป็นระบบ</p>
       </div>
-      <div className="flex items-center gap-2 text-sm font-semibold text-stone-600"><ShieldCheck size={18}/>เชื่อมต่อ Supabase Auth และควบคุมการเข้าถึงด้วยสิทธิ์ตามบทบาท</div>
+      <div className="absolute bottom-10 left-10 z-10 flex w-fit items-center gap-2 text-sm font-semibold text-stone-700 drop-shadow-[0_1px_2px_rgba(255,255,255,0.95)] xl:bottom-14 xl:left-14"><ShieldCheck size={18}/>เชื่อมต่อ Supabase Auth และควบคุมการเข้าถึงด้วยสิทธิ์ตามบทบาท</div>
     </section>
 
     <section className="flex items-center p-5 sm:p-10">
