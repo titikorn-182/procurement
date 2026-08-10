@@ -7,6 +7,7 @@ import { AppShell } from "../../components/app-shell";
 import { AlertCircle, ArrowLeft, ArrowRight, BookOpen, Check, FileText, Plus, Trash2, Upload, X } from "lucide-react";
 import { Button, PageHeader } from "../../components/ui";
 import { submitRequest } from "./actions";
+import { VendorPicker, type VendorChoice } from "./vendor-picker";
 
 type RequestItem = {
   description: string;
@@ -34,8 +35,6 @@ const loanRequirementOptions: Array<{ value: LoanRequirement; label: string }> =
     label: "ไม่ต้องการยืมเงิน (มอบงานพัสดุจัดซื้อ/จ้าง กรณีร้านค้าให้เครดิตคณะและจ่ายตรงกับร้านค้า)",
   },
 ];
-
-const registeredVendors: Array<{ id: string; name: string }> = [];
 
 const steps = ["ข้อมูลคำขอ", "รายการพัสดุ", "งบประมาณ", "เอกสารแนบ", "ตรวจสอบและส่ง"];
 
@@ -70,7 +69,7 @@ export default function NewRequestPage() {
   const [planName, setPlanName] = useState("แผนงานบริหารทั่วไป");
   const [expenseCategory, setExpenseCategory] = useState("ค่าวัสดุ");
   const [loanRequirement, setLoanRequirement] = useState<LoanRequirement | "">("");
-  const [vendorSelection, setVendorSelection] = useState("");
+  const [vendorSelection, setVendorSelection] = useState<VendorChoice>({ kind: "none" });
   const [newVendorName, setNewVendorName] = useState("");
   const [budgetDetailsOpen, setBudgetDetailsOpen] = useState(true);
   const [departmentCode, setDepartmentCode] = useState("");
@@ -85,11 +84,13 @@ export default function NewRequestPage() {
     [items],
   );
   const selectedLoanLabel = loanRequirementOptions.find((option) => option.value === loanRequirement)?.label ?? "ยังไม่ได้เลือก";
-  const selectedRegisteredVendor = registeredVendors.find((vendor) => vendor.id === vendorSelection);
-  const selectedVendorName = vendorSelection === "new"
+  const selectedVendorName = vendorSelection.kind === "new"
     ? newVendorName.trim() || "ผู้ประกอบการรายใหม่"
-    : selectedRegisteredVendor?.name ?? "ไม่ได้ระบุ";
+    : vendorSelection.kind === "registered"
+      ? vendorSelection.vendorName
+      : "ไม่ได้ระบุ";
   const budgetCodesComplete = Boolean(departmentCode.trim() && fundCode.trim() && activityCode.trim());
+  const vendorErrorMessage = error.includes("ผู้ประกอบการ") ? error : undefined;
 
   function updateItem(index: number, patch: Partial<RequestItem>) {
     setItems((current) => current.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item)));
@@ -108,10 +109,10 @@ export default function NewRequestPage() {
     if (step === 2 && !loanRequirement) {
       return "กรุณาเลือกความต้องการยืมเงินก่อนดำเนินการต่อ";
     }
-    if (step === 2 && loanRequirement === "faculty_direct_pay_credit_vendor" && !vendorSelection) {
+    if (step === 2 && loanRequirement === "faculty_direct_pay_credit_vendor" && vendorSelection.kind === "none") {
       return "กรุณาเลือกผู้ประกอบการหรือร้านค้าสำหรับกรณีจ่ายตรงกับร้านค้า";
     }
-    if (step === 2 && vendorSelection === "new" && !newVendorName.trim()) {
+    if (step === 2 && vendorSelection.kind === "new" && !newVendorName.trim()) {
       return "กรุณาระบุชื่อผู้ประกอบการหรือร้านค้ารายใหม่";
     }
     if (step === 2 && !budgetCodesComplete) {
@@ -148,14 +149,14 @@ export default function NewRequestPage() {
         formData: {
           advanceFundingOption: loanRequirement,
           requiresLoanAgreement: loanRequirement === "borrow_before_purchase",
-          vendor: vendorSelection
+          vendor: vendorSelection.kind !== "none"
             ? {
-                type: vendorSelection === "new" ? "new" : "registered",
-                id: vendorSelection === "new" ? null : vendorSelection,
-                name: vendorSelection === "new" ? newVendorName.trim() : selectedRegisteredVendor?.name ?? null,
+                type: vendorSelection.kind,
+                id: vendorSelection.kind === "registered" ? vendorSelection.vendorId : null,
+                name: vendorSelection.kind === "new" ? newVendorName.trim() : null,
               }
             : null,
-          requiresVendorDocuments: vendorSelection === "new",
+          requiresVendorDocuments: vendorSelection.kind === "new",
           budgetCodes: {
             departmentCode: departmentCode.trim(),
             fundCode: fundCode.trim(),
@@ -313,42 +314,23 @@ export default function NewRequestPage() {
                 <span aria-hidden="true" className="grid size-8 shrink-0 place-items-center bg-orange-600 text-sm font-bold text-white">2</span>
                 <div>
                   <h3 id="vendor-selection-heading" className="font-bold text-slate-900">เลือกผู้ประกอบการ/ร้านที่ต้องการซื้อ/จ้าง (โดยวิธีเฉพาะเจาะจง)</h3>
-                  <p className="mt-1 text-sm text-slate-500">เลือกจากรายชื่อในระบบ หรือระบุผู้ประกอบการรายใหม่หากยังไม่มีชื่อ</p>
+                  <p className="mt-1 text-sm text-slate-500">ค้นหาและเลือกจากฐานรายชื่อผู้ประกอบการเดิม หรือระบุรายใหม่หากค้นหาไม่พบ</p>
                 </div>
               </div>
-              <div className="mt-4 grid gap-4 lg:grid-cols-2">
-                <label className="block">
-                  <span className="mb-2 block text-sm font-semibold text-slate-700">ผู้ประกอบการ/ร้านค้า</span>
-                  <select
-                    className={inputClass}
-                    value={vendorSelection}
-                    onChange={(event) => {
-                      const value = event.target.value;
-                      setVendorSelection(value);
-                      if (value !== "new") setNewVendorName("");
-                    }}
-                  >
-                    <option value="">ไม่ระบุผู้ประกอบการในขั้นตอนนี้</option>
-                    {registeredVendors.map((vendor) => <option key={vendor.id} value={vendor.id}>{vendor.name}</option>)}
-                    <option value="new">ผู้ประกอบการรายใหม่ (ไม่มีชื่อในระบบ)</option>
-                  </select>
-                </label>
-                {vendorSelection === "new" && (
-                  <label className="block">
-                    <span className="mb-2 block text-sm font-semibold text-slate-700">ชื่อผู้ประกอบการ/ร้านค้ารายใหม่ <span className="text-red-600">*</span></span>
-                    <input className={inputClass} value={newVendorName} onChange={(event) => setNewVendorName(event.target.value)} placeholder="กรอกชื่อผู้ประกอบการหรือร้านค้า" required />
-                  </label>
-                )}
-              </div>
-              {registeredVendors.length === 0 && vendorSelection !== "new" && (
-                <p className="mt-4 border border-sky-200 bg-sky-50 px-4 py-3 text-sm leading-6 text-sky-900">ยังไม่มีรายชื่อผู้ประกอบการเดิมในระบบ เมื่อได้รับไฟล์รายชื่อแล้วจะสามารถค้นหาและเลือกจากรายการได้ทันที</p>
-              )}
-              {vendorSelection === "new" && (
-                <div role="status" className="mt-4 flex items-start gap-3 border border-amber-300 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">
-                  <AlertCircle className="mt-0.5 shrink-0" size={18} aria-hidden="true" />
-                  <p><strong>ต้องแนบเอกสารของผู้ประกอบการ/ผู้รับจ้างเพิ่มเติม</strong> ในขั้นตอนเอกสารแนบ เพื่อให้เจ้าหน้าที่พัสดุตรวจสอบ</p>
-                </div>
-              )}
+              <VendorPicker
+                value={vendorSelection}
+                onChange={(value) => {
+                  setVendorSelection(value);
+                  if (vendorErrorMessage) setError("");
+                }}
+                newVendorName={newVendorName}
+                onNewVendorNameChange={(value) => {
+                  setNewVendorName(value);
+                  if (vendorErrorMessage) setError("");
+                }}
+                required={loanRequirement === "faculty_direct_pay_credit_vendor"}
+                errorMessage={vendorErrorMessage}
+              />
             </section>
 
             <section className="border border-slate-200 bg-white">
@@ -386,7 +368,7 @@ export default function NewRequestPage() {
 
         {step === 3 && (
           <div className="space-y-4">
-            {(loanRequirement === "borrow_before_purchase" || vendorSelection === "new") && (
+            {(loanRequirement === "borrow_before_purchase" || vendorSelection.kind === "new") && (
               <section role="status" className="border border-amber-300 bg-amber-50 p-4 text-amber-950" aria-labelledby="required-attachments-heading">
                 <div className="flex items-start gap-3">
                   <AlertCircle className="mt-0.5 shrink-0 text-amber-700" size={19} aria-hidden="true" />
@@ -394,7 +376,7 @@ export default function NewRequestPage() {
                     <h3 id="required-attachments-heading" className="font-bold">เอกสารที่ต้องแนบตามข้อมูลที่เลือก</h3>
                     <ul className="mt-2 list-disc space-y-1 pl-5 text-sm leading-6">
                       {loanRequirement === "borrow_before_purchase" && <li>สัญญายืมเงินสำหรับกรณีต้องการยืมเงินก่อน</li>}
-                      {vendorSelection === "new" && <li>เอกสารของผู้ประกอบการ/ผู้รับจ้างรายใหม่ เพื่อให้เจ้าหน้าที่พัสดุตรวจสอบ</li>}
+                      {vendorSelection.kind === "new" && <li>เอกสารของผู้ประกอบการ/ผู้รับจ้างรายใหม่ เพื่อให้เจ้าหน้าที่พัสดุตรวจสอบ</li>}
                     </ul>
                   </div>
                 </div>
@@ -424,9 +406,9 @@ export default function NewRequestPage() {
               <div><dt className="text-sm text-slate-500">รหัสกิจกรรม</dt><dd className="mt-1 font-semibold text-slate-900">{activityCode}</dd></div>
               <div><dt className="text-sm text-slate-500">ยอดรวม</dt><dd className="mt-1 text-xl font-bold text-orange-700">{money(total)}</dd></div>
             </dl>
-            {(loanRequirement === "borrow_before_purchase" || vendorSelection === "new") && (
+            {(loanRequirement === "borrow_before_purchase" || vendorSelection.kind === "new") && (
               <div className="border border-amber-300 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
-                โปรดตรวจสอบว่าได้เตรียม{loanRequirement === "borrow_before_purchase" ? "สัญญายืมเงิน" : ""}{loanRequirement === "borrow_before_purchase" && vendorSelection === "new" ? " และ" : ""}{vendorSelection === "new" ? "เอกสารผู้ประกอบการ/ผู้รับจ้างรายใหม่" : ""}ไว้ในเอกสารแนบแล้ว
+                โปรดตรวจสอบว่าได้เตรียม{loanRequirement === "borrow_before_purchase" ? "สัญญายืมเงิน" : ""}{loanRequirement === "borrow_before_purchase" && vendorSelection.kind === "new" ? " และ" : ""}{vendorSelection.kind === "new" ? "เอกสารผู้ประกอบการ/ผู้รับจ้างรายใหม่" : ""}ไว้ในเอกสารแนบแล้ว
               </div>
             )}
             <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">เมื่อส่งคำขอ ระบบจะออกเลขเอกสารอัตโนมัติและสร้างงานตรวจสอบให้เจ้าหน้าที่พัสดุ</div>

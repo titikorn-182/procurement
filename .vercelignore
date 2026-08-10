@@ -1,0 +1,8 @@
+.agents/
+.codex/
+.impeccable/
+.env*
+.next/
+app/lib/vendor-directory.ts
+supabase/private/
+*.log

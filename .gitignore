@@ -37,6 +37,10 @@ yarn-error.log*
 /.codex/
 /.impeccable/
 
+# private operational data (never commit personal/vendor records)
+/app/lib/vendor-directory.ts
+/supabase/private/
+
 # env files (can opt-in for committing if needed)
 .env*
 
