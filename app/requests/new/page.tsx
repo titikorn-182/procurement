@@ -4,7 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AppShell } from "../../components/app-shell";
-import { AlertCircle, ArrowLeft, ArrowRight, Check, FileText, Plus, Trash2, Upload } from "lucide-react";
+import { AlertCircle, ArrowLeft, ArrowRight, BookOpen, Check, FileText, Plus, Trash2, Upload, X } from "lucide-react";
 import { Button, PageHeader } from "../../components/ui";
 import { submitRequest } from "./actions";
 
@@ -14,6 +14,28 @@ type RequestItem = {
   unit: string;
   unitPrice: number;
 };
+
+type LoanRequirement =
+  | "borrow_before_purchase"
+  | "reimburse_after_purchase"
+  | "faculty_direct_pay_credit_vendor";
+
+const loanRequirementOptions: Array<{ value: LoanRequirement; label: string }> = [
+  {
+    value: "borrow_before_purchase",
+    label: "ต้องการยืมเงินก่อน (ต้องแนบสัญญายืมในเอกสารแนบ)",
+  },
+  {
+    value: "reimburse_after_purchase",
+    label: "ไม่ต้องการยืมเงิน (จัดซื้อ/จ้างมาก่อนและทำการเบิก)",
+  },
+  {
+    value: "faculty_direct_pay_credit_vendor",
+    label: "ไม่ต้องการยืมเงิน (มอบงานพัสดุจัดซื้อ/จ้าง กรณีร้านค้าให้เครดิตคณะและจ่ายตรงกับร้านค้า)",
+  },
+];
+
+const registeredVendors: Array<{ id: string; name: string }> = [];
 
 const steps = ["ข้อมูลคำขอ", "รายการพัสดุ", "งบประมาณ", "เอกสารแนบ", "ตรวจสอบและส่ง"];
 
@@ -38,14 +60,22 @@ export default function NewRequestPage() {
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [requestType, setRequestType] = useState<"purchase" | "hire">("purchase");
-  const [title, setTitle] = useState("จัดซื้อวัสดุสำนักงานประจำปีงบประมาณ 2567");
+  const [title, setTitle] = useState("จัดซื้อวัสดุสำนักงานประจำปีงบประมาณ 2569");
   const [rationale, setRationale] = useState("เพื่อสนับสนุนการปฏิบัติงานของหน่วยงานให้เป็นไปอย่างต่อเนื่อง");
   const [requiredDate, setRequiredDate] = useState("");
   const [items, setItems] = useState<RequestItem[]>(initialItems);
-  const [fiscalYear, setFiscalYear] = useState("2567");
+  const [catalogOpen, setCatalogOpen] = useState(false);
+  const [fiscalYear, setFiscalYear] = useState("2569");
   const [fundSource, setFundSource] = useState("เงินงบประมาณแผ่นดิน");
   const [planName, setPlanName] = useState("แผนงานบริหารทั่วไป");
   const [expenseCategory, setExpenseCategory] = useState("ค่าวัสดุ");
+  const [loanRequirement, setLoanRequirement] = useState<LoanRequirement | "">("");
+  const [vendorSelection, setVendorSelection] = useState("");
+  const [newVendorName, setNewVendorName] = useState("");
+  const [budgetDetailsOpen, setBudgetDetailsOpen] = useState(true);
+  const [departmentCode, setDepartmentCode] = useState("");
+  const [fundCode, setFundCode] = useState("");
+  const [activityCode, setActivityCode] = useState("");
   const [uploaded, setUploaded] = useState(false);
   const [error, setError] = useState("");
   const [isPending, startTransition] = useTransition();
@@ -54,6 +84,12 @@ export default function NewRequestPage() {
     () => items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0),
     [items],
   );
+  const selectedLoanLabel = loanRequirementOptions.find((option) => option.value === loanRequirement)?.label ?? "ยังไม่ได้เลือก";
+  const selectedRegisteredVendor = registeredVendors.find((vendor) => vendor.id === vendorSelection);
+  const selectedVendorName = vendorSelection === "new"
+    ? newVendorName.trim() || "ผู้ประกอบการรายใหม่"
+    : selectedRegisteredVendor?.name ?? "ไม่ได้ระบุ";
+  const budgetCodesComplete = Boolean(departmentCode.trim() && fundCode.trim() && activityCode.trim());
 
   function updateItem(index: number, patch: Partial<RequestItem>) {
     setItems((current) => current.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item)));
@@ -66,8 +102,21 @@ export default function NewRequestPage() {
     if (step === 1 && (items.length === 0 || items.some((item) => !item.description.trim() || !item.unit.trim() || item.quantity <= 0 || item.unitPrice < 0))) {
       return "กรุณากรอกรายการพัสดุให้ครบถ้วนอย่างน้อย 1 รายการ";
     }
-    if (step === 2 && (!fiscalYear || !fundSource || !planName || !expenseCategory)) {
+    if (step === 2 && (!fiscalYear || !fundSource || !planName.trim() || !expenseCategory)) {
       return "กรุณาระบุข้อมูลงบประมาณให้ครบถ้วน";
+    }
+    if (step === 2 && !loanRequirement) {
+      return "กรุณาเลือกความต้องการยืมเงินก่อนดำเนินการต่อ";
+    }
+    if (step === 2 && loanRequirement === "faculty_direct_pay_credit_vendor" && !vendorSelection) {
+      return "กรุณาเลือกผู้ประกอบการหรือร้านค้าสำหรับกรณีจ่ายตรงกับร้านค้า";
+    }
+    if (step === 2 && vendorSelection === "new" && !newVendorName.trim()) {
+      return "กรุณาระบุชื่อผู้ประกอบการหรือร้านค้ารายใหม่";
+    }
+    if (step === 2 && !budgetCodesComplete) {
+      setBudgetDetailsOpen(true);
+      return "กรุณากรอกรหัสหน่วยงาน รหัสกองทุน และรหัสกิจกรรมให้ครบถ้วน";
     }
     return "";
   }
@@ -76,6 +125,7 @@ export default function NewRequestPage() {
     const validationError = validateCurrentStep();
     if (validationError) {
       setError(validationError);
+      window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
     setError("");
@@ -95,6 +145,23 @@ export default function NewRequestPage() {
         fundSource,
         planName,
         expenseCategory,
+        formData: {
+          advanceFundingOption: loanRequirement,
+          requiresLoanAgreement: loanRequirement === "borrow_before_purchase",
+          vendor: vendorSelection
+            ? {
+                type: vendorSelection === "new" ? "new" : "registered",
+                id: vendorSelection === "new" ? null : vendorSelection,
+                name: vendorSelection === "new" ? newVendorName.trim() : selectedRegisteredVendor?.name ?? null,
+              }
+            : null,
+          requiresVendorDocuments: vendorSelection === "new",
+          budgetCodes: {
+            departmentCode: departmentCode.trim(),
+            fundCode: fundCode.trim(),
+            activityCode: activityCode.trim(),
+          },
+        },
         items: items.map((item, index) => ({
           line_no: index + 1,
           description: item.description,
@@ -195,22 +262,144 @@ export default function NewRequestPage() {
                 <tfoot className="bg-orange-50"><tr><td colSpan={4} className="p-4 text-right font-semibold text-slate-700">ยอดรวมทั้งสิ้น</td><td className="p-4 text-right text-lg font-bold text-orange-700">{money(total)}</td><td /></tr></tfoot>
               </table>
             </div>
-            <Button type="button" variant="secondary" onClick={() => setItems((current) => [...current, { description: "", quantity: 1, unit: "ชิ้น", unitPrice: 0 }])}><Plus size={17} /> เพิ่มรายการ</Button>
+            <div className="flex flex-wrap gap-3">
+              <Button type="button" variant="secondary" onClick={() => setItems((current) => [...current, { description: "", quantity: 1, unit: "ชิ้น", unitPrice: 0 }])}><Plus size={17} /> เพิ่มรายการ</Button>
+              <Button type="button" variant="secondary" aria-expanded={catalogOpen} aria-controls="reference-price-catalog" onClick={() => setCatalogOpen((current) => !current)}><BookOpen size={17} /> แค็ตตาล็อกราคากลาง</Button>
+            </div>
+            {catalogOpen && <section id="reference-price-catalog" className="border border-[var(--line-dark)] bg-stone-50" aria-labelledby="reference-price-catalog-heading"><header className="flex items-start justify-between gap-4 border-b border-[var(--line)] px-4 py-3"><div><h3 id="reference-price-catalog-heading" className="font-bold">แค็ตตาล็อกราคากลาง</h3><p className="mt-1 text-sm text-stone-600">ค้นหาและเลือกรายการจากฐานข้อมูลราคากลางของหน่วยงาน</p></div><button type="button" onClick={() => setCatalogOpen(false)} className="grid min-h-10 min-w-10 place-items-center border border-[var(--line)] bg-white hover:bg-stone-100" aria-label="ปิดแค็ตตาล็อกราคากลาง"><X size={17} /></button></header><div className="p-6 text-center"><BookOpen className="mx-auto text-stone-400" size={30} aria-hidden="true"/><p className="mt-3 font-semibold">ยังไม่มีข้อมูลราคากลางในระบบ</p><p className="mx-auto mt-1 max-w-2xl text-sm text-stone-600">ต้องเชื่อมข้อมูลรายการ ราคา หน่วยนับ วันที่อ้างอิง และแหล่งที่มาที่ได้รับการรับรองก่อนเปิดให้เลือกใช้ เพื่อไม่ให้ระบบแสดงราคาที่ไม่เป็นปัจจุบัน</p></div></section>}
           </div>
         )}
 
         {step === 2 && (
-          <div className="grid gap-5 sm:grid-cols-2">
-            <label className="block"><span className="mb-2 block text-sm font-semibold text-slate-700">ปีงบประมาณ</span><select className={inputClass} value={fiscalYear} onChange={(event) => setFiscalYear(event.target.value)}><option>2567</option><option>2568</option><option>2569</option></select></label>
-            <label className="block"><span className="mb-2 block text-sm font-semibold text-slate-700">แหล่งเงิน</span><select className={inputClass} value={fundSource} onChange={(event) => setFundSource(event.target.value)}><option>เงินงบประมาณแผ่นดิน</option><option>เงินรายได้</option></select></label>
-            <label className="block"><span className="mb-2 block text-sm font-semibold text-slate-700">แผนงาน</span><input className={inputClass} value={planName} onChange={(event) => setPlanName(event.target.value)} /></label>
-            <label className="block"><span className="mb-2 block text-sm font-semibold text-slate-700">หมวดรายจ่าย</span><select className={inputClass} value={expenseCategory} onChange={(event) => setExpenseCategory(event.target.value)}><option>ค่าวัสดุ</option><option>ค่าใช้สอย</option><option>ค่าครุภัณฑ์</option></select></label>
-            <div className="sm:col-span-2 rounded-xl border border-orange-200 bg-orange-50 p-5"><p className="text-sm font-semibold text-orange-900">ยอดคำขอนี้</p><p className="mt-1 text-2xl font-bold text-orange-700">{money(total)}</p><p className="mt-2 text-sm text-orange-800">เจ้าหน้าที่การเงินจะตรวจสอบและคุมยอดงบประมาณในขั้นตอนอนุมัติ</p></div>
+          <div className="space-y-6">
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              <label className="block"><span className="mb-2 block text-sm font-semibold text-slate-700">ปีงบประมาณ</span><select className={inputClass} value={fiscalYear} onChange={(event) => setFiscalYear(event.target.value)}><option>2567</option><option>2568</option><option>2569</option><option>2570</option></select></label>
+              <label className="block"><span className="mb-2 block text-sm font-semibold text-slate-700">แผนงาน</span><input className={inputClass} value={planName} onChange={(event) => setPlanName(event.target.value)} /></label>
+              <label className="block"><span className="mb-2 block text-sm font-semibold text-slate-700">หมวดรายจ่าย</span><select className={inputClass} value={expenseCategory} onChange={(event) => setExpenseCategory(event.target.value)}><option>ค่าวัสดุ</option><option>ค่าใช้สอย</option><option>ค่าครุภัณฑ์</option></select></label>
+            </div>
+
+            <fieldset className="border border-slate-200 bg-white p-5">
+              <legend className="sr-only">ความต้องการยืมเงินก่อน</legend>
+              <div className="flex items-start gap-3">
+                <span aria-hidden="true" className="grid size-8 shrink-0 place-items-center bg-orange-600 text-sm font-bold text-white">1</span>
+                <div>
+                  <h3 className="font-bold text-slate-900">ความต้องการยืมเงินก่อน <span className="text-red-600">*</span></h3>
+                  <p className="mt-1 text-sm text-slate-500">เลือกแนวทางการชำระเงินให้ตรงกับการดำเนินการของคำขอนี้</p>
+                </div>
+              </div>
+              <div className="mt-4 grid gap-3 lg:grid-cols-3">
+                {loanRequirementOptions.map((option) => {
+                  const selected = loanRequirement === option.value;
+                  return (
+                    <label key={option.value} className={`flex cursor-pointer items-start gap-3 border p-4 transition ${selected ? "border-orange-500 bg-orange-50 ring-2 ring-orange-100" : "border-slate-200 bg-white hover:border-orange-300 hover:bg-orange-50/40"}`}>
+                      <input
+                        type="radio"
+                        name="loan-requirement"
+                        value={option.value}
+                        checked={selected}
+                        onChange={() => setLoanRequirement(option.value)}
+                        required
+                        className="mt-1 size-4 shrink-0 accent-orange-600"
+                      />
+                      <span className="text-sm font-medium leading-6 text-slate-800">{option.label}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </fieldset>
+
+            <section className="border border-slate-200 bg-white p-5" aria-labelledby="vendor-selection-heading">
+              <div className="flex items-start gap-3">
+                <span aria-hidden="true" className="grid size-8 shrink-0 place-items-center bg-orange-600 text-sm font-bold text-white">2</span>
+                <div>
+                  <h3 id="vendor-selection-heading" className="font-bold text-slate-900">เลือกผู้ประกอบการ/ร้านที่ต้องการซื้อ/จ้าง (โดยวิธีเฉพาะเจาะจง)</h3>
+                  <p className="mt-1 text-sm text-slate-500">เลือกจากรายชื่อในระบบ หรือระบุผู้ประกอบการรายใหม่หากยังไม่มีชื่อ</p>
+                </div>
+              </div>
+              <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                <label className="block">
+                  <span className="mb-2 block text-sm font-semibold text-slate-700">ผู้ประกอบการ/ร้านค้า</span>
+                  <select
+                    className={inputClass}
+                    value={vendorSelection}
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      setVendorSelection(value);
+                      if (value !== "new") setNewVendorName("");
+                    }}
+                  >
+                    <option value="">ไม่ระบุผู้ประกอบการในขั้นตอนนี้</option>
+                    {registeredVendors.map((vendor) => <option key={vendor.id} value={vendor.id}>{vendor.name}</option>)}
+                    <option value="new">ผู้ประกอบการรายใหม่ (ไม่มีชื่อในระบบ)</option>
+                  </select>
+                </label>
+                {vendorSelection === "new" && (
+                  <label className="block">
+                    <span className="mb-2 block text-sm font-semibold text-slate-700">ชื่อผู้ประกอบการ/ร้านค้ารายใหม่ <span className="text-red-600">*</span></span>
+                    <input className={inputClass} value={newVendorName} onChange={(event) => setNewVendorName(event.target.value)} placeholder="กรอกชื่อผู้ประกอบการหรือร้านค้า" required />
+                  </label>
+                )}
+              </div>
+              {registeredVendors.length === 0 && vendorSelection !== "new" && (
+                <p className="mt-4 border border-sky-200 bg-sky-50 px-4 py-3 text-sm leading-6 text-sky-900">ยังไม่มีรายชื่อผู้ประกอบการเดิมในระบบ เมื่อได้รับไฟล์รายชื่อแล้วจะสามารถค้นหาและเลือกจากรายการได้ทันที</p>
+              )}
+              {vendorSelection === "new" && (
+                <div role="status" className="mt-4 flex items-start gap-3 border border-amber-300 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">
+                  <AlertCircle className="mt-0.5 shrink-0" size={18} aria-hidden="true" />
+                  <p><strong>ต้องแนบเอกสารของผู้ประกอบการ/ผู้รับจ้างเพิ่มเติม</strong> ในขั้นตอนเอกสารแนบ เพื่อให้เจ้าหน้าที่พัสดุตรวจสอบ</p>
+                </div>
+              )}
+            </section>
+
+            <section className="border border-slate-200 bg-white">
+              <button
+                type="button"
+                className="flex min-h-16 w-full items-center justify-between gap-4 p-5 text-left transition hover:bg-slate-50"
+                aria-expanded={budgetDetailsOpen}
+                aria-controls="budget-source-details"
+                onClick={() => setBudgetDetailsOpen((current) => !current)}
+              >
+                <span className="flex items-start gap-3">
+                  <span aria-hidden="true" className="grid size-8 shrink-0 place-items-center bg-orange-600 text-sm font-bold text-white">3</span>
+                  <span>
+                    <span className="block font-bold text-slate-900">รายละเอียดแหล่งงบประมาณ</span>
+                    <span className="mt-1 block text-sm font-normal text-slate-500">ระบุแหล่งเงินทุนและรหัสงบประมาณของคำขอ</span>
+                  </span>
+                </span>
+                <span className={`shrink-0 px-3 py-1 text-xs font-bold ${budgetCodesComplete ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-900"}`}>
+                  {budgetDetailsOpen ? "ซ่อนรายละเอียด" : budgetCodesComplete ? "ข้อมูลครบแล้ว" : "กรอกข้อมูล"}
+                </span>
+              </button>
+              {budgetDetailsOpen && (
+                <div id="budget-source-details" className="grid gap-5 border-t border-slate-200 bg-slate-50/70 p-5 sm:grid-cols-2">
+                  <label className="block"><span className="mb-2 block text-sm font-semibold text-slate-700">แหล่งเงินทุน <span className="text-red-600">*</span></span><select className={inputClass} value={fundSource} onChange={(event) => setFundSource(event.target.value)} required><option>เงินงบประมาณแผ่นดิน</option><option>เงินรายได้</option></select></label>
+                  <label className="block"><span className="mb-2 block text-sm font-semibold text-slate-700">รหัสหน่วยงาน <span className="text-red-600">*</span></span><input className={inputClass} value={departmentCode} onChange={(event) => setDepartmentCode(event.target.value)} placeholder="กรอกรหัสหน่วยงาน" required /></label>
+                  <label className="block"><span className="mb-2 block text-sm font-semibold text-slate-700">รหัสกองทุน <span className="text-red-600">*</span></span><input className={inputClass} value={fundCode} onChange={(event) => setFundCode(event.target.value)} placeholder="กรอกรหัสกองทุน" required /></label>
+                  <label className="block"><span className="mb-2 block text-sm font-semibold text-slate-700">รหัสกิจกรรม <span className="text-red-600">*</span></span><input className={inputClass} value={activityCode} onChange={(event) => setActivityCode(event.target.value)} placeholder="กรอกรหัสกิจกรรม" required /></label>
+                </div>
+              )}
+            </section>
+
+            <div className="border border-orange-200 bg-orange-50 p-5"><p className="text-sm font-semibold text-orange-900">ยอดคำขอนี้</p><p className="mt-1 text-2xl font-bold text-orange-700">{money(total)}</p><p className="mt-2 text-sm text-orange-800">เจ้าหน้าที่การเงินจะตรวจสอบและคุมยอดงบประมาณในขั้นตอนอนุมัติ</p></div>
           </div>
         )}
 
         {step === 3 && (
           <div className="space-y-4">
+            {(loanRequirement === "borrow_before_purchase" || vendorSelection === "new") && (
+              <section role="status" className="border border-amber-300 bg-amber-50 p-4 text-amber-950" aria-labelledby="required-attachments-heading">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="mt-0.5 shrink-0 text-amber-700" size={19} aria-hidden="true" />
+                  <div>
+                    <h3 id="required-attachments-heading" className="font-bold">เอกสารที่ต้องแนบตามข้อมูลที่เลือก</h3>
+                    <ul className="mt-2 list-disc space-y-1 pl-5 text-sm leading-6">
+                      {loanRequirement === "borrow_before_purchase" && <li>สัญญายืมเงินสำหรับกรณีต้องการยืมเงินก่อน</li>}
+                      {vendorSelection === "new" && <li>เอกสารของผู้ประกอบการ/ผู้รับจ้างรายใหม่ เพื่อให้เจ้าหน้าที่พัสดุตรวจสอบ</li>}
+                    </ul>
+                  </div>
+                </div>
+              </section>
+            )}
             <div className="rounded-2xl border-2 border-dashed border-slate-300 p-10 text-center">
               <Upload className="mx-auto text-orange-500" size={34} />
               <p className="mt-3 font-semibold text-slate-800">เอกสารประกอบคำขอ</p>
@@ -227,9 +416,19 @@ export default function NewRequestPage() {
             <dl className="grid gap-4 sm:grid-cols-2">
               <div><dt className="text-sm text-slate-500">วันที่ต้องการใช้</dt><dd className="mt-1 font-semibold text-slate-900">{requiredDate}</dd></div>
               <div><dt className="text-sm text-slate-500">จำนวนรายการ</dt><dd className="mt-1 font-semibold text-slate-900">{items.length} รายการ</dd></div>
-              <div><dt className="text-sm text-slate-500">แหล่งเงิน</dt><dd className="mt-1 font-semibold text-slate-900">{fundSource}</dd></div>
+              <div><dt className="text-sm text-slate-500">ความต้องการยืมเงิน</dt><dd className="mt-1 font-semibold leading-6 text-slate-900">{selectedLoanLabel}</dd></div>
+              <div><dt className="text-sm text-slate-500">ผู้ประกอบการ/ร้านค้า</dt><dd className="mt-1 font-semibold text-slate-900">{selectedVendorName}</dd></div>
+              <div><dt className="text-sm text-slate-500">แหล่งเงินทุน</dt><dd className="mt-1 font-semibold text-slate-900">{fundSource}</dd></div>
+              <div><dt className="text-sm text-slate-500">รหัสหน่วยงาน</dt><dd className="mt-1 font-semibold text-slate-900">{departmentCode}</dd></div>
+              <div><dt className="text-sm text-slate-500">รหัสกองทุน</dt><dd className="mt-1 font-semibold text-slate-900">{fundCode}</dd></div>
+              <div><dt className="text-sm text-slate-500">รหัสกิจกรรม</dt><dd className="mt-1 font-semibold text-slate-900">{activityCode}</dd></div>
               <div><dt className="text-sm text-slate-500">ยอดรวม</dt><dd className="mt-1 text-xl font-bold text-orange-700">{money(total)}</dd></div>
             </dl>
+            {(loanRequirement === "borrow_before_purchase" || vendorSelection === "new") && (
+              <div className="border border-amber-300 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
+                โปรดตรวจสอบว่าได้เตรียม{loanRequirement === "borrow_before_purchase" ? "สัญญายืมเงิน" : ""}{loanRequirement === "borrow_before_purchase" && vendorSelection === "new" ? " และ" : ""}{vendorSelection === "new" ? "เอกสารผู้ประกอบการ/ผู้รับจ้างรายใหม่" : ""}ไว้ในเอกสารแนบแล้ว
+              </div>
+            )}
             <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">เมื่อส่งคำขอ ระบบจะออกเลขเอกสารอัตโนมัติและสร้างงานตรวจสอบให้เจ้าหน้าที่พัสดุ</div>
           </div>
         )}
