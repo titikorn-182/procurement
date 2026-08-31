@@ -1,56 +1,130 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { toSafeActionError } from "@/lib/server/action-errors";
+import { isSettingKey, settingSchemas } from "./schemas";
 
-const settingKeys = new Set(["workflow", "budget", "documents", "notifications", "sla", "integrations"]);
+const appRoleSchema = z.enum([
+  "user",
+  "procurement_staff",
+  "finance_staff",
+  "head_procurement",
+  "deputy_secretary",
+  "deputy_finance",
+  "dean",
+  "head_office",
+  "admin",
+]);
+
+class AccessError extends Error {}
 
 async function requireAdmin() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("กรุณาเข้าสู่ระบบใหม่");
-  const { data: profile } = await supabase.from("profiles").select("role, active").eq("id", user.id).single();
-  if (!profile?.active || profile.role !== "admin") throw new Error("เฉพาะผู้ดูแลระบบเท่านั้นที่แก้ไขการตั้งค่าได้");
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new AccessError("กรุณาเข้าสู่ระบบใหม่");
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role, active")
+    .eq("id", user.id)
+    .single();
+  if (!profile?.active || profile.role !== "admin")
+    throw new AccessError("เฉพาะผู้ดูแลระบบเท่านั้นที่แก้ไขการตั้งค่าได้");
   return { supabase, user };
 }
 
 export async function saveSystemSetting(key: string, value: Record<string, unknown>) {
-  if (!settingKeys.has(key)) return { error: "ไม่พบหมวดการตั้งค่าที่ระบุ" };
-  if (JSON.stringify(value).length > 10_000) return { error: "ข้อมูลการตั้งค่ามีขนาดใหญ่เกินไป" };
+  if (!isSettingKey(key)) return { error: "ไม่พบหมวดการตั้งค่าที่ระบุ" };
+  const parsedValue = settingSchemas[key].safeParse(value);
+  if (!parsedValue.success) return { error: "ข้อมูลการตั้งค่าไม่ถูกต้องหรือไม่ครบถ้วน" };
   try {
     const { supabase, user } = await requireAdmin();
-    const { error } = await supabase.from("system_settings").upsert({ key, value, updated_by: user.id, updated_at: new Date().toISOString() });
-    if (error) return { error: error.message };
+    const { error } = await supabase.from("system_settings").upsert({
+      key,
+      value: parsedValue.data,
+      updated_by: user.id,
+      updated_at: new Date().toISOString(),
+    });
+    if (error) {
+      return {
+        error: toSafeActionError("save-system-setting", error, "บันทึกการตั้งค่าไม่สำเร็จ"),
+      };
+    }
     revalidatePath("/settings");
     return { error: null };
   } catch (error) {
-    return { error: error instanceof Error ? error.message : "บันทึกการตั้งค่าไม่สำเร็จ" };
+    return {
+      error:
+        error instanceof AccessError
+          ? error.message
+          : toSafeActionError("save-system-setting", error, "บันทึกการตั้งค่าไม่สำเร็จ"),
+    };
   }
 }
 
 export async function updateUserRole(userId: string, role: string, departmentId: string) {
-  const roles = new Set(["user", "procurement_staff", "finance_staff", "head_procurement", "deputy_secretary", "deputy_finance", "dean", "head_office", "admin"]);
-  if (!roles.has(role) || !/^[0-9a-f-]{36}$/i.test(userId)) return { error: "ข้อมูลผู้ใช้หรือบทบาทไม่ถูกต้อง" };
+  const parsed = z
+    .object({
+      userId: z.string().uuid(),
+      role: appRoleSchema,
+      departmentId: z.union([z.literal(""), z.string().uuid()]),
+    })
+    .safeParse({ userId, role, departmentId });
+  if (!parsed.success) return { error: "ข้อมูลผู้ใช้หรือบทบาทไม่ถูกต้อง" };
   try {
     const { supabase } = await requireAdmin();
-    const { error } = await supabase.rpc("set_user_role", { target_user_id: userId, new_role: role, new_department_id: departmentId || null });
-    if (error) return { error: error.message };
+    const { error } = await supabase.rpc("set_user_role", {
+      target_user_id: parsed.data.userId,
+      new_role: parsed.data.role,
+      new_department_id: parsed.data.departmentId || null,
+    });
+    if (error) {
+      return { error: toSafeActionError("update-user-role", error, "เปลี่ยนบทบาทไม่สำเร็จ") };
+    }
     revalidatePath("/settings");
     return { error: null };
   } catch (error) {
-    return { error: error instanceof Error ? error.message : "เปลี่ยนบทบาทไม่สำเร็จ" };
+    return {
+      error:
+        error instanceof AccessError
+          ? error.message
+          : toSafeActionError("update-user-role", error, "เปลี่ยนบทบาทไม่สำเร็จ"),
+    };
   }
 }
 
 export async function createDepartment(code: string, name: string) {
-  if (!/^[A-Za-z0-9_-]{2,20}$/.test(code.trim()) || name.trim().length < 2) return { error: "รหัสหรือชื่อหน่วยงานไม่ถูกต้อง" };
+  const parsed = z
+    .object({
+      code: z
+        .string()
+        .trim()
+        .min(2)
+        .max(20)
+        .regex(/^[A-Za-z0-9_-]+$/),
+      name: z.string().trim().min(2).max(200),
+    })
+    .safeParse({ code, name });
+  if (!parsed.success) return { error: "รหัสหรือชื่อหน่วยงานไม่ถูกต้อง" };
   try {
     const { supabase } = await requireAdmin();
-    const { error } = await supabase.from("departments").insert({ code: code.trim().toUpperCase(), name_th: name.trim() });
-    if (error) return { error: error.message };
+    const { error } = await supabase
+      .from("departments")
+      .insert({ code: parsed.data.code.toUpperCase(), name_th: parsed.data.name });
+    if (error) {
+      return { error: toSafeActionError("create-department", error, "เพิ่มหน่วยงานไม่สำเร็จ") };
+    }
     revalidatePath("/settings");
     return { error: null };
   } catch (error) {
-    return { error: error instanceof Error ? error.message : "เพิ่มหน่วยงานไม่สำเร็จ" };
+    return {
+      error:
+        error instanceof AccessError
+          ? error.message
+          : toSafeActionError("create-department", error, "เพิ่มหน่วยงานไม่สำเร็จ"),
+    };
   }
 }

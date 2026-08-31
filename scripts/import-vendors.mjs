@@ -26,7 +26,7 @@ function parsePrivateDirectory(source) {
 
   for (const line of source.split(/\r?\n/)) {
     const candidate = line.trim().replace(/,$/, "");
-    if (!candidate.startsWith("{\"id\":")) continue;
+    if (!candidate.startsWith('{"id":')) continue;
 
     const value = JSON.parse(candidate);
     if (typeof value.name !== "string") continue;
@@ -53,7 +53,9 @@ if (dryRun) {
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 if (!supabaseUrl || !serviceRoleKey) {
-  throw new Error("ต้องกำหนด NEXT_PUBLIC_SUPABASE_URL และ SUPABASE_SERVICE_ROLE_KEY สำหรับการนำเข้าครั้งเดียว");
+  throw new Error(
+    "ต้องกำหนด NEXT_PUBLIC_SUPABASE_URL และ SUPABASE_SERVICE_ROLE_KEY สำหรับการนำเข้าครั้งเดียว",
+  );
 }
 
 const supabase = createClient(supabaseUrl, serviceRoleKey, {
@@ -65,7 +67,9 @@ const { data: existingRows, error: readError } = await supabase
   .range(0, 4999);
 
 if (readError) {
-  throw new Error(`อ่านตาราง vendors ไม่สำเร็จ (${readError.code ?? "unknown"}) — กรุณารัน migration ก่อน`);
+  throw new Error(
+    `อ่านตาราง vendors ไม่สำเร็จ (${readError.code ?? "unknown"}) — กรุณารัน migration ก่อน`,
+  );
 }
 
 const existingNames = new Set(
@@ -81,4 +85,6 @@ for (let index = 0; index < rowsToInsert.length; index += 100) {
   if (error) throw new Error(`นำเข้ารายชื่อไม่สำเร็จ (${error.code ?? "unknown"})`);
 }
 
-console.log(`นำเข้าใหม่ ${rowsToInsert.length} รายชื่อ; มีอยู่เดิม ${vendorNames.length - rowsToInsert.length} รายชื่อ`);
+console.log(
+  `นำเข้าใหม่ ${rowsToInsert.length} รายชื่อ; มีอยู่เดิม ${vendorNames.length - rowsToInsert.length} รายชื่อ`,
+);

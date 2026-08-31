@@ -8,12 +8,7 @@ export type VendorDirectoryEntry = {
   name: string;
 };
 
-const localDirectoryPath = path.join(
-  process.cwd(),
-  "app",
-  "lib",
-  "vendor-directory.ts",
-);
+const localDirectoryPath = path.join(process.cwd(), "app", "lib", "vendor-directory.ts");
 
 let localDirectoryPromise: Promise<VendorDirectoryEntry[] | null> | null = null;
 
@@ -36,7 +31,7 @@ async function readLocalDirectory() {
 
       for (const line of source.split(/\r?\n/)) {
         const candidate = line.trim().replace(/,$/, "");
-        if (!candidate.startsWith("{\"id\":")) continue;
+        if (!candidate.startsWith('{"id":')) continue;
 
         try {
           const value = JSON.parse(candidate) as Partial<VendorDirectoryEntry>;

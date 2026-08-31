@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { getSafeInternalRedirect } from "@/lib/auth/safe-redirect";
 import { supabaseAnonKey, supabaseUrl } from "./config";
 
 export async function updateSession(request: NextRequest) {
@@ -10,21 +11,31 @@ export async function updateSession(request: NextRequest) {
       setAll(cookiesToSet) {
         cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
         response = NextResponse.next({ request });
-        cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
+        cookiesToSet.forEach(({ name, value, options }) =>
+          response.cookies.set(name, value, options),
+        );
       },
     },
   });
 
-  const { data: { user } } = await supabase.auth.getUser();
-  const isPublic = request.nextUrl.pathname.startsWith("/login") || request.nextUrl.pathname.startsWith("/auth/");
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const isPublic =
+    request.nextUrl.pathname.startsWith("/login") || request.nextUrl.pathname.startsWith("/auth/");
   if (!user && !isPublic) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
-    url.searchParams.set("next", request.nextUrl.pathname);
+    url.searchParams.set(
+      "next",
+      getSafeInternalRedirect(`${request.nextUrl.pathname}${request.nextUrl.search}`),
+    );
     return NextResponse.redirect(url);
   }
   if (user && request.nextUrl.pathname === "/login") {
-    const url = request.nextUrl.clone(); url.pathname = "/"; url.search = "";
+    const url = request.nextUrl.clone();
+    url.pathname = "/";
+    url.search = "";
     return NextResponse.redirect(url);
   }
   return response;

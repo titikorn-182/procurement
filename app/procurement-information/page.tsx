@@ -22,7 +22,12 @@ export default function ProcurementInformationPage() {
         }
       />
 
-      <section className="mt-6 border border-[var(--line-dark)] bg-[var(--paper)]" aria-label="รายงานสารสนเทศการบริหารงานพัสดุ"><ProcurementReport className="h-[calc(100vh-15rem)] min-h-[620px]" /></section>
+      <section
+        className="mt-6 border border-[var(--line-dark)] bg-[var(--paper)]"
+        aria-label="รายงานสารสนเทศการบริหารงานพัสดุ"
+      >
+        <ProcurementReport className="h-[calc(100vh-15rem)] min-h-[620px]" />
+      </section>
     </AppShell>
   );
 }

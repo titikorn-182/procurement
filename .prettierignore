@@ -1,0 +1,11 @@
+.next
+node_modules
+coverage
+.agents
+.codex
+.impeccable
+public
+supabase/private
+app/lib/vendor-directory.ts
+package-lock.json
+*.log
