@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { toSafeActionError } from "@/lib/server/action-errors";
+import type { ReturnedRequestEditData } from "../requests/[id]/edit/types";
 import type { RequestStatus } from "./mock-data";
 
 const statusMap: Record<string, RequestStatus> = {
@@ -119,7 +120,7 @@ export async function getRequestDetail(requestNo: string) {
   const { data, error } = await supabase
     .from("procurement_requests")
     .select(
-      "id, request_no, kind, title, rationale, required_date, budget_year, fund_source, plan_name, expense_category, form_data, estimated_amount, status, current_step, created_at, departments(name_th), profiles!procurement_requests_requester_id_fkey(full_name, position_title), request_items(line_no, description, quantity, unit, unit_price, total_amount), request_attachments(id, file_name, size_bytes), workflow_actions(id, action, comment, created_at, profiles!workflow_actions_actor_id_fkey(full_name))",
+      "id, request_no, requester_id, kind, title, rationale, required_date, budget_year, fund_source, plan_name, expense_category, form_data, estimated_amount, status, current_step, created_at, departments(name_th), profiles!procurement_requests_requester_id_fkey(full_name, position_title), request_items(line_no, description, quantity, unit, unit_price, total_amount), request_attachments(id, file_name, size_bytes), workflow_actions(id, action, comment, created_at, profiles!workflow_actions_actor_id_fkey(full_name))",
     )
     .eq("request_no", requestNo)
     .maybeSingle();
@@ -128,6 +129,124 @@ export async function getRequestDetail(requestNo: string) {
     error: error
       ? toSafeActionError("get-request-detail", error, "ไม่สามารถโหลดรายละเอียดคำขอได้")
       : null,
+  };
+}
+
+export async function canCurrentUserEditReturnedRequest(
+  requesterId: string,
+  status: unknown,
+): Promise<boolean> {
+  if (status !== "returned") return false;
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  return user?.id === requesterId;
+}
+
+function editRecord(value: unknown): Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+export async function getReturnedRequestForEdit(requestNo: string): Promise<{
+  data: ReturnedRequestEditData | null;
+  error: string | null;
+}> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { data: null, error: "กรุณาเข้าสู่ระบบใหม่" };
+
+  const { data, error } = await supabase
+    .from("procurement_requests")
+    .select(
+      "id, request_no, requester_id, kind, title, rationale, required_date, budget_year, fund_source, plan_name, expense_category, form_data, status, current_step, request_items(line_no, description, quantity, unit, unit_price), request_attachments(id, file_name, size_bytes), workflow_actions(action, comment, created_at)",
+    )
+    .eq("request_no", requestNo)
+    .eq("requester_id", user.id)
+    .eq("status", "returned")
+    .maybeSingle();
+
+  if (error) {
+    return {
+      data: null,
+      error: toSafeActionError(
+        "get-returned-request-for-edit",
+        error,
+        "ไม่สามารถโหลดคำขอเพื่อแก้ไขได้",
+      ),
+    };
+  }
+  if (!data) return { data: null, error: "ไม่พบคำขอที่แก้ไขได้หรือคำขอไม่ได้ถูกส่งกลับ" };
+
+  const formData = editRecord(data.form_data);
+  if (formData.formType !== "standard") {
+    return { data: null, error: "แบบคำขอนี้ยังไม่รองรับการแก้ไขจากหน้านี้" };
+  }
+  const budgetCodes = editRecord(formData.budgetCodes);
+  const vendorRecord = editRecord(formData.vendor);
+  const vendor: ReturnedRequestEditData["vendor"] =
+    vendorRecord.type === "registered" && typeof vendorRecord.id === "string"
+      ? {
+          kind: "registered",
+          vendorId: vendorRecord.id,
+          vendorName:
+            typeof vendorRecord.name === "string" ? vendorRecord.name : "ผู้ประกอบการเดิม",
+        }
+      : vendorRecord.type === "new" && typeof vendorRecord.name === "string"
+        ? { kind: "new", vendorName: vendorRecord.name }
+        : { kind: "none" };
+  const advanceFundingOption =
+    formData.advanceFundingOption === "borrow_before_purchase" ||
+    formData.advanceFundingOption === "faculty_direct_pay_credit_vendor"
+      ? formData.advanceFundingOption
+      : "reimburse_after_purchase";
+  const items = [...(data.request_items ?? [])]
+    .sort((left, right) => Number(left.line_no) - Number(right.line_no))
+    .map((item) => ({
+      description: String(item.description),
+      quantity: Number(item.quantity),
+      unit: String(item.unit),
+      unitPrice: Number(item.unit_price),
+    }));
+  const actions = [...(data.workflow_actions ?? [])].sort(
+    (left, right) => Date.parse(String(right.created_at)) - Date.parse(String(left.created_at)),
+  );
+  const latestReturn = actions.find((action) => action.action === "return");
+
+  return {
+    data: {
+      id: String(data.id),
+      requestNo: String(data.request_no),
+      currentStep: Number(data.current_step),
+      kind: data.kind === "hire" ? "hire" : "purchase",
+      title: String(data.title),
+      rationale: String(data.rationale),
+      requiredDate: String(data.required_date ?? ""),
+      budgetYear: Number(data.budget_year),
+      fundSource: String(data.fund_source),
+      planName: String(data.plan_name ?? ""),
+      expenseCategory: String(data.expense_category ?? ""),
+      advanceFundingOption,
+      vendor,
+      departmentCode: String(budgetCodes.departmentCode ?? ""),
+      fundCode: String(budgetCodes.fundCode ?? ""),
+      activityCode: String(budgetCodes.activityCode ?? ""),
+      items,
+      attachments: (data.request_attachments ?? []).map((attachment) => ({
+        id: String(attachment.id),
+        fileName: String(attachment.file_name),
+        sizeBytes: Number(attachment.size_bytes ?? 0),
+      })),
+      returnReason:
+        typeof latestReturn?.comment === "string" && latestReturn.comment.trim()
+          ? latestReturn.comment
+          : "เจ้าหน้าที่ส่งคำขอกลับเพื่อแก้ไข",
+    },
+    error: null,
   };
 }
 

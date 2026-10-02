@@ -18,6 +18,7 @@ export async function uploadRequestAttachments(
   requestId: string,
   selections: readonly SelectedAttachment[],
   onProgress?: (progress: AttachmentUploadProgress) => void,
+  options?: { preserveExisting?: boolean },
 ) {
   const supabase = createClient();
   const {
@@ -34,9 +35,11 @@ export async function uploadRequestAttachments(
     return { error: "ไม่สามารถตรวจสอบเอกสารในฉบับร่างได้ กรุณาลองอีกครั้ง" };
   }
 
-  const removedPaths = (existingAttachments ?? [])
-    .map((attachment) => attachment.storage_path)
-    .filter((path) => !desiredPaths.includes(path));
+  const removedPaths = options?.preserveExisting
+    ? []
+    : (existingAttachments ?? [])
+        .map((attachment) => attachment.storage_path)
+        .filter((path) => !desiredPaths.includes(path));
   if (removedPaths.length > 0) {
     const { error: metadataDeleteError } = await supabase
       .from("request_attachments")

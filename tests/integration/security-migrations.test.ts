@@ -77,4 +77,17 @@ describe("security hardening migrations", () => {
       "grant execute on function private.can_read_request(uuid) to authenticated",
     );
   });
+
+  it("allows only the owner to edit and resubmit a returned request", () => {
+    const sql = readMigration("202610020006_resubmit_returned_request.sql");
+
+    expect(sql).toContain("public.update_returned_procurement_request");
+    expect(sql).toContain("public.resubmit_returned_procurement_request");
+    expect(sql).toContain("current_request.requester_id <> current_profile.id");
+    expect(sql).toContain("current_request.status <> 'returned'");
+    expect(sql).toContain("set status = 'pending'");
+    expect(sql).toContain("'แก้ไขและส่งคำขอเข้าสู่กระบวนการใหม่'");
+    expect(sql).toContain("old.status in ('draft', 'returned')");
+    expect(sql).toContain("grant execute on function public.resubmit_returned_procurement_request");
+  });
 });

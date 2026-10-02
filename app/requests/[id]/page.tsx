@@ -1,9 +1,14 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { PencilLine } from "lucide-react";
 import { AppShell } from "../../components/app-shell";
 import { ChevronLeft, Download, FileText, Paperclip, Printer } from "../../components/icons";
 import { PageHeader } from "../../components/ui";
-import { getRequestDecisionContext, getRequestDetail } from "../../lib/live-data";
+import {
+  canCurrentUserEditReturnedRequest,
+  getRequestDecisionContext,
+  getRequestDetail,
+} from "../../lib/live-data";
 import { formatRequestStatus } from "../../lib/request-status";
 import { RequestDecisionPanel } from "./request-decision-panel";
 
@@ -58,6 +63,10 @@ export default async function RequestDetailPage({ params }: PageProps<"/requests
     String(data.id),
     Number(data.current_step),
   );
+  const canEditReturnedRequest = await canCurrentUserEditReturnedRequest(
+    String(data.requester_id),
+    data.status,
+  );
   const formData = asObject(data.form_data);
   const advanceFundingOption = isAdvanceFundingOption(formData.advanceFundingOption)
     ? formData.advanceFundingOption
@@ -70,7 +79,16 @@ export default async function RequestDetailPage({ params }: PageProps<"/requests
         title={String(data.request_no)}
         description={String(data.title)}
         action={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            {canEditReturnedRequest && (
+              <Link
+                href={`/requests/${id}/edit`}
+                className="inline-flex min-h-10 items-center justify-center gap-2 bg-[var(--orange)] px-4 font-bold text-white hover:bg-[var(--orange-dark)] focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)]"
+              >
+                <PencilLine size={17} aria-hidden="true" />
+                แก้ไขและส่งใหม่
+              </Link>
+            )}
             <Link
               href={`/requests/${id}/print`}
               className="inline-flex min-h-10 items-center justify-center gap-2 border border-[var(--line-dark)] bg-white px-4 font-semibold text-[var(--ink)] hover:bg-[var(--paper-warm)] focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)]"

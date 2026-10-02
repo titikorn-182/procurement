@@ -27,6 +27,7 @@
 }
 html {
   background: var(--paper-warm);
+  overflow-x: clip;
 }
 body {
   margin: 0;
