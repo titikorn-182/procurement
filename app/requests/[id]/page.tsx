@@ -4,6 +4,7 @@ import { AppShell } from "../../components/app-shell";
 import { ChevronLeft, Download, FileText, Paperclip, Printer } from "../../components/icons";
 import { PageHeader } from "../../components/ui";
 import { getRequestDetail } from "../../lib/live-data";
+import { formatRequestStatus } from "../../lib/request-status";
 
 type AdvanceFundingOption =
   "borrow_before_purchase" | "reimburse_after_purchase" | "faculty_direct_pay_credit_vendor";
@@ -96,9 +97,9 @@ export default async function RequestDetailPage({ params }: PageProps<"/requests
               <dt className="text-stone-500">ประเภท</dt>
               <dd className="font-semibold">{data.kind === "hire" ? "ขอจ้าง" : "ขอซื้อ"}</dd>
               <dt className="text-stone-500">สถานะ</dt>
-              <dd className="font-semibold">{String(data.status)}</dd>
+              <dd className="font-semibold">{formatRequestStatus(data.status)}</dd>
               <dt className="text-stone-500">ขั้นตอน</dt>
-              <dd className="font-semibold">{String(data.current_step)}</dd>
+              <dd className="font-semibold">ขั้นตอนที่ {String(data.current_step)}</dd>
               <dt className="text-stone-500">วงเงิน</dt>
               <dd className="font-bold tabular-nums">
                 {Number(data.estimated_amount).toLocaleString("th-TH", {

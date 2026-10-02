@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getRequestDetail } from "@/app/lib/live-data";
+import { formatRequestStatus } from "@/app/lib/request-status";
 import { PrintButton } from "./print-button";
 
 function asObject(value: unknown): Record<string, unknown> {
@@ -10,7 +11,11 @@ function asObject(value: unknown): Record<string, unknown> {
 }
 
 function display(value: unknown) {
-  return typeof value === "string" && value.trim() ? value : "—";
+  if (typeof value === "string" && value.trim()) return value;
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value.toLocaleString("th-TH", { useGrouping: false });
+  }
+  return "—";
 }
 
 function thaiDate(value: unknown) {
@@ -208,9 +213,9 @@ export default async function RequestPrintPage({ params }: PageProps<"/requests/
           </div>
         </footer>
 
-        <p className="mt-10 border-t border-black pt-2 text-center text-[10px]">
-          เอกสารนี้สร้างจากระบบสารสนเทศการบริหารงานพัสดุ · สถานะ {display(data.status)} ·
-          โปรดตรวจสอบลายเซ็นและหลักฐานในระบบก่อนใช้อ้างอิง
+        <p className="mt-10 border-t border-black pt-2 text-center text-xs">
+          เอกสารนี้สร้างจากระบบสารสนเทศการบริหารงานพัสดุ · สถานะ {formatRequestStatus(data.status)}{" "}
+          · โปรดตรวจสอบลายเซ็นและหลักฐานในระบบก่อนใช้อ้างอิง
         </p>
       </article>
     </main>
