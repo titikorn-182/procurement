@@ -39,4 +39,29 @@ describe("security hardening migrations", () => {
     expect(sql).toContain("least(coalesce(max_results, 20), 20)");
     expect(sql).toContain("public.resolve_vendor");
   });
+
+  it("keeps requests in draft until private attachment objects are ready", () => {
+    const sql = readMigration("202610020001_request_attachment_submission.sql");
+    expect(sql).toContain("public.create_procurement_request_draft");
+    expect(sql).toContain("public.submit_procurement_request_draft");
+    expect(sql).toContain("current_request.status <> 'draft'");
+    expect(sql).toContain("left join storage.objects");
+    expect(sql).toContain("required attachment missing");
+
+    const fixSql = readMigration("202610020002_fix_request_draft_creation.sql");
+    expect(fixSql).toContain("item_total, 'draft', 1, null");
+    expect(fixSql).not.toContain("set status = 'draft'");
+
+    const transitionSql = readMigration("202610020003_allow_requester_draft_submission.sql");
+    expect(transitionSql).toContain("old.status = 'draft'");
+    expect(transitionSql).toContain("new.status = 'submitted'");
+    expect(transitionSql).toContain("old.requester_id = (select auth.uid())");
+    expect(transitionSql).toContain("select min(first_step.step_no)");
+
+    const validationSql = readMigration("202610020004_validate_request_submission_attachments.sql");
+    expect(validationSql).toContain("new.form_data->>'formType' = 'w119'");
+    expect(validationSql).toContain("greatest(required_attachment_count, 1)");
+    expect(validationSql).toContain("left join storage.objects");
+    expect(validationSql).toContain("when (old.status = 'draft' and new.status = 'submitted')");
+  });
 });

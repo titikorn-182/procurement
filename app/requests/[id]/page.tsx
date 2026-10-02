@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppShell } from "../../components/app-shell";
 import { ChevronLeft, Download, FileText, Paperclip, Printer } from "../../components/icons";
-import { Button, PageHeader } from "../../components/ui";
+import { PageHeader } from "../../components/ui";
 import { getRequestDetail } from "../../lib/live-data";
 
 type AdvanceFundingOption =
@@ -65,10 +65,13 @@ export default async function RequestDetailPage({ params }: PageProps<"/requests
         description={String(data.title)}
         action={
           <div className="flex gap-2">
-            <Button variant="secondary">
-              <Printer size={17} />
-              พิมพ์
-            </Button>
+            <Link
+              href={`/requests/${id}/print`}
+              className="inline-flex min-h-10 items-center justify-center gap-2 border border-[var(--line-dark)] bg-white px-4 font-semibold text-[var(--ink)] hover:bg-[var(--paper-warm)] focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)]"
+            >
+              <Printer size={17} aria-hidden="true" />
+              พิมพ์ / บันทึก PDF
+            </Link>
           </div>
         }
       />
@@ -212,9 +215,13 @@ export default async function RequestDetailPage({ params }: PageProps<"/requests
                     <span className="text-xs text-stone-500">
                       {Math.ceil(Number(file.size_bytes) / 1024)} KB
                     </span>
-                    <button disabled title="เตรียมเชื่อม signed URL" className="p-2 opacity-40">
-                      <Download size={17} />
-                    </button>
+                    <a
+                      href={`/api/request-attachments/${String(file.id)}`}
+                      className="inline-flex size-10 items-center justify-center border border-[var(--line-dark)] bg-white hover:bg-[var(--paper-warm)] focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)]"
+                      aria-label={`ดาวน์โหลด ${String(file.file_name)}`}
+                    >
+                      <Download size={17} aria-hidden="true" />
+                    </a>
                   </div>
                 ))}
               </div>

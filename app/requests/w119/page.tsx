@@ -4,20 +4,12 @@ import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AppShell } from "../../components/app-shell";
-import {
-  AlertCircle,
-  ArrowLeft,
-  ArrowRight,
-  Check,
-  FileText,
-  Info,
-  Plus,
-  Trash2,
-  Upload,
-  Users,
-} from "lucide-react";
+import { AlertCircle, ArrowLeft, ArrowRight, Check, Info, Plus, Trash2, Users } from "lucide-react";
+import { AttachmentPicker } from "../../components/attachment-picker";
 import { Button, PageHeader } from "../../components/ui";
-import { submitRequest } from "../new/actions";
+import { uploadRequestAttachments } from "../../lib/request-attachments.client";
+import type { SelectedAttachment } from "../../lib/request-attachments";
+import { createRequestDraft, submitRequestDraft } from "../new/actions";
 
 type RequestItem = {
   description: string;
@@ -114,7 +106,9 @@ export default function NewRequestPage() {
   const [selectionCriteria, setSelectionCriteria] = useState("เกณฑ์ราคา");
   const [advanceRequired, setAdvanceRequired] = useState(false);
   const [inspectors, setInspectors] = useState(["", "", ""]);
-  const [uploaded, setUploaded] = useState(false);
+  const [attachments, setAttachments] = useState<SelectedAttachment[]>([]);
+  const [draft, setDraft] = useState<{ id: string; requestNo: string } | null>(null);
+  const [submissionMessage, setSubmissionMessage] = useState("");
   const [error, setError] = useState("");
   const [isPending, startTransition] = useTransition();
 
@@ -173,6 +167,9 @@ export default function NewRequestPage() {
     ) {
       return "กรุณาระบุข้อมูลงบประมาณให้ครบถ้วน";
     }
+    if (step === 3 && attachments.length === 0) {
+      return "กรุณาแนบใบเสนอราคา รายละเอียดคุณลักษณะ หรือหลักฐานราคาอย่างน้อย 1 ไฟล์";
+    }
     return "";
   }
 
@@ -189,53 +186,85 @@ export default function NewRequestPage() {
 
   function handleSubmit() {
     setError("");
+    setSubmissionMessage("กำลังจัดเตรียมฉบับร่าง...");
     startTransition(async () => {
-      const result = await submitRequest({
-        kind: requestType,
-        title,
-        rationale,
-        requiredDate,
-        budgetYear: Number(fiscalYear),
-        fundSource,
-        planName,
-        expenseCategory,
-        formData: {
-          regulation: "หนังสือ ด่วนที่สุด ที่ กค (กวจ) 0405.2/ว119 ลงวันที่ 7 มีนาคม 2561",
-          documentNo,
-          memoDate,
-          departmentName,
-          phone,
-          addressee,
-          selectionCriteria,
-          advanceRequired,
-          inspectors: inspectors.filter(Boolean),
-          budgetCodes: {
-            sourceCode,
-            departmentCode,
-            fundCode,
-            planCode,
-            subprojectCode,
-            activityCode,
+      let activeDraft = draft;
+      if (!activeDraft) {
+        const result = await createRequestDraft({
+          kind: requestType,
+          title,
+          rationale,
+          requiredDate,
+          budgetYear: Number(fiscalYear),
+          fundSource,
+          planName,
+          expenseCategory,
+          formData: {
+            regulation: "หนังสือ ด่วนที่สุด ที่ กค (กวจ) 0405.2/ว119 ลงวันที่ 7 มีนาคม 2561",
+            documentNo,
+            memoDate,
+            departmentName,
+            phone,
+            addressee,
+            selectionCriteria,
+            advanceRequired,
+            inspectors: inspectors.filter(Boolean),
+            budgetCodes: {
+              sourceCode,
+              departmentCode,
+              fundCode,
+              planCode,
+              subprojectCode,
+              activityCode,
+            },
+            requiresItemAttachment: items.length > 10,
           },
-          requiresItemAttachment: items.length > 10,
-        },
-        items: items.map((item, index) => ({
-          line_no: index + 1,
-          description: item.description,
-          quantity: item.quantity,
-          unit: item.unit,
-          unit_price: item.unitPrice,
-          market_price: item.marketPrice,
-          price_source: item.priceSource,
-        })),
-      });
+          items: items.map((item, index) => ({
+            line_no: index + 1,
+            description: item.description,
+            quantity: item.quantity,
+            unit: item.unit,
+            unit_price: item.unitPrice,
+            market_price: item.marketPrice,
+            price_source: item.priceSource,
+          })),
+        });
 
-      if (result.error) {
-        setError(result.error);
+        if (result.error || !result.requestId || !result.requestNo) {
+          setError(result.error ?? "ไม่สามารถสร้างฉบับร่างได้ กรุณาลองใหม่");
+          setSubmissionMessage("");
+          return;
+        }
+        activeDraft = { id: result.requestId, requestNo: result.requestNo };
+        setDraft(activeDraft);
+      }
+
+      setSubmissionMessage(`กำลังอัปโหลดเอกสาร 0/${attachments.length} ไฟล์...`);
+      const uploadResult = await uploadRequestAttachments(
+        activeDraft.id,
+        attachments,
+        ({ completed, total, currentFileName }) =>
+          setSubmissionMessage(
+            currentFileName
+              ? `กำลังอัปโหลด ${completed + 1}/${total}: ${currentFileName}`
+              : `อัปโหลดเอกสารครบ ${completed}/${total} ไฟล์แล้ว`,
+          ),
+      );
+      if (uploadResult.error) {
+        setError(uploadResult.error);
+        setSubmissionMessage("");
         return;
       }
 
-      router.push(`/requests/${result.requestNo}`);
+      setSubmissionMessage("กำลังส่งคำขอเข้าสู่สายอนุมัติ...");
+      const submitResult = await submitRequestDraft(activeDraft.id);
+      if (submitResult.error || !submitResult.requestNo) {
+        setError(submitResult.error ?? "ไม่สามารถส่งคำขอได้ กรุณาลองใหม่");
+        setSubmissionMessage("");
+        return;
+      }
+
+      router.push(`/requests/${submitResult.requestNo}`);
       router.refresh();
     });
   }
@@ -272,7 +301,7 @@ export default function NewRequestPage() {
                 className="flex min-h-11 flex-1 items-center gap-2 rounded-xl px-3 text-left disabled:cursor-not-allowed"
               >
                 <span
-                  className={`grid size-7 shrink-0 place-items-center rounded-full text-xs font-bold ${index < step ? "bg-emerald-100 text-emerald-700" : index === step ? "bg-orange-500 text-white" : "bg-slate-100 text-slate-400"}`}
+                  className={`grid size-7 shrink-0 place-items-center rounded-full text-xs font-bold ${index < step ? "bg-emerald-100 text-emerald-700" : index === step ? "bg-orange-500 text-white" : "bg-slate-100 text-slate-600"}`}
                 >
                   {index < step ? <Check size={15} /> : index + 1}
                 </span>
@@ -530,7 +559,7 @@ export default function NewRequestPage() {
                               current.filter((_, itemIndex) => itemIndex !== index),
                             )
                           }
-                          className="grid size-10 place-items-center rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-600"
+                          className="grid size-10 place-items-center rounded-lg text-[var(--ink)] hover:bg-red-50 hover:text-red-700"
                         >
                           <Trash2 size={17} />
                         </button>
@@ -711,33 +740,7 @@ export default function NewRequestPage() {
                 </span>
               </span>
             </label>
-            <div className="border-2 border-dashed border-slate-300 p-10 text-center">
-              <Upload className="mx-auto text-orange-500" size={34} />
-              <p className="mt-3 font-semibold text-slate-800">เอกสารประกอบคำขอ</p>
-              <p className="mt-1 text-sm text-slate-500">
-                แนบใบเสนอราคา รายละเอียดคุณลักษณะ หรือหลักฐานราคาที่สืบทราบ
-              </p>
-              <Button
-                type="button"
-                variant="secondary"
-                className="mt-4"
-                onClick={() => setUploaded(true)}
-              >
-                ทดลองเลือกไฟล์
-              </Button>
-            </div>
-            {uploaded && (
-              <div className="flex items-center gap-3 rounded-xl border border-slate-200 p-4">
-                <FileText className="text-orange-500" />
-                <div className="flex-1">
-                  <p className="text-sm font-semibold">ใบเสนอราคา.pdf</p>
-                  <p className="text-xs text-slate-500">ไฟล์ตัวอย่าง — ยังไม่ถูกอัปโหลด</p>
-                </div>
-                <span className="border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-800">
-                  ตัวอย่าง
-                </span>
-              </div>
-            )}
+            <AttachmentPicker files={attachments} onChange={setAttachments} disabled={isPending} />
           </div>
         )}
 
@@ -792,6 +795,10 @@ export default function NewRequestPage() {
                   {advanceRequired ? "ประสงค์ยืมเงิน" : "ไม่ประสงค์ยืมเงิน"}
                 </dd>
               </div>
+              <div>
+                <dt className="text-sm text-slate-500">เอกสารแนบ</dt>
+                <dd className="mt-1 font-semibold text-slate-900">{attachments.length} ไฟล์</dd>
+              </div>
             </dl>
             <div className="border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
               เมื่อส่งคำขอ ระบบจะออกเลขเอกสารอัตโนมัติ บันทึกข้อมูลตามแบบ ว119
@@ -811,6 +818,7 @@ export default function NewRequestPage() {
             <Button
               type="button"
               variant="secondary"
+              disabled={isPending || Boolean(draft)}
               onClick={() => {
                 setError("");
                 setStep((current) => current - 1);
@@ -825,11 +833,14 @@ export default function NewRequestPage() {
             </Button>
           ) : (
             <Button type="button" onClick={handleSubmit} disabled={isPending}>
-              {isPending ? "กำลังส่งคำขอ..." : "ยืนยันและส่งคำขอ"}{" "}
+              {isPending ? "กำลังดำเนินการ..." : draft ? "ลองส่งคำขออีกครั้ง" : "ยืนยันและส่งคำขอ"}{" "}
               {!isPending && <Check size={17} />}
             </Button>
           )}
         </div>
+        <p aria-live="polite" className="mt-3 min-h-5 text-right text-sm text-stone-600">
+          {submissionMessage}
+        </p>
       </SectionCard>
     </AppShell>
   );

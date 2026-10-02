@@ -109,22 +109,30 @@ async function findRegisteredVendor(
   return findLocalVendorById(vendorId);
 }
 
-export async function submitRequest(input: NewRequestInput) {
+export async function createRequestDraft(input: NewRequestInput) {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "กรุณาเข้าสู่ระบบใหม่", requestNo: null };
+  if (!user) return { error: "กรุณาเข้าสู่ระบบใหม่", requestId: null, requestNo: null };
 
   const parsedInput = newRequestInputSchema.safeParse(input);
   if (!parsedInput.success) {
-    return { error: "ข้อมูลคำขอยังไม่ครบถ้วน กรุณาตรวจสอบทุกขั้นตอน", requestNo: null };
+    return {
+      error: "ข้อมูลคำขอยังไม่ครบถ้วน กรุณาตรวจสอบทุกขั้นตอน",
+      requestId: null,
+      requestNo: null,
+    };
   }
 
   const request = parsedInput.data;
   const parsedFormData = parseRequestFormData(request.formData);
   if (!parsedFormData.success) {
-    return { error: "ข้อมูลแบบฟอร์มไม่ถูกต้อง กรุณาตรวจสอบและส่งใหม่", requestNo: null };
+    return {
+      error: "ข้อมูลแบบฟอร์มไม่ถูกต้อง กรุณาตรวจสอบและส่งใหม่",
+      requestId: null,
+      requestNo: null,
+    };
   }
 
   let submittedFormData: Record<string, unknown> = parsedFormData.data;
@@ -135,6 +143,7 @@ export async function submitRequest(input: NewRequestInput) {
       if (!registeredVendor) {
         return {
           error: "ไม่พบผู้ประกอบการที่เลือกในฐานรายชื่อ กรุณาค้นหาและเลือกใหม่",
+          requestId: null,
           requestNo: null,
         };
       }
@@ -150,6 +159,7 @@ export async function submitRequest(input: NewRequestInput) {
     if (invalidW119Item) {
       return {
         error: "รายการตามแบบ ว119 ต้องระบุราคากลางและแหล่งที่มาของราคาให้ครบถ้วน",
+        requestId: null,
         requestNo: null,
       };
     }
@@ -160,10 +170,10 @@ export async function submitRequest(input: NewRequestInput) {
   }
 
   if (JSON.stringify(submittedFormData).length > 20_000) {
-    return { error: "ข้อมูลแบบฟอร์มมีขนาดใหญ่เกินไป", requestNo: null };
+    return { error: "ข้อมูลแบบฟอร์มมีขนาดใหญ่เกินไป", requestId: null, requestNo: null };
   }
 
-  const { data, error } = await supabase.rpc("submit_procurement_request", {
+  const { data, error } = await supabase.rpc("create_procurement_request_draft", {
     request_kind: request.kind,
     request_title: request.title,
     request_rationale: request.rationale,
@@ -178,9 +188,43 @@ export async function submitRequest(input: NewRequestInput) {
   if (error) {
     return {
       error: toSafeActionError("submit-request", error, "ไม่สามารถส่งคำขอได้ กรุณาลองใหม่"),
+      requestId: null,
       requestNo: null,
     };
   }
+  const row = Array.isArray(data) ? data[0] : data;
+  return {
+    error: null,
+    requestId: row?.id as string | undefined,
+    requestNo: row?.request_no as string | undefined,
+  };
+}
+
+export async function submitRequestDraft(requestId: string) {
+  if (!uuidPattern.test(requestId)) {
+    return { error: "ไม่พบฉบับร่างที่ต้องการส่ง", requestNo: null };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "กรุณาเข้าสู่ระบบใหม่", requestNo: null };
+
+  const { data, error } = await supabase.rpc("submit_procurement_request_draft", {
+    target_request_id: requestId,
+  });
+  if (error) {
+    return {
+      error: toSafeActionError(
+        "submit-request-draft",
+        error,
+        "อัปโหลดเอกสารแล้ว แต่ยังส่งคำขอไม่ได้ คำขอยังคงเป็นฉบับร่าง กรุณาลองอีกครั้ง",
+      ),
+      requestNo: null,
+    };
+  }
+
   const row = Array.isArray(data) ? data[0] : data;
   return { error: null, requestNo: row?.request_no as string | undefined };
 }

@@ -115,6 +115,11 @@ a {
 }
 
 @media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
   aside,
   header,
   .no-print {
@@ -126,5 +131,24 @@ a {
   }
   body {
     background: white;
+  }
+
+  .print-hidden {
+    display: none !important;
+  }
+
+  .print-document {
+    width: 100%;
+    padding: 0 !important;
+  }
+
+  .print-document header {
+    display: block !important;
+  }
+
+  .print-document table,
+  .print-document section,
+  .print-document footer {
+    break-inside: avoid;
   }
 }
