@@ -64,4 +64,17 @@ describe("security hardening migrations", () => {
     expect(validationSql).toContain("left join storage.objects");
     expect(validationSql).toContain("when (old.status = 'draft' and new.status = 'submitted')");
   });
+
+  it("keeps request history readable only for actual workflow participants", () => {
+    const sql = readMigration("202610020005_allow_request_participant_history.sql");
+
+    expect(sql).toContain("workflow_actions_actor_request_idx");
+    expect(sql).toContain("create or replace function private.can_read_request");
+    expect(sql).toContain("a.actor_id = p.id");
+    expect(sql).toContain("p.active = true");
+    expect(sql).not.toContain("a.required_role = p.role");
+    expect(sql).toContain(
+      "grant execute on function private.can_read_request(uuid) to authenticated",
+    );
+  });
 });
