@@ -40,7 +40,7 @@ const nav = [
   },
   {
     href: "/payments/new",
-    label: "คำขอเบิกจ่าย",
+    label: "คำขอเบิกจ่าย POL-02",
     icon: ReceiptText,
     roles: ["ผู้ดูแลระบบ", "ผู้ยื่นคำขอ"],
   },
