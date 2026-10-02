@@ -32,7 +32,12 @@ const nav = [
     icon: LayoutDashboard,
     roles: ["ผู้ดูแลระบบ", "ผู้ยื่นคำขอ", "เจ้าหน้าที่", "ผู้บริหาร"],
   },
-  { href: "/requests", label: "คำขอของฉัน", icon: FileText, roles: ["ผู้ดูแลระบบ", "ผู้ยื่นคำขอ"] },
+  {
+    href: "/requests",
+    label: "คำขอหลักการ POL-01",
+    icon: FileText,
+    roles: ["ผู้ดูแลระบบ", "ผู้ยื่นคำขอ"],
+  },
   {
     href: "/payments/new",
     label: "คำขอเบิกจ่าย",
