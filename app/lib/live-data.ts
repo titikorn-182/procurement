@@ -130,3 +130,54 @@ export async function getRequestDetail(requestNo: string) {
       : null,
   };
 }
+
+export type RequestDecisionContext = {
+  canAct: boolean;
+  taskName: string | null;
+  requiredRole: string | null;
+  dueAt: string | null;
+};
+
+export async function getRequestDecisionContext(
+  requestId: string,
+  currentStep: number,
+): Promise<RequestDecisionContext> {
+  const emptyContext: RequestDecisionContext = {
+    canAct: false,
+    taskName: null,
+    requiredRole: null,
+    dueAt: null,
+  };
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return emptyContext;
+
+  const [{ data: profile }, { data: task }] = await Promise.all([
+    supabase.from("profiles").select("role, active").eq("id", user.id).maybeSingle(),
+    supabase
+      .from("workflow_tasks")
+      .select("step_name, required_role, assignee_id, due_at")
+      .eq("request_id", requestId)
+      .eq("step_no", currentStep)
+      .eq("status", "pending")
+      .maybeSingle(),
+  ]);
+
+  if (!task) return emptyContext;
+  const role = typeof profile?.role === "string" ? profile.role : "";
+  const assigneeId = typeof task.assignee_id === "string" ? task.assignee_id : null;
+  const requiredRole = typeof task.required_role === "string" ? task.required_role : null;
+  const canAct = Boolean(
+    profile?.active &&
+    (role === "admin" || assigneeId === user.id || (!assigneeId && requiredRole === role)),
+  );
+
+  return {
+    canAct,
+    taskName: typeof task.step_name === "string" ? task.step_name : null,
+    requiredRole,
+    dueAt: typeof task.due_at === "string" ? task.due_at : null,
+  };
+}

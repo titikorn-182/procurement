@@ -3,8 +3,9 @@ import { notFound } from "next/navigation";
 import { AppShell } from "../../components/app-shell";
 import { ChevronLeft, Download, FileText, Paperclip, Printer } from "../../components/icons";
 import { PageHeader } from "../../components/ui";
-import { getRequestDetail } from "../../lib/live-data";
+import { getRequestDecisionContext, getRequestDetail } from "../../lib/live-data";
 import { formatRequestStatus } from "../../lib/request-status";
+import { RequestDecisionPanel } from "./request-decision-panel";
 
 type AdvanceFundingOption =
   "borrow_before_purchase" | "reimburse_after_purchase" | "faculty_direct_pay_credit_vendor";
@@ -53,6 +54,10 @@ export default async function RequestDetailPage({ params }: PageProps<"/requests
   const items = (data.request_items ?? []) as Array<Record<string, unknown>>;
   const attachments = (data.request_attachments ?? []) as Array<Record<string, unknown>>;
   const actions = (data.workflow_actions ?? []) as Array<Record<string, unknown>>;
+  const decisionContext = await getRequestDecisionContext(
+    String(data.id),
+    Number(data.current_step),
+  );
   const formData = asObject(data.form_data);
   const advanceFundingOption = isAdvanceFundingOption(formData.advanceFundingOption)
     ? formData.advanceFundingOption
@@ -84,16 +89,16 @@ export default async function RequestDetailPage({ params }: PageProps<"/requests
         กลับไปคำขอของฉัน
       </Link>
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
-        <article className="border border-[var(--line-dark)] bg-[var(--paper)]">
-          <div className="flex flex-col gap-5 border-b border-[var(--line)] p-5 sm:flex-row">
+        <article className="min-w-0 border border-[var(--line-dark)] bg-[var(--paper)]">
+          <div className="grid gap-5 border-b border-[var(--line)] p-5 sm:grid-cols-[auto_minmax(0,1fr)] 2xl:grid-cols-[auto_minmax(0,1fr)_auto]">
             <div className="flex h-16 w-16 shrink-0 items-center justify-center border border-[var(--line-dark)]">
               <FileText size={30} />
             </div>
-            <div className="flex-1">
-              <h1 className="text-xl font-bold">{String(data.title)}</h1>
+            <div className="min-w-0">
+              <h1 className="break-words text-xl font-bold">{String(data.title)}</h1>
               <p className="mt-2 text-sm text-stone-600">{String(data.rationale)}</p>
             </div>
-            <dl className="grid grid-cols-2 gap-x-5 gap-y-2 text-sm">
+            <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-5 gap-y-2 text-sm sm:col-start-2 2xl:col-start-auto">
               <dt className="text-stone-500">ประเภท</dt>
               <dd className="font-semibold">{data.kind === "hire" ? "ขอจ้าง" : "ขอซื้อ"}</dd>
               <dt className="text-stone-500">สถานะ</dt>
@@ -229,7 +234,14 @@ export default async function RequestDetailPage({ params }: PageProps<"/requests
             )}
           </section>
         </article>
-        <aside className="space-y-5">
+        <aside className="min-w-0 space-y-5">
+          <RequestDecisionPanel
+            requestId={String(data.id)}
+            canAct={decisionContext.canAct}
+            taskName={decisionContext.taskName}
+            requiredRole={decisionContext.requiredRole}
+            dueAt={decisionContext.dueAt}
+          />
           <section className="border border-[var(--line-dark)] bg-[var(--paper)]">
             <h2 className="border-b border-[var(--line)] p-4 font-bold">ข้อมูลผู้ยื่น</h2>
             <dl className="space-y-3 p-4 text-sm">
