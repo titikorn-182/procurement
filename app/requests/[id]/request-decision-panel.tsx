@@ -10,7 +10,7 @@ import {
   ShieldCheck,
   XCircle,
 } from "../../components/icons";
-import { initialTransitionRequestState, transitionProcurementRequest } from "./actions";
+import { transitionProcurementRequest, type TransitionRequestState } from "./actions";
 
 type RequestDecisionPanelProps = {
   requestId: string;
@@ -29,6 +29,11 @@ const roleLabels: Record<string, string> = {
   dean: "คณบดี",
   head_office: "หัวหน้าสำนักงานเลขานุการคณะ",
   admin: "ผู้ดูแลระบบ",
+};
+
+const initialTransitionRequestState: TransitionRequestState = {
+  status: "idle",
+  message: "",
 };
 
 function DecisionButtons({ comment }: { comment: string }) {
@@ -84,9 +89,11 @@ export function RequestDecisionPanel({
   );
   const [comment, setComment] = useState("");
   const formattedDueAt = dueAt
-    ? new Intl.DateTimeFormat("th-TH", { dateStyle: "medium", timeStyle: "short" }).format(
-        new Date(dueAt),
-      )
+    ? new Intl.DateTimeFormat("th-TH", {
+        dateStyle: "medium",
+        timeStyle: "short",
+        timeZone: "Asia/Bangkok",
+      }).format(new Date(dueAt))
     : "ไม่ระบุกำหนด";
 
   return (

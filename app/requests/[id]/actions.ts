@@ -10,11 +10,6 @@ export type TransitionRequestState = {
   message: string;
 };
 
-export const initialTransitionRequestState: TransitionRequestState = {
-  status: "idle",
-  message: "",
-};
-
 const successMessages: Record<WorkflowDecision, string> = {
   approve: "บันทึกการเห็นชอบและส่งคำขอไปยังขั้นตอนถัดไปแล้ว",
   return: "ส่งคำขอกลับให้ผู้ยื่นแก้ไขแล้ว",
