@@ -76,11 +76,23 @@ export function validateAttachmentCandidates(files: readonly AttachmentCandidate
 }
 
 export function requestAttachmentPath(requestId: string, selection: SelectedAttachment) {
+  return attachmentPath("requests", requestId, selection);
+}
+
+export function paymentAttachmentPath(paymentId: string, selection: SelectedAttachment) {
+  return attachmentPath("payments", paymentId, selection);
+}
+
+function attachmentPath(
+  prefix: "requests" | "payments",
+  entityId: string,
+  selection: SelectedAttachment,
+) {
   const extension = extensionOf(selection.file.name);
-  if (!extension || !uuidPattern.test(requestId) || !uuidPattern.test(selection.id)) {
+  if (!extension || !uuidPattern.test(entityId) || !uuidPattern.test(selection.id)) {
     throw new Error("invalid attachment path");
   }
-  return `requests/${requestId}/${selection.id}.${extension}`;
+  return `${prefix}/${entityId}/${selection.id}.${extension}`;
 }
 
 export function formatAttachmentSize(size: number) {

@@ -90,4 +90,18 @@ describe("security hardening migrations", () => {
     expect(sql).toContain("old.status in ('draft', 'returned')");
     expect(sql).toContain("grant execute on function public.resubmit_returned_procurement_request");
   });
+
+  it("creates POL02 drafts before private attachments and workflow submission", () => {
+    const sql = readMigration("202610020007_pol02_payment_form.sql");
+
+    expect(sql).toContain("public.payment_items");
+    expect(sql).toContain("public.create_payment_request_draft");
+    expect(sql).toContain("public.submit_payment_request_draft");
+    expect(sql).toContain("current_payment.status <> 'draft'");
+    expect(sql).toContain("join storage.objects");
+    expect(sql).toContain("POL02 attachment is required");
+    expect(sql).toContain("for update");
+    expect(sql).toContain("is_owner_draft_submission");
+    expect(sql).toContain("private.payment_workflow_steps");
+  });
 });

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   formatAttachmentSize,
+  paymentAttachmentPath,
   requestAttachmentPath,
   resolveAttachmentMimeType,
   validateAttachmentCandidates,
@@ -49,5 +50,13 @@ describe("request attachment validation", () => {
     );
     expect(path).not.toContain("ข้อมูลลับ");
     expect(formatAttachmentSize(1_572_864)).toContain("1.5");
+
+    const paymentPath = paymentAttachmentPath("11111111-1111-4111-8111-111111111111", {
+      id: "22222222-2222-4222-8222-222222222222",
+      file: { name: "invoice.pdf" } as File,
+    });
+    expect(paymentPath).toBe(
+      "payments/11111111-1111-4111-8111-111111111111/22222222-2222-4222-8222-222222222222.pdf",
+    );
   });
 });

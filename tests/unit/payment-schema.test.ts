@@ -9,6 +9,41 @@ const validPayment = {
   subtotal: 1_000,
   vat: 70,
   delivery: "ตรวจรับเรียบร้อย",
+  formData: {
+    formType: "pol02" as const,
+    formVersion: 1 as const,
+    approvalDate: "2026-08-29",
+    departmentName: "สำนักงานเลขานุการคณะ",
+    requesterName: "ผู้ขอเบิก",
+    subject: "จัดซื้อวัสดุสำนักงาน",
+    projectActivity: "งานบริหารทั่วไป",
+    budgetYear: 2569,
+    fundSource: "เงินรายได้",
+    departmentCode: "POL",
+    fundCode: "01",
+    activityCode: "A01",
+    expenseCategory: "ค่าวัสดุ",
+    procurementMethod: "วิธีเฉพาะเจาะจง",
+    egpProjectNo: "",
+    contractNo: "PO-001",
+    contractDate: "2026-08-28",
+    vendorName: "ร้านทดสอบ",
+    vendorTaxId: "",
+    contractAmount: 1_070,
+    installmentNumber: 1,
+    installmentCount: 1,
+    documentChecklist: ["delivery_invoice"],
+  },
+  items: [
+    {
+      lineNo: 1,
+      description: "กระดาษ A4",
+      attachmentType: "ใบส่งของ/ใบแจ้งหนี้",
+      documentNo: "INV-001",
+      quantity: 10,
+      unitPrice: 100,
+    },
+  ],
 };
 
 describe("paymentInputSchema", () => {
@@ -23,6 +58,24 @@ describe("paymentInputSchema", () => {
         requestId: "not-a-uuid",
         subtotal: 0,
         vat: 0,
+      }).success,
+    ).toBe(false);
+  });
+
+  it("rejects payment lines that do not match the subtotal", () => {
+    expect(paymentInputSchema.safeParse({ ...validPayment, subtotal: 900 }).success).toBe(false);
+  });
+
+  it("requires a POL02 document checklist and valid installment order", () => {
+    expect(
+      paymentInputSchema.safeParse({
+        ...validPayment,
+        formData: {
+          ...validPayment.formData,
+          installmentNumber: 2,
+          installmentCount: 1,
+          documentChecklist: [],
+        },
       }).success,
     ).toBe(false);
   });
