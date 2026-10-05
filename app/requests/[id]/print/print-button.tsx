@@ -43,7 +43,8 @@ export function PrintButton({ targetId, fileName }: PrintButtonProps) {
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
       const pixelsPerMillimeter = sourceCanvas.width / pageWidth;
-      const pageHeightInPixels = Math.floor(pageHeight * pixelsPerMillimeter);
+      // Round up so sub-pixel differences at exactly A4 height do not create a blank trailing page.
+      const pageHeightInPixels = Math.ceil(pageHeight * pixelsPerMillimeter);
 
       for (let offset = 0, pageIndex = 0; offset < sourceCanvas.height; pageIndex += 1) {
         const sliceHeight = Math.min(pageHeightInPixels, sourceCanvas.height - offset);
