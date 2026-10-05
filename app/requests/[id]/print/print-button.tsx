@@ -60,6 +60,15 @@ export function PrintButton({ targetId, fileName }: PrintButtonProps) {
           boxShadow: "none",
           margin: "0",
         });
+        if (pdfPageCount > 0) {
+          // Chromium's SVG foreignObject capture can consume the root page's
+          // top padding after the first A4 canvas. Add the same inset inside the
+          // isolated clone so later-page headings retain the intended margin.
+          const topInset = document.createElement("div");
+          topInset.style.height = "14mm";
+          topInset.setAttribute("aria-hidden", "true");
+          captureClone.prepend(topInset);
+        }
         captureHost.setAttribute("aria-hidden", "true");
         captureHost.appendChild(captureClone);
         document.body.appendChild(captureHost);
