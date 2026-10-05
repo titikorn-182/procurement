@@ -4,7 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AppShell } from "../../components/app-shell";
-import { AlertCircle, ArrowLeft, ArrowRight, Check, Info, Plus, Trash2, Users } from "lucide-react";
+import { AlertCircle, ArrowLeft, ArrowRight, Check, Info, Plus, Trash2 } from "lucide-react";
 import { AttachmentPicker } from "../../components/attachment-picker";
 import { Button, PageHeader } from "../../components/ui";
 import { uploadRequestAttachments } from "../../lib/request-attachments.client";
@@ -20,7 +20,8 @@ type RequestItem = {
   priceSource: string;
 };
 
-const steps = ["บันทึกข้อความ", "รายการพัสดุ", "งบประมาณ", "ผู้ตรวจรับและเอกสาร", "ตรวจสอบและส่ง"];
+const steps = ["บันทึกข้อความ", "รายการพัสดุ", "งบประมาณ", "เอกสารแนบ", "ตรวจสอบและส่ง"];
+const fiscalYears = ["2567", "2568", "2569", "2570", "2571", "2572"] as const;
 
 const initialItems: RequestItem[] = [
   {
@@ -105,7 +106,6 @@ export default function NewRequestPage() {
   const [activityCode, setActivityCode] = useState("510252000024");
   const [selectionCriteria, setSelectionCriteria] = useState("เกณฑ์ราคา");
   const [advanceRequired, setAdvanceRequired] = useState(false);
-  const [inspectors, setInspectors] = useState(["", "", ""]);
   const [attachments, setAttachments] = useState<SelectedAttachment[]>([]);
   const [draft, setDraft] = useState<{ id: string; requestNo: string } | null>(null);
   const [submissionMessage, setSubmissionMessage] = useState("");
@@ -208,7 +208,6 @@ export default function NewRequestPage() {
             addressee,
             selectionCriteria,
             advanceRequired,
-            inspectors: inspectors.filter(Boolean),
             budgetCodes: {
               sourceCode,
               departmentCode,
@@ -618,9 +617,11 @@ export default function NewRequestPage() {
                 value={fiscalYear}
                 onChange={(event) => setFiscalYear(event.target.value)}
               >
-                <option>2567</option>
-                <option>2568</option>
-                <option>2569</option>
+                {fiscalYears.map((year) => (
+                  <option key={year} value={year}>
+                    พ.ศ. {year}
+                  </option>
+                ))}
               </select>
             </label>
             <label className="block">
@@ -694,36 +695,6 @@ export default function NewRequestPage() {
 
         {step === 3 && (
           <div className="space-y-6">
-            <fieldset>
-              <legend className="mb-3 flex items-center gap-2 font-bold text-slate-900">
-                <Users size={19} className="text-[var(--orange)]" /> ผู้ตรวจรับพัสดุ
-              </legend>
-              <p className="mb-4 text-sm text-slate-500">
-                ระบุผู้ตรวจรับ 1 คน หรือคณะกรรมการไม่เกิน 3 คน
-                เจ้าหน้าที่พัสดุสามารถปรับแก้ก่อนเสนออนุมัติ
-              </p>
-              <div className="grid gap-4 sm:grid-cols-3">
-                {inspectors.map((name, index) => (
-                  <label key={index} className="block">
-                    <span className="mb-2 block text-sm font-semibold text-slate-700">
-                      {index === 0 ? "ประธาน/ผู้ตรวจรับ" : `กรรมการคนที่ ${index}`}
-                    </span>
-                    <input
-                      className={inputClass}
-                      value={name}
-                      placeholder="ชื่อ-นามสกุล"
-                      onChange={(event) =>
-                        setInspectors((current) =>
-                          current.map((value, itemIndex) =>
-                            itemIndex === index ? event.target.value : value,
-                          ),
-                        )
-                      }
-                    />
-                  </label>
-                ))}
-              </div>
-            </fieldset>
             <label className="flex cursor-pointer items-start gap-3 border border-slate-200 bg-slate-50 p-4">
               <input
                 type="checkbox"
@@ -776,12 +747,6 @@ export default function NewRequestPage() {
               <div>
                 <dt className="text-sm text-slate-500">หลักเกณฑ์คัดเลือก</dt>
                 <dd className="mt-1 font-semibold text-slate-900">{selectionCriteria}</dd>
-              </div>
-              <div>
-                <dt className="text-sm text-slate-500">ผู้ตรวจรับ</dt>
-                <dd className="mt-1 font-semibold text-slate-900">
-                  {inspectors.filter(Boolean).length || 0} คน
-                </dd>
               </div>
               <div>
                 <dt className="text-sm text-slate-500">รหัสงบประมาณ</dt>

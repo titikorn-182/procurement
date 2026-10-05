@@ -30,6 +30,14 @@ function amount(value: unknown) {
   });
 }
 
+function pdfFileName(requestNo: unknown, isW119: boolean) {
+  const identifier =
+    typeof requestNo === "string"
+      ? requestNo.trim().replace(/[<>:"/\\|?*\u0000-\u001f]/g, "-")
+      : "document";
+  return `${isW119 ? "W119" : "POL01"}-${identifier || "document"}.pdf`;
+}
+
 export default async function RequestPrintPage({ params }: PageProps<"/requests/[id]/print">) {
   const { id } = await params;
   const { data, error } = await getRequestDetail(id);
@@ -53,6 +61,7 @@ export default async function RequestPrintPage({ params }: PageProps<"/requests/
   const budgetCodes = asObject(formData.budgetCodes);
   const vendor = asObject(formData.vendor);
   const isW119 = formData.formType === "w119";
+  const documentId = "request-print-document";
 
   return (
     <main className="min-h-screen bg-stone-200 px-4 py-6 text-black print:bg-white print:p-0">
@@ -63,10 +72,13 @@ export default async function RequestPrintPage({ params }: PageProps<"/requests/
         >
           กลับไปหน้าคำขอ
         </Link>
-        <PrintButton />
+        <PrintButton targetId={documentId} fileName={pdfFileName(data.request_no, isW119)} />
       </div>
 
-      <article className="print-document mx-auto min-h-[297mm] max-w-[210mm] bg-white px-[16mm] py-[14mm] shadow-lg print:min-h-0 print:max-w-none print:shadow-none">
+      <article
+        id={documentId}
+        className="print-document mx-auto min-h-[297mm] max-w-[210mm] bg-white px-[16mm] py-[14mm] shadow-lg print:min-h-0 print:max-w-none print:shadow-none"
+      >
         <header className="border-b-2 border-black pb-4 text-center">
           <p className="text-sm font-semibold">คณะรัฐศาสตร์ มหาวิทยาลัยอุบลราชธานี</p>
           <h1 className="mt-2 text-xl font-bold">

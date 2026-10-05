@@ -91,7 +91,6 @@ describe("parseRequestFormData", () => {
       addressee: "คณบดีคณะรัฐศาสตร์",
       selectionCriteria: "เกณฑ์ราคา",
       advanceRequired: false,
-      inspectors: [],
       budgetCodes: {
         sourceCode: "2",
         departmentCode: "2301",
@@ -103,6 +102,35 @@ describe("parseRequestFormData", () => {
       requiresItemAttachment: false,
     });
     expect(result.success).toBe(true);
-    if (result.success) expect(result.data.formType).toBe("w119");
+    if (result.success) {
+      expect(result.data.formType).toBe("w119");
+      expect("inspectors" in result.data).toBe(false);
+    }
+  });
+
+  it("removes legacy W119 inspectors from normalized form data", () => {
+    const result = parseRequestFormData({
+      regulation: "หนังสือ ด่วนที่สุด ที่ กค (กวจ) 0405.2/ว119",
+      documentNo: "อว 0604.19/1",
+      memoDate: "2026-08-30",
+      departmentName: "สำนักงานเลขานุการคณะ",
+      phone: "3944",
+      addressee: "คณบดีคณะรัฐศาสตร์",
+      selectionCriteria: "เกณฑ์ราคา",
+      advanceRequired: false,
+      inspectors: ["ผู้ตรวจรับเดิม"],
+      budgetCodes: {
+        sourceCode: "2",
+        departmentCode: "2301",
+        fundCode: "6",
+        planCode: "1",
+        subprojectCode: "51025200",
+        activityCode: "510252000024",
+      },
+      requiresItemAttachment: false,
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) expect("inspectors" in result.data).toBe(false);
   });
 });

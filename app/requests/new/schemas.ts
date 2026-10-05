@@ -104,7 +104,7 @@ export const w119RequestFormSchema = z
     addressee: shortRequiredText(300),
     selectionCriteria: z.enum(["เกณฑ์ราคา", "เกณฑ์ราคาประกอบเกณฑ์อื่น"]),
     advanceRequired: z.boolean(),
-    inspectors: z.array(shortRequiredText(200)).max(3),
+    inspectors: z.array(shortRequiredText(200)).max(3).optional(),
     budgetCodes: z
       .object({
         sourceCode: budgetCodeSchema,
@@ -118,7 +118,11 @@ export const w119RequestFormSchema = z
     requiresItemAttachment: z.boolean(),
   })
   .strict()
-  .transform((data) => ({ formType: "w119" as const, formVersion: 1 as const, ...data }));
+  .transform(({ inspectors, ...data }) => {
+    // Accept legacy records but do not carry proposed inspectors into new or resubmitted W119 data.
+    void inspectors;
+    return { formType: "w119" as const, formVersion: 1 as const, ...data };
+  });
 
 export function parseRequestFormData(value: unknown) {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
