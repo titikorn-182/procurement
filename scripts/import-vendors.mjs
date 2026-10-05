@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { createClient } from "@supabase/supabase-js";
 
@@ -7,6 +7,8 @@ const sourcePath = process.env.VENDOR_DIRECTORY_SOURCE
   ? path.resolve(process.env.VENDOR_DIRECTORY_SOURCE)
   : path.join(projectRoot, "app", "lib", "vendor-directory.ts");
 const dryRun = process.argv.includes("--dry-run");
+const createSqlFile = process.argv.includes("--sql-file");
+const privateSqlPath = path.join(projectRoot, "supabase", "private", "import-vendors.sql");
 
 async function loadLocalEnvironment() {
   try {
@@ -47,6 +49,34 @@ if (vendorNames.length === 0) {
 
 if (dryRun) {
   console.log(`ตรวจพบรายชื่อไม่ซ้ำ ${vendorNames.length} รายชื่อ (ยังไม่ได้ส่งข้อมูล)`);
+  process.exit(0);
+}
+
+if (createSqlFile) {
+  const values = vendorNames
+    .map((displayName) => `  ('${displayName.replaceAll("'", "''")}')`)
+    .join(",\n");
+  const sql = `begin;
+
+insert into public.vendors (display_name, active)
+select source.display_name, true
+from (values
+${values}
+) as source(display_name)
+where not exists (
+  select 1
+  from public.vendors existing
+  where existing.display_name = source.display_name
+);
+
+commit;
+`;
+
+  await mkdir(path.dirname(privateSqlPath), { recursive: true });
+  await writeFile(privateSqlPath, sql, "utf8");
+  console.log(
+    `สร้างไฟล์นำเข้าส่วนตัว ${vendorNames.length} รายชื่อแล้ว: ${path.relative(projectRoot, privateSqlPath)}`,
+  );
   process.exit(0);
 }
 

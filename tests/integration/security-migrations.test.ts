@@ -40,6 +40,16 @@ describe("security hardening migrations", () => {
     expect(sql).toContain("public.resolve_vendor");
   });
 
+  it("keeps vendor search bounded while tolerating small Thai spelling differences", () => {
+    const sql = readMigration("202610050001_vendor_search_resilience.sql");
+
+    expect(sql).toContain("profiles.active = true");
+    expect(sql).toContain("least(coalesce(max_results, 20), 20)");
+    expect(sql).toContain("extensions.word_similarity(normalized_query, v.search_name) >= 0.40");
+    expect(sql).toContain("revoke all on function public.search_vendors");
+    expect(sql).toContain("grant execute on function public.search_vendors");
+  });
+
   it("keeps requests in draft until private attachment objects are ready", () => {
     const sql = readMigration("202610020001_request_attachment_submission.sql");
     expect(sql).toContain("public.create_procurement_request_draft");

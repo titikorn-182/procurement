@@ -13,7 +13,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "verify": "npm run lint && npm run typecheck && npm run test && npm run format:check && npm run build",
-    "vendors:import": "node scripts/import-vendors.mjs"
+    "vendors:import": "node scripts/import-vendors.mjs",
+    "vendors:sql": "node scripts/import-vendors.mjs --sql-file"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",
