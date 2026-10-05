@@ -31,10 +31,13 @@ export type ReturnedRequestEditData = {
   advanceFundingOption:
     "borrow_before_purchase" | "reimburse_after_purchase" | "faculty_direct_pay_credit_vendor";
   vendor: ReturnedRequestVendor;
+  sourceCode: string;
   departmentCode: string;
   fundCode: string;
   activityCode: string;
+  approvalDetails: Pol01ApprovalDetails;
   items: ReturnedRequestItem[];
   attachments: ReturnedRequestAttachment[];
   returnReason: string;
 };
+import type { Pol01ApprovalDetails } from "../../pol01";

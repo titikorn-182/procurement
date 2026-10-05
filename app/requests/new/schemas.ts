@@ -46,6 +46,32 @@ export const newRequestInputSchema = z
 
 const budgetCodeSchema = shortRequiredText(50);
 
+const pol01PersonSchema = z
+  .object({
+    name: shortRequiredText(200),
+    position: shortRequiredText(300),
+  })
+  .strict();
+
+const pol01ApprovalDetailsSchema = z
+  .object({
+    requester: pol01PersonSchema,
+    committee: z
+      .array(
+        z
+          .object({
+            name: z.string().trim().max(200),
+            role: z.enum(["ประธาน", "กรรมการ"]),
+          })
+          .strict(),
+      )
+      .length(3)
+      .refine((members) => members[0]?.name.length > 0),
+    endorser: pol01PersonSchema,
+    approver: pol01PersonSchema,
+  })
+  .strict();
+
 const registeredVendorSchema = z
   .object({
     type: z.literal("registered"),
@@ -72,8 +98,10 @@ export const standardRequestFormSchema = z
     requiresLoanAgreement: z.boolean().optional(),
     vendor: z.union([registeredVendorSchema, newVendorSchema]).nullable(),
     requiresVendorDocuments: z.boolean().optional(),
+    approvalDetails: pol01ApprovalDetailsSchema.optional(),
     budgetCodes: z
       .object({
+        sourceCode: budgetCodeSchema.optional(),
         departmentCode: budgetCodeSchema,
         fundCode: budgetCodeSchema,
         activityCode: budgetCodeSchema,

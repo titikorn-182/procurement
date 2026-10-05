@@ -81,6 +81,44 @@ describe("parseRequestFormData", () => {
     expect(result.success).toBe(false);
   });
 
+  it("accepts the POL01 budget source and approval details", () => {
+    const result = parseRequestFormData({
+      advanceFundingOption: "reimburse_after_purchase",
+      vendor: null,
+      budgetCodes: {
+        sourceCode: "2",
+        departmentCode: "2301",
+        fundCode: "2",
+        activityCode: "100210230004",
+      },
+      approvalDetails: {
+        requester: {
+          name: "นายฐิติกรณ์รัศมิ์ ภัททสิริภูวดล",
+          position: "รก.หัวหน้าสำนักงานเลขานุการ",
+        },
+        committee: [
+          { name: "นายฐิติกรณ์รัศมิ์ ภัททสิริภูวดล", role: "ประธาน" },
+          { name: "", role: "กรรมการ" },
+          { name: "", role: "กรรมการ" },
+        ],
+        endorser: {
+          name: "นายวุฒิ อิงคภาวรวงศ์",
+          position: "รองคณบดีฝ่ายบริหารและพัฒนาองค์การ",
+        },
+        approver: {
+          name: "นางสาวศิริพร จันทนสกุลวงศ์",
+          position: "คณบดีคณะรัฐศาสตร์ ปฏิบัติราชการแทนอธิการบดี",
+        },
+      },
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success && result.data.formType === "standard") {
+      expect(result.data.budgetCodes.sourceCode).toBe("2");
+      expect(result.data.approvalDetails?.committee[0].role).toBe("ประธาน");
+    }
+  });
+
   it("recognizes and versions a W119 form", () => {
     const result = parseRequestFormData({
       regulation: "หนังสือ ด่วนที่สุด ที่ กค (กวจ) 0405.2/ว119",

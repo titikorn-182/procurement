@@ -3,7 +3,7 @@ export type RequestStatus =
 
 export const requests = [
   {
-    id: "PR6705-00045",
+    id: "POL01-006",
     title: "จัดซื้อวัสดุสำนักงาน จำนวน 12 รายการ",
     requester: "ธนพร จ.",
     unit: "สำนักงานเลขานุการ",
@@ -15,7 +15,7 @@ export const requests = [
     type: "ซื้อ",
   },
   {
-    id: "PR6705-00044",
+    id: "POL01-005",
     title: "จ้างเหมาบริการทำความสะอาดอาคารเรียน",
     requester: "อารีย์ พ.",
     unit: "กองอาคารสถานที่",
@@ -27,7 +27,7 @@ export const requests = [
     type: "จ้าง",
   },
   {
-    id: "PR6705-00043",
+    id: "POL01-004",
     title: "จัดซื้อคอมพิวเตอร์สำหรับห้องปฏิบัติการ",
     requester: "ณัฐพล ป.",
     unit: "คณะวิทยาศาสตร์",
@@ -39,7 +39,7 @@ export const requests = [
     type: "ซื้อ",
   },
   {
-    id: "PR6705-00042",
+    id: "POL01-003",
     title: "จ้างเหมาบริการซ่อมแซมระบบไฟฟ้า",
     requester: "วิทยา ช.",
     unit: "กองอาคารสถานที่",
@@ -51,7 +51,7 @@ export const requests = [
     type: "จ้าง",
   },
   {
-    id: "PR6705-00041",
+    id: "POL01-002",
     title: "จัดซื้อวัสดุวิทยาศาสตร์และสารเคมี",
     requester: "สุภัทรา ม.",
     unit: "คณะวิทยาศาสตร์",
@@ -63,7 +63,7 @@ export const requests = [
     type: "ซื้อ",
   },
   {
-    id: "PR6705-00040",
+    id: "POL01-001",
     title: "จัดซื้อวัสดุงานบ้านงานครัว",
     requester: "กมลวรรณ ศ.",
     unit: "สำนักงานเลขานุการ",
@@ -95,6 +95,6 @@ export const processColumns = [
   {
     title: "เสร็จสิ้น",
     count: 18,
-    items: [{ ...requests[5], id: "PR6705-00039", status: "เสร็จสิ้น" as RequestStatus }],
+    items: [{ ...requests[5], id: "POL01-007", status: "เสร็จสิ้น" as RequestStatus }],
   },
 ];

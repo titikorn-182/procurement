@@ -10,7 +10,9 @@ import { Button, PageHeader } from "../../components/ui";
 import { uploadRequestAttachments } from "../../lib/request-attachments.client";
 import type { SelectedAttachment } from "../../lib/request-attachments";
 import { createRequestDraft, submitRequestDraft } from "./actions";
+import { Pol01ApprovalDetailsFields } from "./pol01-approval-details";
 import { VendorPicker, type VendorChoice } from "./vendor-picker";
+import { createDefaultPol01ApprovalDetails } from "../pol01";
 
 type RequestItem = {
   description: string;
@@ -92,9 +94,11 @@ export default function NewRequestPage() {
   const [vendorSelection, setVendorSelection] = useState<VendorChoice>({ kind: "none" });
   const [newVendorName, setNewVendorName] = useState("");
   const [budgetDetailsOpen, setBudgetDetailsOpen] = useState(true);
-  const [departmentCode, setDepartmentCode] = useState("");
-  const [fundCode, setFundCode] = useState("");
-  const [activityCode, setActivityCode] = useState("");
+  const [sourceCode, setSourceCode] = useState("2");
+  const [departmentCode, setDepartmentCode] = useState("2301");
+  const [fundCode, setFundCode] = useState("2");
+  const [activityCode, setActivityCode] = useState("100210230004");
+  const [approvalDetails, setApprovalDetails] = useState(createDefaultPol01ApprovalDetails);
   const [attachments, setAttachments] = useState<SelectedAttachment[]>([]);
   const [draft, setDraft] = useState<{ id: string; requestNo: string } | null>(null);
   const [submissionMessage, setSubmissionMessage] = useState("");
@@ -115,7 +119,16 @@ export default function NewRequestPage() {
         ? vendorSelection.vendorName
         : "ไม่ได้ระบุ";
   const budgetCodesComplete = Boolean(
-    departmentCode.trim() && fundCode.trim() && activityCode.trim(),
+    sourceCode.trim() && departmentCode.trim() && fundCode.trim() && activityCode.trim(),
+  );
+  const approvalDetailsComplete = Boolean(
+    approvalDetails.requester.name.trim() &&
+    approvalDetails.requester.position.trim() &&
+    approvalDetails.committee[0].name.trim() &&
+    approvalDetails.endorser.name.trim() &&
+    approvalDetails.endorser.position.trim() &&
+    approvalDetails.approver.name.trim() &&
+    approvalDetails.approver.position.trim(),
   );
   const vendorErrorMessage = error.includes("ผู้ประกอบการ") ? error : undefined;
   const requiredAttachmentCount =
@@ -162,7 +175,10 @@ export default function NewRequestPage() {
     }
     if (step === 2 && !budgetCodesComplete) {
       setBudgetDetailsOpen(true);
-      return "กรุณากรอกรหัสหน่วยงาน รหัสกองทุน และรหัสกิจกรรมให้ครบถ้วน";
+      return "กรุณากรอกรหัสแหล่งเงิน รหัสหน่วยงาน รหัสกองทุน และรหัสกิจกรรมให้ครบถ้วน";
+    }
+    if (step === 2 && !approvalDetailsComplete) {
+      return "กรุณาตรวจสอบข้อมูลผู้ขอซื้อ/จ้าง ประธานผู้ตรวจรับ ผู้เห็นชอบ และผู้อนุมัติให้ครบถ้วน";
     }
     if (step === 3 && attachments.length < requiredAttachmentCount) {
       return `กรุณาแนบเอกสารที่กำหนดอย่างน้อย ${requiredAttachmentCount} ไฟล์`;
@@ -209,7 +225,9 @@ export default function NewRequestPage() {
                   }
                 : null,
             requiresVendorDocuments: vendorSelection.kind === "new",
+            approvalDetails,
             budgetCodes: {
+              sourceCode: sourceCode.trim(),
               departmentCode: departmentCode.trim(),
               fundCode: fundCode.trim(),
               activityCode: activityCode.trim(),
@@ -712,6 +730,18 @@ export default function NewRequestPage() {
                   </label>
                   <label className="block">
                     <span className="mb-2 block text-sm font-semibold text-slate-700">
+                      รหัสแหล่งเงิน <span className="text-red-600">*</span>
+                    </span>
+                    <input
+                      className={inputClass}
+                      value={sourceCode}
+                      onChange={(event) => setSourceCode(event.target.value)}
+                      placeholder="กรอกรหัสแหล่งเงิน"
+                      required
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="mb-2 block text-sm font-semibold text-slate-700">
                       รหัสหน่วยงาน <span className="text-red-600">*</span>
                     </span>
                     <input
@@ -749,6 +779,8 @@ export default function NewRequestPage() {
                 </div>
               )}
             </section>
+
+            <Pol01ApprovalDetailsFields value={approvalDetails} onChange={setApprovalDetails} />
 
             <div className="border border-orange-200 bg-orange-50 p-5">
               <p className="text-sm font-semibold text-orange-900">ยอดคำขอนี้</p>
@@ -827,6 +859,10 @@ export default function NewRequestPage() {
                 <dd className="mt-1 font-semibold text-slate-900">{fundSource}</dd>
               </div>
               <div>
+                <dt className="text-sm text-slate-500">รหัสแหล่งเงิน</dt>
+                <dd className="mt-1 font-semibold text-slate-900">{sourceCode}</dd>
+              </div>
+              <div>
                 <dt className="text-sm text-slate-500">รหัสหน่วยงาน</dt>
                 <dd className="mt-1 font-semibold text-slate-900">{departmentCode}</dd>
               </div>
@@ -837,6 +873,13 @@ export default function NewRequestPage() {
               <div>
                 <dt className="text-sm text-slate-500">รหัสกิจกรรม</dt>
                 <dd className="mt-1 font-semibold text-slate-900">{activityCode}</dd>
+              </div>
+              <div className="sm:col-span-2">
+                <dt className="text-sm text-slate-500">ผู้ลงนาม</dt>
+                <dd className="mt-1 font-semibold leading-6 text-slate-900">
+                  ผู้ขอ {approvalDetails.requester.name} · ผู้เห็นชอบ{" "}
+                  {approvalDetails.endorser.name} · ผู้อนุมัติ {approvalDetails.approver.name}
+                </dd>
               </div>
               <div>
                 <dt className="text-sm text-slate-500">ยอดรวม</dt>

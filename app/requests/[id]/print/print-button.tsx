@@ -28,58 +28,65 @@ export function PrintButton({ targetId, fileName }: PrintButtonProps) {
         import("html-to-image"),
         import("jspdf"),
       ]);
-      const sourceCanvas = await toCanvas(documentElement, {
-        backgroundColor: "#ffffff",
-        cacheBust: true,
-        pixelRatio: 2,
-        preferredFontFormat: "woff2",
-        style: {
-          boxShadow: "none",
-          margin: "0",
-        },
-      });
-
       const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4", compress: true });
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
-      const pixelsPerMillimeter = sourceCanvas.width / pageWidth;
-      // Round up so sub-pixel differences at exactly A4 height do not create a blank trailing page.
-      const pageHeightInPixels = Math.ceil(pageHeight * pixelsPerMillimeter);
+      const explicitPages = Array.from(
+        documentElement.querySelectorAll<HTMLElement>("[data-pdf-page]"),
+      );
+      const captureTargets = explicitPages.length > 0 ? explicitPages : [documentElement];
+      let pdfPageCount = 0;
 
-      for (let offset = 0, pageIndex = 0; offset < sourceCanvas.height; pageIndex += 1) {
-        const sliceHeight = Math.min(pageHeightInPixels, sourceCanvas.height - offset);
-        const pageCanvas = document.createElement("canvas");
-        pageCanvas.width = sourceCanvas.width;
-        pageCanvas.height = sliceHeight;
-        const context = pageCanvas.getContext("2d");
-        if (!context) throw new Error("canvas context unavailable");
+      for (const captureTarget of captureTargets) {
+        const sourceCanvas = await toCanvas(captureTarget, {
+          backgroundColor: "#ffffff",
+          cacheBust: true,
+          pixelRatio: 2,
+          preferredFontFormat: "woff2",
+          style: {
+            boxShadow: "none",
+            margin: "0",
+          },
+        });
+        const pixelsPerMillimeter = sourceCanvas.width / pageWidth;
+        // Round up so sub-pixel differences at exactly A4 height do not create a blank trailing page.
+        const pageHeightInPixels = Math.ceil(pageHeight * pixelsPerMillimeter);
 
-        context.fillStyle = "#ffffff";
-        context.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
-        context.drawImage(
-          sourceCanvas,
-          0,
-          offset,
-          sourceCanvas.width,
-          sliceHeight,
-          0,
-          0,
-          pageCanvas.width,
-          pageCanvas.height,
-        );
+        for (let offset = 0; offset < sourceCanvas.height; offset += pageHeightInPixels) {
+          const sliceHeight = Math.min(pageHeightInPixels, sourceCanvas.height - offset);
+          const pageCanvas = document.createElement("canvas");
+          pageCanvas.width = sourceCanvas.width;
+          pageCanvas.height = sliceHeight;
+          const context = pageCanvas.getContext("2d");
+          if (!context) throw new Error("canvas context unavailable");
 
-        if (pageIndex > 0) pdf.addPage("a4", "portrait");
-        pdf.addImage(
-          pageCanvas.toDataURL("image/jpeg", 0.96),
-          "JPEG",
-          0,
-          0,
-          pageWidth,
-          sliceHeight / pixelsPerMillimeter,
-          undefined,
-          "FAST",
-        );
-        offset += sliceHeight;
+          context.fillStyle = "#ffffff";
+          context.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+          context.drawImage(
+            sourceCanvas,
+            0,
+            offset,
+            sourceCanvas.width,
+            sliceHeight,
+            0,
+            0,
+            pageCanvas.width,
+            pageCanvas.height,
+          );
+
+          if (pdfPageCount > 0) pdf.addPage("a4", "portrait");
+          pdf.addImage(
+            pageCanvas.toDataURL("image/jpeg", 0.96),
+            "JPEG",
+            0,
+            0,
+            pageWidth,
+            sliceHeight / pixelsPerMillimeter,
+            undefined,
+            "FAST",
+          );
+          pdfPageCount += 1;
+        }
       }
 
       await pdf.save(fileName, { returnPromise: true });

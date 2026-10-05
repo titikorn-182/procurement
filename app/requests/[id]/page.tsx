@@ -10,6 +10,7 @@ import {
   getRequestDetail,
 } from "../../lib/live-data";
 import { formatRequestStatus } from "../../lib/request-status";
+import { normalizePol01ApprovalDetails } from "../pol01";
 import { RequestDecisionPanel } from "./request-decision-panel";
 
 type AdvanceFundingOption =
@@ -73,6 +74,7 @@ export default async function RequestDetailPage({ params }: PageProps<"/requests
     : null;
   const vendor = asObject(formData.vendor);
   const budgetCodes = asObject(formData.budgetCodes);
+  const approvalDetails = normalizePol01ApprovalDetails(formData.approvalDetails);
   return (
     <AppShell>
       <PageHeader
@@ -210,6 +212,12 @@ export default async function RequestDetailPage({ params }: PageProps<"/requests
                   <dd className="mt-1 font-semibold">{displayText(data.fund_source)}</dd>
                 </div>
                 <div>
+                  <dt className="text-stone-500">รหัสแหล่งเงิน</dt>
+                  <dd className="mt-1 font-semibold">
+                    {displayText(budgetCodes.sourceCode ?? "2")}
+                  </dd>
+                </div>
+                <div>
                   <dt className="text-stone-500">รหัสหน่วยงาน</dt>
                   <dd className="mt-1 font-semibold">{displayText(budgetCodes.departmentCode)}</dd>
                 </div>
@@ -220,6 +228,40 @@ export default async function RequestDetailPage({ params }: PageProps<"/requests
                 <div>
                   <dt className="text-stone-500">รหัสกิจกรรม</dt>
                   <dd className="mt-1 font-semibold">{displayText(budgetCodes.activityCode)}</dd>
+                </div>
+              </dl>
+            </section>
+          )}
+          {formData.formType === "standard" && (
+            <section className="border-t border-[var(--line)] p-5">
+              <h2 className="text-lg font-bold">ผู้ลงนามและคณะกรรมการ/ผู้ตรวจรับพัสดุ</h2>
+              <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2">
+                <div>
+                  <dt className="text-stone-500">ผู้ขอซื้อ/จ้าง</dt>
+                  <dd className="mt-1 font-semibold">{approvalDetails.requester.name}</dd>
+                  <dd className="text-stone-600">{approvalDetails.requester.position}</dd>
+                </div>
+                <div>
+                  <dt className="text-stone-500">ผู้เห็นชอบ</dt>
+                  <dd className="mt-1 font-semibold">{approvalDetails.endorser.name}</dd>
+                  <dd className="text-stone-600">{approvalDetails.endorser.position}</dd>
+                </div>
+                <div className="sm:col-span-2">
+                  <dt className="text-stone-500">คณะกรรมการ/ผู้ตรวจรับพัสดุ</dt>
+                  <dd className="mt-1">
+                    <ol className="space-y-1">
+                      {approvalDetails.committee.map((member, index) => (
+                        <li key={index}>
+                          {index + 1}. {displayText(member.name)} · {member.role}
+                        </li>
+                      ))}
+                    </ol>
+                  </dd>
+                </div>
+                <div className="sm:col-span-2">
+                  <dt className="text-stone-500">ผู้อนุมัติ</dt>
+                  <dd className="mt-1 font-semibold">{approvalDetails.approver.name}</dd>
+                  <dd className="text-stone-600">{approvalDetails.approver.position}</dd>
                 </div>
               </dl>
             </section>

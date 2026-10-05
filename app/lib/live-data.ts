@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { toSafeActionError } from "@/lib/server/action-errors";
 import type { ReturnedRequestEditData } from "../requests/[id]/edit/types";
+import { normalizePol01ApprovalDetails } from "../requests/pol01";
 import type { RequestStatus } from "./mock-data";
 
 const statusMap: Record<string, RequestStatus> = {
@@ -232,9 +233,11 @@ export async function getReturnedRequestForEdit(requestNo: string): Promise<{
       expenseCategory: String(data.expense_category ?? ""),
       advanceFundingOption,
       vendor,
+      sourceCode: String(budgetCodes.sourceCode ?? "2"),
       departmentCode: String(budgetCodes.departmentCode ?? ""),
       fundCode: String(budgetCodes.fundCode ?? ""),
       activityCode: String(budgetCodes.activityCode ?? ""),
+      approvalDetails: normalizePol01ApprovalDetails(formData.approvalDetails),
       items,
       attachments: (data.request_attachments ?? []).map((attachment) => ({
         id: String(attachment.id),

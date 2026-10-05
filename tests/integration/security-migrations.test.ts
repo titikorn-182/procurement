@@ -114,4 +114,14 @@ describe("security hardening migrations", () => {
     expect(sql).toContain("is_owner_draft_submission");
     expect(sql).toContain("private.payment_workflow_steps");
   });
+
+  it("assigns stable sequential POL01 numbers without changing UUID relationships", () => {
+    const sql = readMigration("202610050002_pol01_request_numbering.sql");
+
+    expect(sql).toContain("public.pol01_request_no_seq");
+    expect(sql).toContain("private.next_pol01_request_no");
+    expect(sql).toContain("'POL01-' || lpad(next_value::text, 3, '0')");
+    expect(sql).toContain("order by created_at, id");
+    expect(sql).toContain("alter column request_no set default private.next_pol01_request_no()");
+  });
 });

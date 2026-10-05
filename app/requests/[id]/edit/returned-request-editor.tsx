@@ -9,6 +9,7 @@ import { AttachmentPicker } from "../../../components/attachment-picker";
 import { Button, PageHeader } from "../../../components/ui";
 import { formatAttachmentSize, type SelectedAttachment } from "../../../lib/request-attachments";
 import { uploadRequestAttachments } from "../../../lib/request-attachments.client";
+import { Pol01ApprovalDetailsFields } from "../../new/pol01-approval-details";
 import { VendorPicker, type VendorChoice } from "../../new/vendor-picker";
 import { resubmitReturnedRequest, updateReturnedRequest } from "./actions";
 import type { ReturnedRequestEditData, ReturnedRequestItem } from "./types";
@@ -70,9 +71,11 @@ export function ReturnedRequestEditor({ initial }: { initial: ReturnedRequestEdi
   const [planName, setPlanName] = useState(initial.planName);
   const [expenseCategory, setExpenseCategory] = useState(initial.expenseCategory);
   const [loanRequirement, setLoanRequirement] = useState(initial.advanceFundingOption);
+  const [sourceCode, setSourceCode] = useState(initial.sourceCode);
   const [departmentCode, setDepartmentCode] = useState(initial.departmentCode);
   const [fundCode, setFundCode] = useState(initial.fundCode);
   const [activityCode, setActivityCode] = useState(initial.activityCode);
+  const [approvalDetails, setApprovalDetails] = useState(initial.approvalDetails);
   const [items, setItems] = useState<ReturnedRequestItem[]>(initial.items);
   const [newAttachments, setNewAttachments] = useState<SelectedAttachment[]>([]);
   const [vendorSelection, setVendorSelection] = useState<VendorChoice>(
@@ -123,8 +126,19 @@ export function ReturnedRequestEditor({ initial }: { initial: ReturnedRequestEdi
     ) {
       return "กรุณาตรวจสอบรายการ จำนวน หน่วย และราคาให้ครบถ้วน";
     }
-    if (!departmentCode.trim() || !fundCode.trim() || !activityCode.trim()) {
-      return "กรุณากรอกรหัสหน่วยงาน รหัสกองทุน และรหัสกิจกรรมให้ครบถ้วน";
+    if (!sourceCode.trim() || !departmentCode.trim() || !fundCode.trim() || !activityCode.trim()) {
+      return "กรุณากรอกรหัสแหล่งเงิน รหัสหน่วยงาน รหัสกองทุน และรหัสกิจกรรมให้ครบถ้วน";
+    }
+    if (
+      !approvalDetails.requester.name.trim() ||
+      !approvalDetails.requester.position.trim() ||
+      !approvalDetails.committee[0].name.trim() ||
+      !approvalDetails.endorser.name.trim() ||
+      !approvalDetails.endorser.position.trim() ||
+      !approvalDetails.approver.name.trim() ||
+      !approvalDetails.approver.position.trim()
+    ) {
+      return "กรุณาตรวจสอบข้อมูลผู้ขอซื้อ/จ้าง ประธานผู้ตรวจรับ ผู้เห็นชอบ และผู้อนุมัติให้ครบถ้วน";
     }
     if (loanRequirement === "faculty_direct_pay_credit_vendor" && vendorSelection.kind === "none") {
       return "กรุณาเลือกผู้ประกอบการสำหรับกรณีจ่ายตรงกับร้านค้า";
@@ -173,7 +187,9 @@ export function ReturnedRequestEditor({ initial }: { initial: ReturnedRequestEdi
                 ? { type: "new", id: null, name: newVendorName.trim() }
                 : null,
           requiresVendorDocuments: vendorSelection.kind === "new",
+          approvalDetails,
           budgetCodes: {
+            sourceCode: sourceCode.trim(),
             departmentCode: departmentCode.trim(),
             fundCode: fundCode.trim(),
             activityCode: activityCode.trim(),
@@ -486,6 +502,14 @@ export function ReturnedRequestEditor({ initial }: { initial: ReturnedRequestEdi
               </select>
             </label>
             <label className="block">
+              <span className="mb-2 block text-sm font-semibold">รหัสแหล่งเงิน *</span>
+              <input
+                className={fieldClass}
+                value={sourceCode}
+                onChange={(event) => setSourceCode(event.target.value)}
+              />
+            </label>
+            <label className="block">
               <span className="mb-2 block text-sm font-semibold">รหัสหน่วยงาน *</span>
               <input
                 className={fieldClass}
@@ -509,6 +533,9 @@ export function ReturnedRequestEditor({ initial }: { initial: ReturnedRequestEdi
                 onChange={(event) => setActivityCode(event.target.value)}
               />
             </label>
+          </div>
+          <div className="mt-6">
+            <Pol01ApprovalDetailsFields value={approvalDetails} onChange={setApprovalDetails} />
           </div>
         </EditSection>
 
