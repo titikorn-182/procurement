@@ -29,15 +29,15 @@ export default async function SettingsPage() {
     );
   }
 
-  const [{ data: profiles }, { data: departments }, { data: settings, error: settingsError }] =
-    await Promise.all([
-      supabase
-        .from("profiles")
-        .select("id, full_name, role, department_id, active")
-        .order("full_name"),
-      supabase.from("departments").select("id, code, name_th, active").order("code"),
-      supabase.from("system_settings").select("key, value, updated_at"),
-    ]);
+  const [
+    { data: profiles, error: profilesError },
+    { data: departments },
+    { data: settings, error: settingsError },
+  ] = await Promise.all([
+    supabase.rpc("admin_list_user_profiles"),
+    supabase.from("departments").select("id, code, name_th, active").order("code"),
+    supabase.from("system_settings").select("key, value, updated_at"),
+  ]);
 
   return (
     <AppShell>
@@ -47,6 +47,11 @@ export default async function SettingsPage() {
       />
       <SettingsWorkspace
         profiles={profiles ?? []}
+        profilesError={
+          profilesError
+            ? "ไม่สามารถโหลดชื่อ E-mail และตำแหน่งของผู้ใช้ได้ กรุณาตรวจสอบ migration แล้วโหลดหน้าอีกครั้ง"
+            : null
+        }
         departments={departments ?? []}
         settings={settings ?? []}
         databaseReady={!settingsError}

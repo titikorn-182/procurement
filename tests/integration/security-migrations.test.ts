@@ -124,4 +124,16 @@ describe("security hardening migrations", () => {
     expect(sql).toContain("order by created_at, id");
     expect(sql).toContain("alter column request_no set default private.next_pol01_request_no()");
   });
+
+  it("exposes user directory contact details only through an admin RPC", () => {
+    const sql = readMigration("202610050003_admin_user_directory.sql");
+
+    expect(sql).toContain("public.admin_list_user_profiles");
+    expect(sql).toContain("if not private.is_admin()");
+    expect(sql).toContain("join auth.users");
+    expect(sql).toContain("revoke all on function public.admin_list_user_profiles() from public");
+    expect(sql).toContain(
+      "grant execute on function public.admin_list_user_profiles() to authenticated",
+    );
+  });
 });

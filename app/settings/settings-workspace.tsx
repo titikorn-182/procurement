@@ -19,6 +19,8 @@ import { createDepartment, saveSystemSetting, updateUserRole } from "./actions";
 type Profile = {
   id: string;
   full_name: string;
+  email: string;
+  position_title: string;
   role: string;
   department_id: string | null;
   active: boolean;
@@ -72,11 +74,13 @@ const inputClass =
 
 export function SettingsWorkspace({
   profiles,
+  profilesError,
   departments,
   settings,
   databaseReady,
 }: {
   profiles: Profile[];
+  profilesError: string | null;
   departments: Department[];
   settings: Setting[];
   databaseReady: boolean;
@@ -165,7 +169,13 @@ export function SettingsWorkspace({
         )}
         <div className="p-5">
           {section === "users" && (
-            <UsersPanel profiles={profiles} departments={departments} pending={pending} run={run} />
+            <UsersPanel
+              profiles={profiles}
+              profilesError={profilesError}
+              departments={departments}
+              pending={pending}
+              run={run}
+            />
           )}
           {section === "departments" && (
             <DepartmentsPanel departments={departments} pending={pending} run={run} />
@@ -186,25 +196,52 @@ export function SettingsWorkspace({
 
 function UsersPanel({
   profiles,
+  profilesError,
   departments,
   pending,
   run,
 }: {
   profiles: Profile[];
+  profilesError: string | null;
   departments: Department[];
   pending: boolean;
   run: (action: () => Promise<{ error: string | null }>) => void;
 }) {
+  if (profilesError) {
+    return (
+      <div
+        role="alert"
+        className="border border-red-300 bg-[var(--red-soft)] p-4 text-sm text-[var(--red)]"
+      >
+        <p className="font-semibold">โหลดข้อมูลผู้ใช้ไม่สำเร็จ</p>
+        <p className="mt-1">{profilesError}</p>
+      </div>
+    );
+  }
   if (!profiles.length) return <p className="text-sm text-stone-600">ยังไม่มีผู้ใช้ในระบบ</p>;
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[720px] border-collapse text-left">
+      <table className="w-full min-w-[1180px] border-collapse text-left">
         <thead className="bg-stone-100">
           <tr>
-            <th className="border border-[var(--line)] p-3">ผู้ใช้</th>
-            <th className="border border-[var(--line)] p-3">บทบาท</th>
-            <th className="border border-[var(--line)] p-3">หน่วยงาน</th>
-            <th className="border border-[var(--line)] p-3">การทำงาน</th>
+            <th scope="col" className="min-w-48 border border-[var(--line)] p-3">
+              ชื่อ-นามสกุล
+            </th>
+            <th scope="col" className="min-w-56 border border-[var(--line)] p-3">
+              E-mail
+            </th>
+            <th scope="col" className="min-w-56 border border-[var(--line)] p-3">
+              ตำแหน่ง
+            </th>
+            <th scope="col" className="min-w-48 border border-[var(--line)] p-3">
+              บทบาท
+            </th>
+            <th scope="col" className="min-w-56 border border-[var(--line)] p-3">
+              หน่วยงาน
+            </th>
+            <th scope="col" className="border border-[var(--line)] p-3">
+              การทำงาน
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -236,17 +273,24 @@ function UserRow({
 }) {
   const [role, setRole] = useState(profile.role);
   const [departmentId, setDepartmentId] = useState(profile.department_id ?? "");
+  const profileLabel = profile.full_name.trim() || profile.email.trim() || "ผู้ใช้";
   return (
     <tr>
-      <td className="border border-[var(--line)] p-3">
+      <td className="min-w-48 border border-[var(--line)] p-3 align-top">
         <strong>{profile.full_name || "ไม่ระบุชื่อ"}</strong>
         <span className="mt-1 block text-xs text-stone-500">
           {profile.active ? "ใช้งานอยู่" : "ระงับการใช้งาน"}
         </span>
       </td>
+      <td className="min-w-56 break-all border border-[var(--line)] p-3 align-top text-sm">
+        {profile.email || "ไม่ระบุ E-mail"}
+      </td>
+      <td className="min-w-56 break-words border border-[var(--line)] p-3 align-top text-sm">
+        {profile.position_title || "ยังไม่ระบุตำแหน่ง"}
+      </td>
       <td className="border border-[var(--line)] p-2">
         <select
-          aria-label={`บทบาทของ ${profile.full_name}`}
+          aria-label={`บทบาทของ ${profileLabel}`}
           className={inputClass}
           value={role}
           onChange={(event) => setRole(event.target.value)}
@@ -260,7 +304,7 @@ function UserRow({
       </td>
       <td className="border border-[var(--line)] p-2">
         <select
-          aria-label={`หน่วยงานของ ${profile.full_name}`}
+          aria-label={`หน่วยงานของ ${profileLabel}`}
           className={inputClass}
           value={departmentId}
           onChange={(event) => setDepartmentId(event.target.value)}
