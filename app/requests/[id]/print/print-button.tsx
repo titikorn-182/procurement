@@ -38,16 +38,44 @@ export function PrintButton({ targetId, fileName }: PrintButtonProps) {
       let pdfPageCount = 0;
 
       for (const captureTarget of captureTargets) {
-        const sourceCanvas = await toCanvas(captureTarget, {
-          backgroundColor: "#ffffff",
-          cacheBust: true,
-          pixelRatio: 2,
-          preferredFontFormat: "woff2",
-          style: {
-            boxShadow: "none",
-            margin: "0",
-          },
+        // Capture a viewport-independent clone at the top of an off-screen host.
+        // Capturing a page that sits below another A4 page can otherwise inherit a
+        // negative vertical offset in Chromium and clip the next page's heading.
+        const captureHost = document.createElement("div");
+        const captureClone = captureTarget.cloneNode(true);
+        if (!(captureClone instanceof HTMLElement)) {
+          throw new Error("capture clone unavailable");
+        }
+
+        Object.assign(captureHost.style, {
+          background: "#ffffff",
+          left: "-10000px",
+          pointerEvents: "none",
+          position: "fixed",
+          top: "0",
+          width: `${captureTarget.clientWidth}px`,
+          zIndex: "-1",
         });
+        Object.assign(captureClone.style, {
+          boxShadow: "none",
+          margin: "0",
+        });
+        captureHost.setAttribute("aria-hidden", "true");
+        captureHost.appendChild(captureClone);
+        document.body.appendChild(captureHost);
+
+        let sourceCanvas: HTMLCanvasElement;
+        try {
+          await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+          sourceCanvas = await toCanvas(captureClone, {
+            backgroundColor: "#ffffff",
+            cacheBust: true,
+            pixelRatio: 2,
+            preferredFontFormat: "woff2",
+          });
+        } finally {
+          captureHost.remove();
+        }
         const pixelsPerMillimeter = sourceCanvas.width / pageWidth;
         // Round up so sub-pixel differences at exactly A4 height do not create a blank trailing page.
         const pageHeightInPixels = Math.ceil(pageHeight * pixelsPerMillimeter);
