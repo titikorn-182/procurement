@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { settingSchemas } from "../../app/settings/schemas";
+import { settingSchemas, userSettingsUpdateSchema } from "../../app/settings/schemas";
 
 describe("settingSchemas", () => {
   it("accepts a valid SLA configuration", () => {
@@ -19,6 +19,28 @@ describe("settingSchemas", () => {
         email: true,
         line: false,
         service_role_key: "must-not-be-stored",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("validates editable user identity fields", () => {
+    expect(
+      userSettingsUpdateSchema.safeParse({
+        userId: "11111111-1111-4111-8111-111111111111",
+        fullName: " นายทดสอบ ระบบงาน ",
+        positionTitle: " เจ้าหน้าที่บริหารงานทั่วไป ",
+        role: "user",
+        departmentId: "",
+      }).success,
+    ).toBe(true);
+
+    expect(
+      userSettingsUpdateSchema.safeParse({
+        userId: "11111111-1111-4111-8111-111111111111",
+        fullName: " ",
+        positionTitle: "เจ้าหน้าที่",
+        role: "user",
+        departmentId: "",
       }).success,
     ).toBe(false);
   });

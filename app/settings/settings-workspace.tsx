@@ -14,7 +14,7 @@ import {
   WalletCards,
 } from "lucide-react";
 import { Button } from "../components/ui";
-import { createDepartment, saveSystemSetting, updateUserRole } from "./actions";
+import { createDepartment, saveSystemSetting, updateUserSettings } from "./actions";
 
 type Profile = {
   id: string;
@@ -273,11 +273,33 @@ function UserRow({
 }) {
   const [role, setRole] = useState(profile.role);
   const [departmentId, setDepartmentId] = useState(profile.department_id ?? "");
+  const [fullName, setFullName] = useState(profile.full_name);
+  const [positionTitle, setPositionTitle] = useState(profile.position_title);
   const profileLabel = profile.full_name.trim() || profile.email.trim() || "ผู้ใช้";
+  const normalizedFullName = fullName.trim();
+  const normalizedPositionTitle = positionTitle.trim();
+  const hasChanges =
+    normalizedFullName !== profile.full_name ||
+    normalizedPositionTitle !== profile.position_title ||
+    role !== profile.role ||
+    departmentId !== (profile.department_id ?? "");
+
   return (
     <tr>
-      <td className="min-w-48 border border-[var(--line)] p-3 align-top">
-        <strong>{profile.full_name || "ไม่ระบุชื่อ"}</strong>
+      <td className="min-w-48 border border-[var(--line)] p-2 align-top">
+        <label className="sr-only" htmlFor={`full-name-${profile.id}`}>
+          ชื่อ-นามสกุลของ {profile.email}
+        </label>
+        <input
+          id={`full-name-${profile.id}`}
+          required
+          minLength={2}
+          maxLength={200}
+          className={inputClass}
+          value={fullName}
+          placeholder="ระบุชื่อ-นามสกุล"
+          onChange={(event) => setFullName(event.target.value)}
+        />
         <span className="mt-1 block text-xs text-stone-500">
           {profile.active ? "ใช้งานอยู่" : "ระงับการใช้งาน"}
         </span>
@@ -285,8 +307,18 @@ function UserRow({
       <td className="min-w-56 break-all border border-[var(--line)] p-3 align-top text-sm">
         {profile.email || "ไม่ระบุ E-mail"}
       </td>
-      <td className="min-w-56 break-words border border-[var(--line)] p-3 align-top text-sm">
-        {profile.position_title || "ยังไม่ระบุตำแหน่ง"}
+      <td className="min-w-56 border border-[var(--line)] p-2 align-top">
+        <label className="sr-only" htmlFor={`position-title-${profile.id}`}>
+          ตำแหน่งของ {profileLabel}
+        </label>
+        <input
+          id={`position-title-${profile.id}`}
+          maxLength={200}
+          className={inputClass}
+          value={positionTitle}
+          placeholder="ระบุตำแหน่ง"
+          onChange={(event) => setPositionTitle(event.target.value)}
+        />
       </td>
       <td className="border border-[var(--line)] p-2">
         <select
@@ -319,10 +351,18 @@ function UserRow({
       </td>
       <td className="border border-[var(--line)] p-2">
         <Button
-          disabled={
-            pending || (role === profile.role && departmentId === (profile.department_id ?? ""))
+          disabled={pending || normalizedFullName.length < 2 || !hasChanges}
+          onClick={() =>
+            run(() =>
+              updateUserSettings(
+                profile.id,
+                normalizedFullName,
+                normalizedPositionTitle,
+                role,
+                departmentId,
+              ),
+            )
           }
-          onClick={() => run(() => updateUserRole(profile.id, role, departmentId))}
         >
           <Save size={16} />
           บันทึก

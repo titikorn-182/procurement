@@ -2,6 +2,28 @@ import { z } from "zod";
 
 const boundedText = z.string().trim().min(1).max(200);
 
+export const appRoleSchema = z.enum([
+  "user",
+  "procurement_staff",
+  "finance_staff",
+  "head_procurement",
+  "deputy_secretary",
+  "deputy_finance",
+  "dean",
+  "head_office",
+  "admin",
+]);
+
+export const userSettingsUpdateSchema = z
+  .object({
+    userId: z.string().uuid(),
+    fullName: z.string().trim().min(2).max(200),
+    positionTitle: z.string().trim().max(200),
+    role: appRoleSchema,
+    departmentId: z.union([z.literal(""), z.string().uuid()]),
+  })
+  .strict();
+
 export const settingSchemas = {
   workflow: z
     .object({

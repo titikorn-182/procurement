@@ -136,4 +136,15 @@ describe("security hardening migrations", () => {
       "grant execute on function public.admin_list_user_profiles() to authenticated",
     );
   });
+
+  it("updates user identity and access settings atomically through an admin RPC", () => {
+    const sql = readMigration("202610050004_admin_update_user_profile.sql");
+
+    expect(sql).toContain("public.update_user_admin_settings");
+    expect(sql).toContain("if not private.is_admin()");
+    expect(sql).toContain("char_length(btrim(new_full_name)) not between 2 and 200");
+    expect(sql).toContain("full_name = btrim(new_full_name)");
+    expect(sql).toContain("position_title = nullif(btrim(new_position_title), '')");
+    expect(sql).toContain("grant execute on function public.update_user_admin_settings");
+  });
 });

@@ -4,19 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { toSafeActionError } from "@/lib/server/action-errors";
-import { isSettingKey, settingSchemas } from "./schemas";
-
-const appRoleSchema = z.enum([
-  "user",
-  "procurement_staff",
-  "finance_staff",
-  "head_procurement",
-  "deputy_secretary",
-  "deputy_finance",
-  "dean",
-  "head_office",
-  "admin",
-]);
+import { isSettingKey, settingSchemas, userSettingsUpdateSchema } from "./schemas";
 
 class AccessError extends Error {}
 
@@ -65,24 +53,36 @@ export async function saveSystemSetting(key: string, value: Record<string, unkno
   }
 }
 
-export async function updateUserRole(userId: string, role: string, departmentId: string) {
-  const parsed = z
-    .object({
-      userId: z.string().uuid(),
-      role: appRoleSchema,
-      departmentId: z.union([z.literal(""), z.string().uuid()]),
-    })
-    .safeParse({ userId, role, departmentId });
-  if (!parsed.success) return { error: "ข้อมูลผู้ใช้หรือบทบาทไม่ถูกต้อง" };
+export async function updateUserSettings(
+  userId: string,
+  fullName: string,
+  positionTitle: string,
+  role: string,
+  departmentId: string,
+) {
+  const parsed = userSettingsUpdateSchema.safeParse({
+    userId,
+    fullName,
+    positionTitle,
+    role,
+    departmentId,
+  });
+  if (!parsed.success) {
+    return { error: "กรุณาระบุชื่อ-นามสกุลอย่างน้อย 2 ตัวอักษร และตรวจสอบข้อมูลอีกครั้ง" };
+  }
   try {
     const { supabase } = await requireAdmin();
-    const { error } = await supabase.rpc("set_user_role", {
+    const { error } = await supabase.rpc("update_user_admin_settings", {
       target_user_id: parsed.data.userId,
+      new_full_name: parsed.data.fullName,
+      new_position_title: parsed.data.positionTitle,
       new_role: parsed.data.role,
       new_department_id: parsed.data.departmentId || null,
     });
     if (error) {
-      return { error: toSafeActionError("update-user-role", error, "เปลี่ยนบทบาทไม่สำเร็จ") };
+      return {
+        error: toSafeActionError("update-user-settings", error, "บันทึกข้อมูลผู้ใช้ไม่สำเร็จ"),
+      };
     }
     revalidatePath("/settings");
     return { error: null };
@@ -91,7 +91,7 @@ export async function updateUserRole(userId: string, role: string, departmentId:
       error:
         error instanceof AccessError
           ? error.message
-          : toSafeActionError("update-user-role", error, "เปลี่ยนบทบาทไม่สำเร็จ"),
+          : toSafeActionError("update-user-settings", error, "บันทึกข้อมูลผู้ใช้ไม่สำเร็จ"),
     };
   }
 }
