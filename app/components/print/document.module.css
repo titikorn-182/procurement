@@ -296,7 +296,7 @@
   background: white;
 }
 
-@page pol01 {
+@page procurementDocument {
   size: A4;
   margin: 0;
 }
@@ -314,7 +314,7 @@
     display: none;
   }
   .page {
-    page: pol01;
+    page: procurementDocument;
     margin: 0;
     padding: 14mm;
     break-after: page;

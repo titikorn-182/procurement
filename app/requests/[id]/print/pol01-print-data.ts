@@ -1,4 +1,7 @@
 import { normalizePol01ApprovalDetails, type Pol01ApprovalDetails } from "../../pol01";
+import { formatThaiDocumentDate as printDate } from "@/lib/pdf/format";
+
+export { printDate };
 
 export type Pol01PrintItem = {
   lineNo: number;
@@ -44,15 +47,6 @@ function text(value: unknown): string {
 function number(value: unknown): number {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
-}
-
-export function printDate(value: unknown): string {
-  const date = new Date(text(value));
-  return Number.isNaN(date.getTime())
-    ? ""
-    : new Intl.DateTimeFormat("th-TH", { dateStyle: "long", timeZone: "Asia/Bangkok" }).format(
-        date,
-      );
 }
 
 export function toPol01PrintData(data: Record<string, unknown>): Pol01PrintData {

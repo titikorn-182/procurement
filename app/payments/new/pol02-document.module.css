@@ -1,0 +1,100 @@
+.memo {
+  grid-template-columns: 1.2fr 1fr;
+  font-size: 15pt;
+  row-gap: 0.5mm;
+}
+.intro {
+  padding: 1mm 0 2mm;
+  font-size: 15pt;
+}
+.items {
+  margin-top: 2mm;
+}
+.totals {
+  padding: 2mm 0;
+  font-size: 15pt;
+}
+.totals dl {
+  width: 90mm;
+  margin: 0 0 1mm auto;
+}
+.totals dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 4mm;
+}
+.totals dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+.grandTotal {
+  font-weight: 700;
+  border-bottom: 0.7mm double #000;
+}
+.prose {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  padding: 2mm 0;
+  font-size: 15pt;
+}
+.budget {
+  padding: 2mm 0;
+  border-block: 0.2mm solid #000;
+  font-size: 14pt;
+}
+.budget h2,
+.documentsHeading h2 {
+  margin: 0 0 1mm;
+  font-size: 15pt;
+  font-weight: 700;
+}
+.budgetGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1mm 6mm;
+  margin: 0;
+}
+.budgetGrid > div {
+  display: grid;
+  grid-template-columns: 24mm 1fr;
+  gap: 2mm;
+}
+.budgetGrid dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.documentsHeading {
+  padding-top: 2mm;
+  font-size: 14pt;
+}
+.document {
+  font-size: 14pt;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+.signatures {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3mm 8mm;
+  padding-top: 4mm;
+  font-size: 14pt;
+}
+.signatures > div {
+  min-width: 0;
+}
+.signatures p {
+  overflow-wrap: anywhere;
+}
+.signatures p:first-child {
+  display: flex;
+  align-items: baseline;
+  gap: 2mm;
+  padding-top: 3mm;
+}
+.signatureLine {
+  flex: 1;
+  border-bottom: 0.2mm solid #000;
+}
+.signatureName {
+  text-align: center;
+}

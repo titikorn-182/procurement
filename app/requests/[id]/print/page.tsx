@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { getRequestDetail } from "@/app/lib/live-data";
 import { formatRequestStatus } from "@/app/lib/request-status";
 import { PrintButton } from "./print-button";
-import { sarabunPsk } from "./fonts";
+import { sarabunPsk } from "@/app/components/print/fonts";
 import { Pol01Document } from "./pol01-document";
 import { toPol01PrintData } from "./pol01-print-data";
 

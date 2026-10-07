@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { toSafeActionError } from "@/lib/server/action-errors";
 import { PaymentForm } from "./payment-form";
 import type { SourceRequest } from "./types";
+import { sarabunPsk } from "@/app/components/print/fonts";
 
 type RelatedName = { name_th?: string } | { full_name?: string };
 type PayableRequestRow = {
@@ -105,7 +106,7 @@ export default async function NewPaymentPage() {
           {safeError}
         </div>
       ) : (
-        <PaymentForm requests={requests} />
+        <PaymentForm requests={requests} printFontClassName={sarabunPsk.className} />
       )}
     </AppShell>
   );

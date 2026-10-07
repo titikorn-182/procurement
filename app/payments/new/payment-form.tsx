@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Check, LoaderCircle } from "lucide-react";
+import { Check, LoaderCircle, Printer } from "lucide-react";
 import { uploadPaymentAttachments } from "@/app/lib/payment-attachments.client";
 import type { SelectedAttachment } from "@/app/lib/request-attachments";
 import { Button } from "../../components/ui";
@@ -13,9 +13,19 @@ import { PaymentReferenceSection } from "./payment-reference-section";
 import { PaymentSummary } from "./payment-summary";
 import { createPaymentDetails, createPaymentLines, paymentLineAmount } from "./pol02";
 import type { PaymentDetails, PaymentLine, SourceRequest } from "./types";
+import { PaymentPrintPreview } from "./payment-print-preview";
+import { createPol02PrintData, type Pol02PrintData } from "./pol02-print-data";
 
-export function PaymentForm({ requests }: { requests: SourceRequest[] }) {
+export function PaymentForm({
+  requests,
+  printFontClassName,
+}: {
+  requests: SourceRequest[];
+  printFontClassName: string;
+}) {
   const router = useRouter();
+  const previewButtonRef = useRef<HTMLButtonElement>(null);
+  const [previewData, setPreviewData] = useState<Pol02PrintData | null>(null);
   const [idempotencyKey] = useState(() => crypto.randomUUID());
   const [requestId, setRequestId] = useState(requests[0]?.id ?? "");
   const initialRequest = requests[0];
@@ -183,8 +193,47 @@ export function PaymentForm({ requests }: { requests: SourceRequest[] }) {
     );
   }
 
+  if (previewData) {
+    return (
+      <PaymentPrintPreview
+        data={previewData}
+        fontClassName={printFontClassName}
+        onClose={() => {
+          setPreviewData(null);
+          requestAnimationFrame(() => previewButtonRef.current?.focus());
+        }}
+      />
+    );
+  }
+
+  function openPreview() {
+    setPreviewData(
+      createPol02PrintData({
+        request,
+        details,
+        lines,
+        selectedDocuments,
+        attachmentNames: files.map(({ file }) => file.name),
+      }),
+    );
+  }
+
   return (
     <div className="mt-6 grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="flex flex-wrap items-center justify-between gap-3 xl:col-span-2">
+        <p className="text-sm text-stone-600">
+          ตรวจรูปแบบเอกสารก่อนส่งคำขอ โดยข้อมูลที่กรอกจะยังอยู่ครบ
+        </p>
+        <button
+          ref={previewButtonRef}
+          type="button"
+          disabled={pending}
+          onClick={openPreview}
+          className="inline-flex min-h-10 items-center justify-center gap-2 border border-[var(--line-dark)] bg-white px-4 font-semibold hover:bg-[var(--paper-warm)] disabled:opacity-45"
+        >
+          <Printer size={17} aria-hidden="true" /> ดูตัวอย่าง / พิมพ์ / PDF
+        </button>
+      </div>
       <form
         onSubmit={(event) => {
           event.preventDefault();
@@ -253,19 +302,24 @@ export function PaymentForm({ requests }: { requests: SourceRequest[] }) {
           <p className="text-xs leading-5 text-stone-500">
             เมื่อส่งแล้ว คำขอจะเข้าสู่ขั้นตอนเจ้าหน้าที่พัสดุตรวจสอบเอกสาร
           </p>
-          <Button type="submit" disabled={pending || over} className="sm:min-w-52">
-            {pending ? (
-              <>
-                <LoaderCircle className="animate-spin" size={17} aria-hidden="true" />
-                กำลังดำเนินการ...
-              </>
-            ) : (
-              <>
-                <Check size={17} aria-hidden="true" />
-                ยืนยันและส่งคำขอ
-              </>
-            )}
-          </Button>
+          <div className="flex flex-wrap gap-3">
+            <Button variant="secondary" disabled={pending} onClick={openPreview}>
+              <Printer size={17} aria-hidden="true" /> ดูตัวอย่าง / พิมพ์ / PDF
+            </Button>
+            <Button type="submit" disabled={pending || over} className="sm:min-w-52">
+              {pending ? (
+                <>
+                  <LoaderCircle className="animate-spin" size={17} aria-hidden="true" />
+                  กำลังดำเนินการ...
+                </>
+              ) : (
+                <>
+                  <Check size={17} aria-hidden="true" />
+                  ยืนยันและส่งคำขอ
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       </form>
       <PaymentSummary request={request} total={total} />

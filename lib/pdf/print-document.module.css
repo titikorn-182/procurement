@@ -1,0 +1,15 @@
+.printRoot {
+  display: none;
+}
+
+@media print {
+  :global(body):has(> .printRoot) > :not(.printRoot) {
+    display: none !important;
+  }
+  .printRoot {
+    display: block !important;
+    width: 210mm;
+    margin: 0;
+    padding: 0;
+  }
+}

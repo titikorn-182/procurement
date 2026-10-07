@@ -1,17 +1,29 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Download, LoaderCircle, Printer } from "lucide-react";
 
 type PrintButtonProps = {
   targetId: string;
   fileName: string;
   paginated?: boolean;
+  isolatePrint?: boolean;
+  onBusyChange?: (busy: boolean) => void;
 };
 
-export function PrintButton({ targetId, fileName, paginated = false }: PrintButtonProps) {
+export function PrintButton({
+  targetId,
+  fileName,
+  paginated = false,
+  isolatePrint = false,
+  onBusyChange,
+}: PrintButtonProps) {
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isPrinting, setIsPrinting] = useState(false);
   const [error, setError] = useState("");
+  useEffect(() => {
+    onBusyChange?.(isGenerating || isPrinting);
+  }, [isGenerating, isPrinting, onBusyChange]);
 
   async function downloadPdf() {
     const documentElement = document.getElementById(targetId);
@@ -151,7 +163,7 @@ export function PrintButton({ targetId, fileName, paginated = false }: PrintButt
           type="button"
           className="inline-flex min-h-10 items-center justify-center gap-2 border border-[var(--orange-dark)] bg-[var(--orange)] px-4 font-semibold text-white transition hover:bg-[var(--orange-dark)] focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)] disabled:cursor-wait disabled:opacity-70"
           onClick={downloadPdf}
-          disabled={isGenerating}
+          disabled={isGenerating || isPrinting}
         >
           {isGenerating ? (
             <LoaderCircle className="animate-spin" size={17} aria-hidden="true" />
@@ -169,13 +181,27 @@ export function PrintButton({ targetId, fileName, paginated = false }: PrintButt
               return;
             }
             setError("");
-            await document.fonts.ready;
-            window.print();
+            setIsPrinting(true);
+            try {
+              await document.fonts.ready;
+              if (isolatePrint) {
+                const target = document.getElementById(targetId);
+                if (!target) throw new Error("Document is unavailable");
+                const { printPaginatedDocument } = await import("@/lib/pdf/print-document");
+                await printPaginatedDocument(target);
+              } else {
+                window.print();
+              }
+            } catch {
+              setError("เตรียมพิมพ์ไม่สำเร็จ กรุณาลองใหม่ หรือใช้ปุ่มดาวน์โหลด PDF");
+            } finally {
+              setIsPrinting(false);
+            }
           }}
-          disabled={isGenerating}
+          disabled={isGenerating || isPrinting}
         >
           <Printer size={17} aria-hidden="true" />
-          พิมพ์
+          {isPrinting ? "กำลังเตรียมพิมพ์..." : "พิมพ์"}
         </button>
       </div>
       {error && (
