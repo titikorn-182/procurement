@@ -2,8 +2,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getRequestDetail } from "@/app/lib/live-data";
 import { formatRequestStatus } from "@/app/lib/request-status";
-import { normalizePol01ApprovalDetails, type Pol01Person } from "../../pol01";
 import { PrintButton } from "./print-button";
+import { sarabunPsk } from "./fonts";
+import { Pol01Document } from "./pol01-document";
+import { toPol01PrintData } from "./pol01-print-data";
 
 function asObject(value: unknown): Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
@@ -40,18 +42,6 @@ function pdfFileName(requestNo: unknown, isW119: boolean) {
   return `${identifier.startsWith("POL01-") ? identifier : `POL01-${identifier || "document"}`}.pdf`;
 }
 
-function SignatureBlock({ title, person }: { title: string; person: Pol01Person }) {
-  return (
-    <section className="min-w-0 p-4 text-center text-sm">
-      <h2 className="font-bold">{title}</h2>
-      <div className="mt-8 border-b border-dotted border-black pb-2 text-left">ลงชื่อ</div>
-      <p className="mt-2">( {display(person.name)} )</p>
-      <p className="mt-1 min-h-6">ตำแหน่ง {display(person.position)}</p>
-      <p className="mt-2">วัน / เดือน / ปี ........................................</p>
-    </section>
-  );
-}
-
 const pageClass =
   "print-document min-h-[297mm] bg-white px-[16mm] py-[14mm] shadow-lg print:min-h-0 print:break-after-page print:shadow-none";
 
@@ -78,8 +68,32 @@ export default async function RequestPrintPage({ params }: PageProps<"/requests/
   const budgetCodes = asObject(formData.budgetCodes);
   const vendor = asObject(formData.vendor);
   const isW119 = formData.formType === "w119";
-  const approvalDetails = normalizePol01ApprovalDetails(formData.approvalDetails);
   const documentId = "request-print-document";
+
+  if (!isW119) {
+    return (
+      <main className="min-h-screen bg-stone-200 px-4 py-6 text-black print:bg-white print:p-0">
+        <div className="print-hidden mx-auto mb-4 flex max-w-[210mm] flex-wrap items-center justify-between gap-3">
+          <Link
+            href={`/requests/${id}`}
+            className="inline-flex min-h-10 items-center border border-[var(--line-dark)] bg-white px-4 font-semibold hover:bg-[var(--paper-warm)]"
+          >
+            กลับไปหน้าคำขอ
+          </Link>
+          <PrintButton
+            targetId={documentId}
+            fileName={pdfFileName(data.request_no, false)}
+            paginated
+          />
+        </div>
+        <Pol01Document
+          data={toPol01PrintData(data)}
+          targetId={documentId}
+          fontClassName={sarabunPsk.className}
+        />
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-stone-200 px-4 py-6 text-black print:bg-white print:p-0">
@@ -261,69 +275,6 @@ export default async function RequestPrintPage({ params }: PageProps<"/requests/
             {formatRequestStatus(data.status)} · โปรดตรวจสอบลายเซ็นและหลักฐานในระบบก่อนใช้อ้างอิง
           </p>
         </section>
-
-        {!isW119 && (
-          <section data-pdf-page className={pageClass}>
-            <header className="border-b-2 border-black pb-4 text-center">
-              <p className="text-sm font-semibold">คณะรัฐศาสตร์ มหาวิทยาลัยอุบลราชธานี</p>
-              <h1 className="mt-2 text-xl font-bold">
-                ข้อมูลผู้ลงนามและคณะกรรมการ/ผู้ตรวจรับพัสดุ
-              </h1>
-              <p className="mt-1 text-sm">คำขอหลักการเลขที่ {display(data.request_no)}</p>
-            </header>
-
-            <div className="mt-6 grid grid-cols-2 divide-x divide-black border border-black">
-              <SignatureBlock title="ผู้ขอซื้อ/จ้าง" person={approvalDetails.requester} />
-              <section className="min-w-0 p-4 text-sm">
-                <h2 className="text-center font-bold">คณะกรรมการ/ผู้ตรวจรับพัสดุ</h2>
-                <ol className="mt-5 space-y-4">
-                  {approvalDetails.committee.map((member, index) => (
-                    <li key={index} className="grid grid-cols-[1.25rem_minmax(0,1fr)_4.5rem] gap-2">
-                      <span>{index + 1}.</span>
-                      <span className="min-h-6 border-b border-dotted border-black">
-                        {display(member.name)}
-                      </span>
-                      <span>{member.role}</span>
-                    </li>
-                  ))}
-                </ol>
-              </section>
-            </div>
-
-            <div className="grid grid-cols-2 divide-x divide-black border-x border-b border-black">
-              <SignatureBlock title="เห็นชอบ" person={approvalDetails.endorser} />
-              <SignatureBlock title="อนุมัติ" person={approvalDetails.approver} />
-            </div>
-
-            <section className="mt-7 border border-black text-sm">
-              <h2 className="border-b border-black p-3 font-bold">
-                ระบุตัวเลขรหัสงบประมาณที่ได้รับจัดสรรจากกองแผนงาน
-              </h2>
-              <dl className="grid grid-cols-2">
-                {[
-                  ["รหัสแหล่งเงิน", budgetCodes.sourceCode ?? "2"],
-                  ["รหัสหน่วยงาน", budgetCodes.departmentCode],
-                  ["รหัสกองทุน", budgetCodes.fundCode],
-                  ["รหัสกิจกรรม", budgetCodes.activityCode],
-                ].map(([label, value], index) => (
-                  <div
-                    key={String(label)}
-                    className={`grid grid-cols-[9rem_minmax(0,1fr)] border-black ${index < 2 ? "border-b" : ""} ${index % 2 === 0 ? "border-r" : ""}`}
-                  >
-                    <dt className="border-r border-black bg-stone-100 p-3 font-semibold">
-                      {String(label)}
-                    </dt>
-                    <dd className="p-3 font-bold">{display(value)}</dd>
-                  </div>
-                ))}
-              </dl>
-            </section>
-
-            <p className="mt-10 border-t border-black pt-2 text-center text-xs">
-              เอกสารประกอบคำขอหลักการ POL-01 · เลขที่ {display(data.request_no)}
-            </p>
-          </section>
-        )}
       </article>
     </main>
   );

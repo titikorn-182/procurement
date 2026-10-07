@@ -6,9 +6,10 @@ import { Download, LoaderCircle, Printer } from "lucide-react";
 type PrintButtonProps = {
   targetId: string;
   fileName: string;
+  paginated?: boolean;
 };
 
-export function PrintButton({ targetId, fileName }: PrintButtonProps) {
+export function PrintButton({ targetId, fileName, paginated = false }: PrintButtonProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState("");
 
@@ -18,12 +19,21 @@ export function PrintButton({ targetId, fileName }: PrintButtonProps) {
       setError("ไม่พบเอกสารสำหรับสร้าง PDF กรุณาโหลดหน้าใหม่แล้วลองอีกครั้ง");
       return;
     }
+    if (paginated && documentElement.dataset.pdfReady !== "ready") {
+      setError("เอกสารยังไม่พร้อม กรุณารอจัดหน้าให้เสร็จ หรือโหลดหน้าใหม่แล้วลองอีกครั้ง");
+      return;
+    }
 
     setError("");
     setIsGenerating(true);
 
     try {
       await document.fonts.ready;
+      if (paginated) {
+        const { downloadPaginatedDocument } = await import("@/lib/pdf/download-document");
+        await downloadPaginatedDocument(documentElement, fileName);
+        return;
+      }
       const [{ toCanvas }, { jsPDF }] = await Promise.all([
         import("html-to-image"),
         import("jspdf"),
@@ -153,7 +163,16 @@ export function PrintButton({ targetId, fileName }: PrintButtonProps) {
         <button
           type="button"
           className="inline-flex min-h-10 items-center justify-center gap-2 border border-[var(--line-dark)] bg-white px-4 font-semibold text-[var(--ink)] transition hover:bg-[var(--paper-warm)] focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)]"
-          onClick={() => window.print()}
+          onClick={async () => {
+            if (paginated && document.getElementById(targetId)?.dataset.pdfReady !== "ready") {
+              setError("เอกสารยังไม่พร้อม กรุณารอจัดหน้าให้เสร็จ หรือโหลดหน้าใหม่แล้วลองอีกครั้ง");
+              return;
+            }
+            setError("");
+            await document.fonts.ready;
+            window.print();
+          }}
+          disabled={isGenerating}
         >
           <Printer size={17} aria-hidden="true" />
           พิมพ์
