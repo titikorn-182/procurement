@@ -1,4 +1,4 @@
-export async function downloadPaginatedDocument(documentElement: HTMLElement, fileName: string) {
+export async function createPaginatedDocumentPdf(documentElement: HTMLElement, fileName: string) {
   const [{ toCanvas, getFontEmbedCSS }, { jsPDF }] = await Promise.all([
     import("html-to-image"),
     import("jspdf"),
@@ -47,5 +47,10 @@ export async function downloadPaginatedDocument(documentElement: HTMLElement, fi
       host.remove();
     }
   }
+  return pdf;
+}
+
+export async function downloadPaginatedDocument(documentElement: HTMLElement, fileName: string) {
+  const pdf = await createPaginatedDocumentPdf(documentElement, fileName);
   await pdf.save(fileName, { returnPromise: true });
 }

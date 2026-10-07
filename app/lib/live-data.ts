@@ -121,9 +121,11 @@ export async function getRequestDetail(requestNo: string) {
   const { data, error } = await supabase
     .from("procurement_requests")
     .select(
-      "id, request_no, requester_id, kind, title, rationale, required_date, budget_year, fund_source, plan_name, expense_category, form_data, estimated_amount, status, current_step, created_at, departments(name_th), profiles!procurement_requests_requester_id_fkey(full_name, position_title), request_items(line_no, description, quantity, unit, unit_price, total_amount), request_attachments(id, file_name, size_bytes), workflow_actions(id, action, comment, created_at, profiles!workflow_actions_actor_id_fkey(full_name))",
+      "id, request_no, requester_id, kind, title, rationale, required_date, budget_year, fund_source, plan_name, expense_category, form_data, estimated_amount, status, current_step, created_at, departments(name_th), profiles!procurement_requests_requester_id_fkey(full_name, position_title), request_items(line_no, description, quantity, unit, unit_price, total_amount), request_attachments(id, file_name, size_bytes, mime_type, created_at), workflow_actions(id, action, comment, created_at, profiles!workflow_actions_actor_id_fkey(full_name))",
     )
     .eq("request_no", requestNo)
+    .order("created_at", { referencedTable: "request_attachments", ascending: true })
+    .order("id", { referencedTable: "request_attachments", ascending: true })
     .maybeSingle();
   return {
     data: data as unknown as Record<string, unknown> | null,

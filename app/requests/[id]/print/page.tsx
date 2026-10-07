@@ -84,6 +84,12 @@ export default async function RequestPrintPage({ params }: PageProps<"/requests/
             targetId={documentId}
             fileName={pdfFileName(data.request_no, false)}
             paginated
+            attachments={attachments.map((attachment) => ({
+              id: String(attachment.id),
+              name: String(attachment.file_name),
+              mimeType: String(attachment.mime_type ?? ""),
+              sizeBytes: Number(attachment.size_bytes),
+            }))}
           />
         </div>
         <Pol01Document

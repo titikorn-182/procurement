@@ -8,6 +8,7 @@ import {
   searchLocalVendors,
 } from "../../lib/vendor-directory.server";
 import { newRequestInputSchema, parseRequestFormData, type NewRequestInput } from "./schemas";
+import { getRequestDraftErrorMessage } from "./submission-errors";
 
 export type { NewRequestInput } from "./schemas";
 
@@ -187,7 +188,7 @@ export async function createRequestDraft(input: NewRequestInput) {
   });
   if (error) {
     return {
-      error: toSafeActionError("submit-request", error, "ไม่สามารถส่งคำขอได้ กรุณาลองใหม่"),
+      error: toSafeActionError("submit-request", error, getRequestDraftErrorMessage(error)),
       requestId: null,
       requestNo: null,
     };

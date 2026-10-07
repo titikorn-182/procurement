@@ -193,13 +193,16 @@ export function Pol01Document({
         <p>
           ปีงบประมาณ {data.budgetYear} · แหล่งเงิน {data.fundSource} · แผนงาน {data.planName}
         </p>
+      </div>
+      <div className={styles.details}>
         <p>
           <strong>เอกสารแนบ {data.attachments.length} ไฟล์</strong>
         </p>
+        {data.attachments[0] && <p className={styles.attachment}>1. {data.attachments[0]}</p>}
       </div>
-      {data.attachments.map((name, index) => (
+      {data.attachments.slice(1).map((name, index) => (
         <p key={index} className={styles.attachment}>
-          {index + 1}. {name}
+          {index + 2}. {name}
         </p>
       ))}
     </PaginatedDocument>

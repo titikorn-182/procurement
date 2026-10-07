@@ -825,6 +825,11 @@ export default function NewRequestPage() {
               </section>
             )}
             <AttachmentPicker files={attachments} onChange={setAttachments} disabled={isPending} />
+            <p className="text-sm leading-6 text-[var(--ink)]">
+              ต้องการดาวน์โหลด POL-01 พร้อมเอกสารแนบเป็น PDF ไฟล์เดียว ให้แนบไฟล์ PDF, JPG หรือ PNG
+              หลังส่งคำขอแล้ว เปิดหน้าพิมพ์และเลือก “ดาวน์โหลด PDF รวมเอกสารแนบ” หากเป็น Word/Excel
+              กรุณาแปลงเป็น PDF ก่อนแนบ
+            </p>
           </div>
         )}
 
