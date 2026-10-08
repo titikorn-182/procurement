@@ -1,5 +1,6 @@
 import { formatThaiDocumentDate } from "@/lib/pdf/format";
 import { pol02DocumentChecklist } from "./pol02";
+import { getPol02DocumentLabels, type Pol02Checklist } from "./pol02-checklist";
 import type { PaymentDetails, PaymentLine, SourceRequest } from "./types";
 
 export type Pol02PrintItem = {
@@ -51,6 +52,7 @@ export function createPol02PrintData({
   details,
   lines,
   selectedDocuments,
+  supportingDocumentChecklist,
   attachmentNames,
   date = new Date(),
 }: {
@@ -58,6 +60,7 @@ export function createPol02PrintData({
   details: PaymentDetails;
   lines: PaymentLine[];
   selectedDocuments: string[];
+  supportingDocumentChecklist?: Pol02Checklist;
   attachmentNames: string[];
   date?: Date;
 }): Pol02PrintData {
@@ -99,9 +102,11 @@ export function createPol02PrintData({
     vat: roundMoney(vat),
     total: roundMoney(subtotal + vat),
     contractAmount: finiteNumber(details.contractAmount),
-    documents: pol02DocumentChecklist
-      .filter((item) => selectedDocuments.includes(item.id))
-      .map((item) => item.label),
+    documents: supportingDocumentChecklist
+      ? getPol02DocumentLabels(supportingDocumentChecklist)
+      : pol02DocumentChecklist
+          .filter((item) => selectedDocuments.includes(item.id))
+          .map((item) => item.label),
     attachments: attachmentNames.map((name) => name.trim()).filter(Boolean),
   };
 }

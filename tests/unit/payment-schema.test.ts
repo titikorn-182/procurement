@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { paymentInputSchema } from "../../app/payments/new/schemas";
+import { createPol02Checklist } from "../../app/payments/new/pol02-checklist";
 
 const validPayment = {
   requestId: "550e8400-e29b-41d4-a716-446655440000",
@@ -49,6 +50,48 @@ const validPayment = {
 describe("paymentInputSchema", () => {
   it("accepts a valid payment", () => {
     expect(paymentInputSchema.safeParse(validPayment).success).toBe(true);
+  });
+
+  it("stores the full POL02 checklist and derives the database summary on the server", () => {
+    const checklist = createPol02Checklist(["office"]);
+    checklist.entries["office.pr"] = "checked";
+    const parsed = paymentInputSchema.parse({
+      ...validPayment,
+      formData: {
+        ...validPayment.formData,
+        supportingDocumentChecklist: checklist,
+        documentChecklist: ["inspection"],
+      },
+    });
+    expect(parsed.formData.supportingDocumentChecklist).toEqual(checklist);
+    expect(parsed.formData.documentChecklist).toEqual(["purchase_request"]);
+  });
+
+  it("does not count inapplicable or empty answers toward the existing one-document gate", () => {
+    const checklist = createPol02Checklist(["office"]);
+    for (const entries of [{}, { "basic.approved_project": "not_applicable" }]) {
+      expect(
+        paymentInputSchema.safeParse({
+          ...validPayment,
+          formData: {
+            ...validPayment.formData,
+            supportingDocumentChecklist: { ...checklist, entries },
+          },
+        }).success,
+      ).toBe(false);
+    }
+  });
+
+  it("rejects unknown IDs before calling the database", () => {
+    expect(
+      paymentInputSchema.safeParse({
+        ...validPayment,
+        formData: {
+          ...validPayment.formData,
+          documentChecklist: ["unknown"],
+        },
+      }).success,
+    ).toBe(false);
   });
 
   it("rejects malformed UUIDs and a zero total", () => {

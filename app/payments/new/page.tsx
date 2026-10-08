@@ -5,6 +5,7 @@ import { toSafeActionError } from "@/lib/server/action-errors";
 import { PaymentForm } from "./payment-form";
 import type { SourceRequest } from "./types";
 import { sarabunPsk } from "@/app/components/print/fonts";
+import { readPol01Checklist } from "../../requests/pol01-checklist-schema";
 
 type RelatedName = { name_th?: string } | { full_name?: string };
 type PayableRequestRow = {
@@ -80,6 +81,11 @@ export default async function NewPaymentPage() {
       departmentCode: text(budgetCodes.departmentCode),
       fundCode: text(budgetCodes.fundCode),
       activityCode: text(budgetCodes.activityCode),
+      checklistCategories: readPol01Checklist(formData.documentChecklist, {
+        newVendor: vendor.type === "new",
+        borrowing: false,
+      }).categories,
+      isNewVendor: vendor.type === "new",
       items: (row.request_items ?? [])
         .sort((a, b) => a.line_no - b.line_no)
         .map((item) => ({

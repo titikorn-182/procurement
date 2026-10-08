@@ -1,4 +1,7 @@
 import { z } from "zod";
+import { pol02DocumentChecklist } from "./pol02";
+import { getPol02DocumentIds } from "./pol02-checklist";
+import { pol02SupportingChecklistSchema } from "./pol02-checklist-schema";
 
 const requiredText = (maximum: number) => z.string().trim().min(1).max(maximum);
 const optionalText = (maximum: number) => z.string().trim().max(maximum);
@@ -46,13 +49,36 @@ const pol02FormSchema = z
     contractAmount: z.number().finite().positive().max(999_999_999_999.99),
     installmentNumber: z.number().int().positive().max(999),
     installmentCount: z.number().int().positive().max(999),
-    documentChecklist: z.array(z.string().trim().min(1).max(100)).min(1).max(20),
+    documentChecklist: z
+      .array(z.enum(pol02DocumentChecklist.map(({ id }) => id)))
+      .min(1)
+      .max(20),
+    supportingDocumentChecklist: pol02SupportingChecklistSchema.optional(),
   })
   .strict()
   .refine((data) => data.installmentNumber <= data.installmentCount, {
     path: ["installmentNumber"],
     message: "installment number exceeds installment count",
-  });
+  })
+  .superRefine((data, context) => {
+    if (
+      data.supportingDocumentChecklist &&
+      getPol02DocumentIds(data.supportingDocumentChecklist).length === 0
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["supportingDocumentChecklist", "entries"],
+        message: "check at least one supporting document",
+      });
+    }
+  })
+  .transform((data) => ({
+    ...data,
+    // Preserve the database RPC's legacy IDs; never trust conflicting client summaries.
+    documentChecklist: data.supportingDocumentChecklist
+      ? getPol02DocumentIds(data.supportingDocumentChecklist)
+      : data.documentChecklist,
+  }));
 
 export const paymentInputSchema = z
   .object({

@@ -2,8 +2,19 @@ import { describe, expect, it } from "vitest";
 import { createPol02Fixture } from "../fixtures/pol02-print";
 import { createPol02PrintData, pol02DraftFileName } from "../../app/payments/new/pol02-print-data";
 import { formatThaiDocumentDate } from "../../lib/pdf/format";
+import { createPol02Checklist } from "../../app/payments/new/pol02-checklist";
 
 describe("POL-02 print data", () => {
+  it("uses exact source labels for new checklists, excluding unchecked and inapplicable rows", () => {
+    const supportingDocumentChecklist = createPol02Checklist(["maintenance"]);
+    supportingDocumentChecklist.entries = {
+      "maintenance.pr": "checked",
+      "maintenance.photos": "checked",
+      "maintenance.cash_receipt": "not_applicable",
+    };
+    const data = createPol02PrintData({ ...createPol02Fixture(), supportingDocumentChecklist });
+    expect(data.documents).toEqual(["ไฟล์รายงานขอซื้อขอจ้าง (PR)", "รูปถ่ายหลังซ่อม (ถ้ามี)"]);
+  });
   it("preserves payment references, tax, installments, budget and attachment metadata", () => {
     const input = createPol02Fixture();
     const data = createPol02PrintData(input);

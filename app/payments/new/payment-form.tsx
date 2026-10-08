@@ -15,6 +15,7 @@ import { createPaymentDetails, createPaymentLines, paymentLineAmount } from "./p
 import type { PaymentDetails, PaymentLine, SourceRequest } from "./types";
 import { PaymentPrintPreview } from "./payment-print-preview";
 import { createPol02PrintData, type Pol02PrintData } from "./pol02-print-data";
+import { createPol02Checklist, getPol02DocumentIds } from "./pol02-checklist";
 
 export function PaymentForm({
   requests,
@@ -35,7 +36,10 @@ export function PaymentForm({
   const [lines, setLines] = useState<PaymentLine[]>(() =>
     initialRequest ? createPaymentLines(initialRequest) : [],
   );
-  const [selectedDocuments, setSelectedDocuments] = useState<string[]>([]);
+  const [checklist, setChecklist] = useState(() =>
+    createPol02Checklist(initialRequest?.checklistCategories, initialRequest?.isNewVendor),
+  );
+  const selectedDocuments = getPol02DocumentIds(checklist);
   const [files, setFiles] = useState<SelectedAttachment[]>([]);
   const [error, setError] = useState("");
   const [progress, setProgress] = useState("");
@@ -55,7 +59,7 @@ export function PaymentForm({
     setRequestId(nextRequestId);
     setDetails(createPaymentDetails(nextRequest));
     setLines(createPaymentLines(nextRequest));
-    setSelectedDocuments([]);
+    setChecklist(createPol02Checklist(nextRequest.checklistCategories, nextRequest.isNewVendor));
     setFiles([]);
     setError("");
   }
@@ -137,6 +141,7 @@ export function PaymentForm({
           installmentNumber: Number(details.installmentNumber),
           installmentCount: Number(details.installmentCount),
           documentChecklist: selectedDocuments,
+          supportingDocumentChecklist: checklist,
         },
         items: lines.map((line, index) => ({
           lineNo: index + 1,
@@ -213,6 +218,7 @@ export function PaymentForm({
         details,
         lines,
         selectedDocuments,
+        supportingDocumentChecklist: checklist,
         attachmentNames: files.map(({ file }) => file.name),
       }),
     );
@@ -291,10 +297,10 @@ export function PaymentForm({
           onVatChange={(vat) => setDetails({ ...details, vat })}
         />
         <PaymentDocumentsSection
-          selectedDocuments={selectedDocuments}
+          checklist={checklist}
           files={files}
           disabled={pending}
-          onSelectedDocumentsChange={setSelectedDocuments}
+          onChecklistChange={setChecklist}
           onFilesChange={setFiles}
         />
 

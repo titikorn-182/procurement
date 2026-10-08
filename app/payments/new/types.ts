@@ -1,4 +1,5 @@
 import type { SelectedAttachment } from "@/app/lib/request-attachments";
+import type { Pol01ChecklistCategory } from "../../requests/pol01-checklist";
 
 export type PaymentSourceItem = {
   description: string;
@@ -24,6 +25,8 @@ export type SourceRequest = {
   departmentCode: string;
   fundCode: string;
   activityCode: string;
+  checklistCategories?: Pol01ChecklistCategory[];
+  isNewVendor?: boolean;
   items: PaymentSourceItem[];
 };
 
