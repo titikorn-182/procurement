@@ -3,6 +3,7 @@ import {
   maxAttachmentSizeBytes,
   maxTotalAttachmentSizeBytes,
   resolveAttachmentMimeType,
+  type SelectedAttachment,
 } from "@/app/lib/request-attachments";
 
 export type PdfBundleAttachment = {
@@ -10,7 +11,21 @@ export type PdfBundleAttachment = {
   name: string;
   mimeType: string;
   sizeBytes: number;
+  /** Present only for unsent browser previews; saved records use the authenticated endpoint. */
+  file?: File;
 };
+
+export function toLocalBundleAttachments(
+  selections: readonly SelectedAttachment[],
+): PdfBundleAttachment[] {
+  return selections.map(({ id, file }) => ({
+    id,
+    name: file.name,
+    mimeType: resolveAttachmentMimeType(file) ?? file.type,
+    sizeBytes: file.size,
+    file,
+  }));
+}
 
 export class PdfBundleError extends Error {
   constructor(message: string) {
@@ -33,6 +48,14 @@ export function validateBundleAttachments(attachments: readonly PdfBundleAttachm
       throw new PdfBundleError("ข้อมูลเอกสารแนบไม่ถูกต้อง กรุณาโหลดหน้าคำขอใหม่");
     }
     ids.add(attachment.id);
+    if (
+      attachment.file &&
+      (attachment.file.name !== attachment.name ||
+        attachment.file.size !== attachment.sizeBytes ||
+        resolveAttachmentMimeType(attachment.file) !== attachment.mimeType)
+    ) {
+      throw new PdfBundleError(`ข้อมูลไฟล์ “${attachment.name}” ไม่ตรงกัน กรุณาเลือกไฟล์แนบใหม่`);
+    }
     const mimeType = resolveAttachmentMimeType({
       name: attachment.name,
       type: attachment.mimeType,

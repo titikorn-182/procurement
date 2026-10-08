@@ -112,6 +112,19 @@ export async function fetchRequestBundleAttachment(
   }
 }
 
+/** Local selections stay on the device; saved attachments retain per-file access checks. */
+export async function loadRequestBundleAttachment(
+  attachment: PdfBundleAttachment,
+): Promise<Uint8Array> {
+  if (!attachment.file) return fetchRequestBundleAttachment(attachment);
+  validateBundleAttachments([attachment]);
+  try {
+    return new Uint8Array(await attachment.file.arrayBuffer());
+  } catch {
+    throw new PdfBundleError(`อ่านไฟล์ “${attachment.name}” ไม่สำเร็จ กรุณาเลือกไฟล์แนบใหม่`);
+  }
+}
+
 export async function downloadRequestBundle(
   documentElement: HTMLElement,
   fileName: string,
@@ -119,14 +132,14 @@ export async function downloadRequestBundle(
   onProgress: (message: string) => void,
 ) {
   validateBundleAttachments(attachments);
-  onProgress("กำลังสร้างแบบฟอร์ม POL-01...");
+  onProgress("กำลังสร้างแบบฟอร์ม...");
   const form = await createPaginatedDocumentPdf(documentElement, fileName);
   let downloadedBytes = 0;
   const bytes = await mergePdfAttachments(
     new Uint8Array(form.output("arraybuffer")),
     attachments,
     async (attachment) => {
-      const content = await fetchRequestBundleAttachment(attachment);
+      const content = await loadRequestBundleAttachment(attachment);
       downloadedBytes += content.byteLength;
       if (downloadedBytes > maxTotalAttachmentSizeBytes) {
         throw new PdfBundleError("ไฟล์แนบทั้งหมดมีขนาดเกิน 50 MB กรุณาลดขนาดไฟล์ก่อนรวม PDF");

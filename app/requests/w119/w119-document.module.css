@@ -1,0 +1,274 @@
+.page.page {
+  padding: 10mm;
+  font-size: 14pt;
+  line-height: 1.12;
+}
+.heading {
+  display: flex;
+  align-items: center;
+  gap: 5mm;
+  margin-bottom: 3mm;
+}
+.heading img {
+  width: 14mm;
+  height: 18mm;
+  object-fit: contain;
+  flex: none;
+}
+.heading > div {
+  flex: 1;
+  text-align: center;
+}
+.heading h1 {
+  font-size: 25pt;
+  line-height: 1.15;
+  font-weight: 700;
+  margin: 1mm 0 0;
+}
+.regulation {
+  font-size: 13pt;
+  font-weight: 700;
+  line-height: 1.1;
+}
+.memo {
+  margin-bottom: 1mm;
+}
+.department {
+  display: grid;
+  grid-template-columns: auto 1fr auto 27mm;
+  align-items: baseline;
+  gap: 2mm;
+}
+.memoRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7mm;
+  margin-top: 1mm;
+}
+.field {
+  display: flex;
+  gap: 2mm;
+  min-width: 0;
+  align-items: baseline;
+}
+.line {
+  flex: 1;
+  min-width: 0;
+  border-bottom: 0.2mm solid #000;
+  min-height: 4.5mm;
+  overflow-wrap: anywhere;
+}
+.subject {
+  padding-top: 1mm;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.addressee {
+  padding-top: 2mm;
+}
+.purpose {
+  padding-top: 2mm;
+  text-indent: 10mm;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.required {
+  padding-block: 1mm;
+}
+.required span {
+  border-bottom: 0.2mm solid #000;
+  padding-inline: 2mm;
+}
+.items {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 13pt;
+  line-height: 1.1;
+  margin-top: 1mm;
+}
+.items th,
+.items td {
+  border: 0.2mm solid #000;
+  padding: 0.6mm 1mm;
+  overflow-wrap: anywhere;
+  vertical-align: top;
+}
+.items th {
+  font-weight: 700;
+  text-align: center;
+  vertical-align: middle;
+  padding-block: 1mm;
+}
+.center {
+  text-align: center;
+}
+.number {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.emptyRow {
+  height: 4.5mm;
+}
+.items .totalLabel {
+  text-align: right;
+  font-weight: 700;
+}
+.items .total {
+  text-align: right;
+  font-weight: 700;
+  border-bottom: 0.6mm double #000;
+}
+.requestSignatures {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9mm;
+  padding: 2mm 0 1mm;
+}
+.signature {
+  min-width: 0;
+  font-size: 13pt;
+  line-height: 1.1;
+}
+.signLine {
+  display: flex;
+  align-items: baseline;
+  gap: 1.5mm;
+  min-height: 6mm;
+}
+.signLine > span:not(.blank) {
+  flex: none;
+}
+.blank {
+  flex: 1;
+  min-width: 0;
+  display: block;
+  min-height: 5mm;
+  border-bottom: 0.2mm solid #000;
+}
+.name {
+  text-align: center;
+  min-height: 4.5mm;
+  overflow-wrap: anywhere;
+}
+.workflow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border: 0.25mm solid #000;
+  margin-top: 1mm;
+  font-size: 12.5pt;
+  line-height: 1.13;
+}
+.column {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.column + .column {
+  border-left: 0.25mm solid #000;
+}
+.column section {
+  padding: 1.3mm 1.5mm;
+}
+.column section + section {
+  border-top: 0.25mm solid #000;
+}
+.workflow h2 {
+  font-size: inherit;
+  font-weight: 700;
+  margin: 0 0 1mm;
+}
+.workflow p {
+  overflow-wrap: anywhere;
+}
+.prose {
+  text-indent: 7mm;
+}
+.primaryPanel {
+  min-height: 59mm;
+}
+.dualSign {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2mm;
+  margin-top: 3mm;
+}
+.dualSign .signature {
+  font-size: 12pt;
+}
+.notApplicable {
+  padding: 8mm 0;
+  text-align: center;
+}
+.approvalPanel {
+  min-height: 27mm;
+}
+.reportPanel {
+  flex: 1;
+  min-height: 36mm;
+}
+.financePanel {
+  min-height: 31mm;
+}
+.finalPanel {
+  flex: 1;
+  min-height: 32mm;
+}
+.approvalSpace {
+  padding-top: 3mm;
+}
+.approvalSpace .blank {
+  width: 75%;
+  margin: 0 auto 7mm;
+}
+.approvalSpace p {
+  text-align: center;
+  font-weight: 700;
+}
+.budget {
+  display: grid;
+  grid-template-columns: 1fr 1.15fr;
+  gap: 5mm;
+  margin-top: 2mm;
+  font-size: 12pt;
+  line-height: 1.1;
+}
+.budget > div {
+  min-width: 0;
+}
+.code {
+  display: flex;
+  min-height: 5mm;
+  align-items: flex-start;
+}
+.codeLabel {
+  width: 26mm;
+  flex: none;
+  border: 0.2mm solid #000;
+  min-height: 5mm;
+  padding: 0.5mm 1mm;
+}
+.digits {
+  display: flex;
+  flex-wrap: wrap;
+  flex: 1;
+  min-width: 0;
+}
+.digits > span {
+  display: block;
+  flex: 0 0 4.2mm;
+  width: 4.2mm;
+  height: 5mm;
+  text-align: center;
+  padding: 0.5mm;
+  border: 0.2mm solid #000;
+  border-left: 0;
+}
+@media print {
+  .page.page {
+    padding: 10mm;
+  }
+  .page .heading {
+    display: flex !important;
+  }
+}

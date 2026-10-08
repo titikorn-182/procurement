@@ -242,7 +242,7 @@ export function PrintButton({
       </div>
       {hasAttachments && (
         <p className="max-w-xl text-right text-sm text-[var(--ink)]">
-          ต่อท้ายแบบฟอร์มด้วยเอกสารแนบ {attachments.length} ไฟล์ ตามลำดับอัปโหลด รองรับ PDF, JPG และ
+          ต่อท้ายแบบฟอร์มด้วยเอกสารแนบ {attachments.length} ไฟล์ ตามลำดับที่แนบ รองรับ PDF, JPG และ
           PNG
           <br />
           Word/Excel ต้องแปลงเป็น PDF ก่อนรวม ไฟล์ต้นฉบับไม่ถูกแก้ไข

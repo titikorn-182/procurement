@@ -12,6 +12,8 @@ type Props = {
   targetId: string;
   fontClassName: string;
   children: ReactNode;
+  header?: ReactNode;
+  pageClassName?: string;
 };
 
 export function PaginatedDocument({
@@ -22,6 +24,8 @@ export function PaginatedDocument({
   targetId,
   fontClassName,
   children,
+  header,
+  pageClassName = "",
 }: Props) {
   const sourceRef = useRef<HTMLDivElement>(null);
   const pagesRef = useRef<HTMLDivElement>(null);
@@ -61,7 +65,7 @@ export function PaginatedDocument({
     return () => {
       cancelled = true;
     };
-  }, [children, fontClassName, title, formCode, identifier, footer]);
+  }, [children, fontClassName, title, formCode, identifier, footer, header, pageClassName]);
 
   return (
     <>
@@ -89,23 +93,25 @@ export function PaginatedDocument({
       </div>
       <div ref={sourceRef} className={`${styles.source} ${fontClassName}`} aria-hidden="true">
         <div data-page-template>
-          <section className={`${styles.page} ${fontClassName}`}>
-            <header className={styles.heading}>
-              {/* The PDF capture embeds the original emblem asset. */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                className={styles.emblem}
-                src="/ubu-emblem.png"
-                width={56}
-                height={72}
-                alt="ตรามหาวิทยาลัยอุบลราชธานี"
-              />
-              <h1 className={styles.title}>{title}</h1>
-              <div className={styles.identifier}>
-                <div className={styles.formCode}>พัสดุ {formCode}</div>
-                <div>{identifier}</div>
-              </div>
-            </header>
+          <section className={`${styles.page} ${fontClassName} ${pageClassName}`}>
+            {header ?? (
+              <header className={styles.heading}>
+                {/* The PDF capture embeds the original emblem asset. */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  className={styles.emblem}
+                  src="/ubu-emblem.png"
+                  width={56}
+                  height={72}
+                  alt="ตรามหาวิทยาลัยอุบลราชธานี"
+                />
+                <h1 className={styles.title}>{title}</h1>
+                <div className={styles.identifier}>
+                  <div className={styles.formCode}>พัสดุ {formCode}</div>
+                  <div>{identifier}</div>
+                </div>
+              </header>
+            )}
             <div data-page-body className={styles.body} />
             <footer className={styles.footer}>
               <span>{footer}</span>
