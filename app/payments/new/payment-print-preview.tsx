@@ -4,20 +4,25 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/app/components/ui";
 import { PrintButton } from "@/app/requests/[id]/print/print-button";
+import { toLocalBundleAttachments } from "@/lib/pdf/bundle-attachments";
 import { Pol02Document } from "./pol02-document";
 import { pol02DraftFileName, type Pol02PrintData } from "./pol02-print-data";
+import type { PaymentFormFiles } from "./types";
 
 export function PaymentPrintPreview({
   data,
   fontClassName,
   onClose,
+  attachments = [],
 }: {
   data: Pol02PrintData;
   fontClassName: string;
   onClose: () => void;
+  attachments?: PaymentFormFiles;
 }) {
   const headingRef = useRef<HTMLHeadingElement>(null);
   const [busy, setBusy] = useState(false);
+  const bundleAttachments = useMemo(() => toLocalBundleAttachments(attachments), [attachments]);
   // Keep prepared pages mounted while export controls report progress.
   const preview = useMemo(
     () => (
@@ -56,6 +61,7 @@ export function PaymentPrintPreview({
           paginated
           isolatePrint
           onBusyChange={setBusy}
+          attachments={bundleAttachments}
         />
       </div>
       {preview}

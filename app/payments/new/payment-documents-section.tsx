@@ -35,6 +35,12 @@ export function PaymentDocumentsSection({
       <div className="space-y-5 p-5">
         <Pol02ChecklistFields value={checklist} onChange={onChecklistChange} disabled={disabled} />
         <AttachmentPicker files={files} onChange={onFilesChange} disabled={disabled} />
+        <p className="text-sm leading-6 text-stone-600">
+          ต้องการดาวน์โหลด POL-02 พร้อมเอกสารแนบเป็น PDF ไฟล์เดียว ให้แนบไฟล์ PDF, JPG หรือ PNG
+          แล้วกด “ดูตัวอย่าง / พิมพ์ / PDF” และเลือก “ดาวน์โหลด PDF รวมเอกสารแนบ”
+          ระบบจะต่อท้ายแบบฟอร์มตามลำดับที่แนบ หากเป็น Word/Excel กรุณาแปลงเป็น PDF ก่อนแนบ
+          การดาวน์โหลดจะไม่บันทึกหรือส่งคำขอ
+        </p>
       </div>
     </section>
   );

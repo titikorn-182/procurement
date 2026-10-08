@@ -203,6 +203,7 @@ export function PaymentForm({
       <PaymentPrintPreview
         data={previewData}
         fontClassName={printFontClassName}
+        attachments={files}
         onClose={() => {
           setPreviewData(null);
           requestAnimationFrame(() => previewButtonRef.current?.focus());

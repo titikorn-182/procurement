@@ -72,7 +72,7 @@ describe("authenticated bundle attachment download", () => {
   });
 });
 
-describe("unsent W119 attachment selections", () => {
+describe("unsent W119 and POL-02 attachment selections", () => {
   it("reads the selected file locally, without uploading or contacting the server", async () => {
     const file = new File([new Uint8Array([1, 2, 3])], "ใบเสนอราคา.pdf");
     const selections = [{ id: attachment.id, file }];
