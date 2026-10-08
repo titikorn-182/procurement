@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { Check, Search, Store, X } from "lucide-react";
 import { searchVendors, type VendorSearchItem, type VendorSearchResult } from "./actions";
+import { VendorDirectoryManager } from "./vendor-directory-manager";
 
 export type VendorChoice =
   { kind: "none" } | { kind: "registered"; vendorId: string; vendorName: string } | { kind: "new" };
@@ -14,6 +15,7 @@ type VendorPickerProps = {
   onNewVendorNameChange: (value: string) => void;
   required?: boolean;
   errorMessage?: string;
+  allowDirectoryManagement?: boolean;
 };
 
 const fieldClass =
@@ -30,6 +32,7 @@ export function VendorPicker({
   onNewVendorNameChange,
   required = false,
   errorMessage,
+  allowDirectoryManagement = false,
 }: VendorPickerProps) {
   const selectedVendorId = value.kind === "registered" ? value.vendorId : null;
   const selectedVendorName = value.kind === "registered" ? value.vendorName : null;
@@ -92,9 +95,15 @@ export function VendorPicker({
     setOpen(false);
     setActiveIndex(0);
     setSearchScheduled(false);
+    setSearchError(null);
     onNewVendorNameChange("");
     onChange({ kind: "registered", vendorId: vendor.id, vendorName: vendor.name });
-    inputRef.current?.focus();
+    requestAnimationFrame(() => inputRef.current?.focus());
+  }
+
+  function chooseManagedVendor(vendor: VendorSearchItem) {
+    setSource("database");
+    chooseRegistered(vendor);
   }
 
   function chooseNew() {
@@ -119,58 +128,67 @@ export function VendorPicker({
 
   if (value.kind === "new") {
     return (
-      <div className="mt-4 border border-amber-300 bg-amber-50 p-4">
-        <div className="flex items-start gap-3">
-          <Store className="mt-0.5 shrink-0 text-amber-800" size={19} aria-hidden="true" />
-          <div className="min-w-0 flex-1">
-            <h4 className="font-bold text-amber-950">ผู้ประกอบการรายใหม่</h4>
-            <p className="mt-1 text-sm leading-6 text-amber-900">
-              ใช้เมื่อค้นหาแล้วไม่พบชื่อผู้ประกอบการหรือร้านค้าในระบบ
-            </p>
+      <div className="mt-4">
+        <div className="border border-amber-300 bg-amber-50 p-4">
+          <div className="flex items-start gap-3">
+            <Store className="mt-0.5 shrink-0 text-amber-800" size={19} aria-hidden="true" />
+            <div className="min-w-0 flex-1">
+              <h4 className="font-bold text-amber-950">ผู้ประกอบการรายใหม่</h4>
+              <p className="mt-1 text-sm leading-6 text-amber-900">
+                ใช้เมื่อค้นหาแล้วไม่พบชื่อผู้ประกอบการหรือร้านค้าในระบบ
+              </p>
+            </div>
           </div>
-        </div>
-        <label className="mt-4 block" htmlFor="new-vendor-name">
-          <span className="mb-2 block text-sm font-semibold text-slate-800">
-            ชื่อผู้ประกอบการ/ร้านค้ารายใหม่ <span className="text-red-600">*</span>
-          </span>
-          <input
-            id="new-vendor-name"
-            className={fieldClass}
-            value={newVendorName}
-            onChange={(event) => onNewVendorNameChange(event.target.value)}
-            placeholder="กรอกชื่อผู้ประกอบการหรือร้านค้า"
-            maxLength={200}
-            required
-            aria-invalid={Boolean(errorMessage) || undefined}
-            aria-describedby={
-              errorMessage
-                ? "new-vendor-document-hint vendor-selection-error"
-                : "new-vendor-document-hint"
-            }
-          />
-        </label>
-        {errorMessage && (
+          <label className="mt-4 block" htmlFor="new-vendor-name">
+            <span className="mb-2 block text-sm font-semibold text-slate-800">
+              ชื่อผู้ประกอบการ/ร้านค้ารายใหม่ <span className="text-red-600">*</span>
+            </span>
+            <input
+              id="new-vendor-name"
+              className={fieldClass}
+              value={newVendorName}
+              onChange={(event) => onNewVendorNameChange(event.target.value)}
+              placeholder="กรอกชื่อผู้ประกอบการหรือร้านค้า"
+              maxLength={200}
+              required
+              aria-invalid={Boolean(errorMessage) || undefined}
+              aria-describedby={
+                errorMessage
+                  ? "new-vendor-document-hint vendor-selection-error"
+                  : "new-vendor-document-hint"
+              }
+            />
+          </label>
+          {errorMessage && (
+            <p
+              id="vendor-selection-error"
+              role="alert"
+              className="mt-2 text-sm font-semibold text-red-700"
+            >
+              {errorMessage}
+            </p>
+          )}
           <p
-            id="vendor-selection-error"
-            role="alert"
-            className="mt-2 text-sm font-semibold text-red-700"
+            id="new-vendor-document-hint"
+            className="mt-3 text-sm font-semibold leading-6 text-amber-950"
           >
-            {errorMessage}
+            ต้องแนบเอกสารของร้านค้า/ผู้รับจ้างเพิ่มเติมในขั้นตอนเอกสารแนบ
           </p>
+          <button
+            type="button"
+            className="mt-4 min-h-10 border border-amber-700 bg-white px-4 text-sm font-semibold text-amber-950 transition hover:bg-amber-100"
+            onClick={returnToDirectory}
+          >
+            กลับไปค้นหารายชื่อในระบบ
+          </button>
+        </div>
+        {allowDirectoryManagement && (
+          <VendorDirectoryManager
+            key="directory-manager"
+            initialName={newVendorName}
+            onSelect={chooseManagedVendor}
+          />
         )}
-        <p
-          id="new-vendor-document-hint"
-          className="mt-3 text-sm font-semibold leading-6 text-amber-950"
-        >
-          ต้องแนบเอกสารของร้านค้า/ผู้รับจ้างเพิ่มเติมในขั้นตอนเอกสารแนบ
-        </p>
-        <button
-          type="button"
-          className="mt-4 min-h-10 border border-amber-700 bg-white px-4 text-sm font-semibold text-amber-950 transition hover:bg-amber-100"
-          onClick={returnToDirectory}
-        >
-          กลับไปค้นหารายชื่อในระบบ
-        </button>
       </div>
     );
   }
@@ -387,6 +405,13 @@ export function VendorPicker({
           </span>
         </span>
       </button>
+      {allowDirectoryManagement && (
+        <VendorDirectoryManager
+          key="directory-manager"
+          initialName={query}
+          onSelect={chooseManagedVendor}
+        />
+      )}
     </div>
   );
 }

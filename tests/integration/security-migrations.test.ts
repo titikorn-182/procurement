@@ -10,6 +10,25 @@ function readMigration(name: string) {
 }
 
 describe("security hardening migrations", () => {
+  it("adds vendor names only through an active-admin RPC with duplicate protection", () => {
+    const sql = readMigration("202610080002_admin_create_vendor.sql");
+    expect(sql).toContain("p.active = true and p.role = 'admin'");
+    expect(sql).toContain("p.id = (select auth.uid())");
+    expect(sql).toContain("security definer\nset search_path = ''");
+    expect(sql).toContain("pg_catalog.pg_advisory_xact_lock");
+    expect(sql).toContain("private.normalize_vendor_search_name(clean_name)");
+    expect(sql).toContain("where v.search_name = normalized_name");
+    expect(sql).toContain("existing_vendor.display_name, false");
+    expect(sql).toContain(
+      "revoke all on function public.admin_create_vendor(text) from public, anon",
+    );
+    expect(sql).toContain(
+      "grant execute on function public.admin_create_vendor(text) to authenticated",
+    );
+    expect(sql).not.toMatch(
+      /grant (?:insert|all).*on (?:table )?public.vendors|delete from|disable row level security/i,
+    );
+  });
   it("only removes the POL01 loan requirement from submission and resubmission checks", () => {
     const sql = readMigration("202610080001_pol01_optional_loan_agreement.sql");
     const functions = [

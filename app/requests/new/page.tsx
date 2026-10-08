@@ -678,6 +678,7 @@ export default function NewRequestPage() {
                 </div>
               </div>
               <VendorPicker
+                allowDirectoryManagement
                 value={vendorSelection}
                 onChange={(value) => {
                   setVendorSelection(value);
