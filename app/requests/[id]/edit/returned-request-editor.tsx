@@ -13,6 +13,8 @@ import { Pol01ApprovalDetailsFields } from "../../new/pol01-approval-details";
 import { VendorPicker, type VendorChoice } from "../../new/vendor-picker";
 import { resubmitReturnedRequest, updateReturnedRequest } from "./actions";
 import type { ReturnedRequestEditData, ReturnedRequestItem } from "./types";
+import { Pol01ChecklistFields } from "../../components/pol01-checklist-fields";
+import { reconcilePol01Checklist } from "../../pol01-checklist";
 
 const fieldClass =
   "min-h-11 w-full border border-[var(--line-dark)] bg-white px-3.5 py-2.5 text-base text-[var(--ink)] outline-none transition placeholder:text-stone-500 hover:border-stone-900 focus:border-[var(--blue)] focus:ring-2 focus:ring-blue-100 sm:text-sm";
@@ -76,6 +78,7 @@ export function ReturnedRequestEditor({ initial }: { initial: ReturnedRequestEdi
   const [fundCode, setFundCode] = useState(initial.fundCode);
   const [activityCode, setActivityCode] = useState(initial.activityCode);
   const [approvalDetails, setApprovalDetails] = useState(initial.approvalDetails);
+  const [documentChecklist, setDocumentChecklist] = useState(initial.documentChecklist);
   const [items, setItems] = useState<ReturnedRequestItem[]>(initial.items);
   const [newAttachments, setNewAttachments] = useState<SelectedAttachment[]>([]);
   const [vendorSelection, setVendorSelection] = useState<VendorChoice>(
@@ -102,6 +105,10 @@ export function ReturnedRequestEditor({ initial }: { initial: ReturnedRequestEdi
   );
   const requiredAttachmentCount = Number(vendorSelection.kind === "new");
   const totalAttachmentCount = initial.attachments.length + newAttachments.length;
+  const checklistContext = {
+    newVendor: vendorSelection.kind === "new",
+    borrowing: loanRequirement === "borrow_before_purchase",
+  };
 
   function updateItem(index: number, patch: Partial<ReturnedRequestItem>) {
     setItems((current) =>
@@ -187,6 +194,7 @@ export function ReturnedRequestEditor({ initial }: { initial: ReturnedRequestEdi
                 : null,
           requiresVendorDocuments: vendorSelection.kind === "new",
           approvalDetails,
+          documentChecklist: reconcilePol01Checklist(documentChecklist, checklistContext),
           budgetCodes: {
             sourceCode: sourceCode.trim(),
             departmentCode: departmentCode.trim(),
@@ -471,7 +479,15 @@ export function ReturnedRequestEditor({ initial }: { initial: ReturnedRequestEdi
                     name="loan-requirement"
                     value={option.value}
                     checked={loanRequirement === option.value}
-                    onChange={() => setLoanRequirement(option.value)}
+                    onChange={() => {
+                      setLoanRequirement(option.value);
+                      setDocumentChecklist((current) =>
+                        reconcilePol01Checklist(current, {
+                          ...checklistContext,
+                          borrowing: option.value === "borrow_before_purchase",
+                        }),
+                      );
+                    }}
                     className="mt-1 accent-orange-600"
                   />
                   <span className="text-sm leading-6">{option.label}</span>
@@ -482,7 +498,15 @@ export function ReturnedRequestEditor({ initial }: { initial: ReturnedRequestEdi
           <div className="mt-6 border-t border-[var(--line)] pt-5">
             <VendorPicker
               value={vendorSelection}
-              onChange={setVendorSelection}
+              onChange={(value) => {
+                setVendorSelection(value);
+                setDocumentChecklist((current) =>
+                  reconcilePol01Checklist(current, {
+                    ...checklistContext,
+                    newVendor: value.kind === "new",
+                  }),
+                );
+              }}
               newVendorName={newVendorName}
               onNewVendorNameChange={setNewVendorName}
               required={loanRequirement === "faculty_direct_pay_credit_vendor"}
@@ -542,6 +566,14 @@ export function ReturnedRequestEditor({ initial }: { initial: ReturnedRequestEdi
           title="เอกสารแนบ"
           description="เอกสารเดิมจะคงอยู่ สามารถแนบเอกสารเพิ่มเติมตามข้อสังเกตของผู้ตรวจสอบได้"
         >
+          <div className="mb-6">
+            <Pol01ChecklistFields
+              value={documentChecklist}
+              context={checklistContext}
+              onChange={setDocumentChecklist}
+              disabled={isPending}
+            />
+          </div>
           {initial.attachments.length > 0 && (
             <ul
               aria-label="เอกสารแนบเดิม"

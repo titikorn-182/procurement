@@ -36,8 +36,10 @@ export type ReturnedRequestEditData = {
   fundCode: string;
   activityCode: string;
   approvalDetails: Pol01ApprovalDetails;
+  documentChecklist: Pol01Checklist;
   items: ReturnedRequestItem[];
   attachments: ReturnedRequestAttachment[];
   returnReason: string;
 };
 import type { Pol01ApprovalDetails } from "../../pol01";
+import type { Pol01Checklist } from "../../pol01-checklist";

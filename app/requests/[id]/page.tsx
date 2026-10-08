@@ -12,6 +12,8 @@ import {
 import { formatRequestStatus } from "../../lib/request-status";
 import { normalizePol01ApprovalDetails } from "../pol01";
 import { RequestDecisionPanel } from "./request-decision-panel";
+import { readPol01Checklist } from "../pol01-checklist-schema";
+import { Pol01ChecklistSummary } from "../components/pol01-checklist-summary";
 
 type AdvanceFundingOption =
   "borrow_before_purchase" | "reimburse_after_purchase" | "faculty_direct_pay_credit_vendor";
@@ -268,6 +270,20 @@ export default async function RequestDetailPage({ params }: PageProps<"/requests
           )}
           <section className="border-t border-[var(--line)] p-5">
             <h2 className="text-lg font-bold">เอกสารแนบ</h2>
+            {formData.formType === "standard" && formData.documentChecklist != null && (
+              <div className="my-4">
+                <Pol01ChecklistSummary
+                  value={readPol01Checklist(formData.documentChecklist, {
+                    newVendor: vendor.type === "new",
+                    borrowing: advanceFundingOption === "borrow_before_purchase",
+                  })}
+                  context={{
+                    newVendor: vendor.type === "new",
+                    borrowing: advanceFundingOption === "borrow_before_purchase",
+                  }}
+                />
+              </div>
+            )}
             {attachments.length === 0 ? (
               <p className="mt-3 text-sm text-stone-600">ไม่มีเอกสารแนบ</p>
             ) : (

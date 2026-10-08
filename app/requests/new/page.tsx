@@ -13,6 +13,9 @@ import { createRequestDraft, submitRequestDraft } from "./actions";
 import { Pol01ApprovalDetailsFields } from "./pol01-approval-details";
 import { VendorPicker, type VendorChoice } from "./vendor-picker";
 import { createDefaultPol01ApprovalDetails } from "../pol01";
+import { Pol01ChecklistFields } from "../components/pol01-checklist-fields";
+import { Pol01ChecklistSummary } from "../components/pol01-checklist-summary";
+import { createPol01Checklist, reconcilePol01Checklist } from "../pol01-checklist";
 
 type RequestItem = {
   description: string;
@@ -100,6 +103,7 @@ export default function NewRequestPage() {
   const [activityCode, setActivityCode] = useState("100210230004");
   const [approvalDetails, setApprovalDetails] = useState(createDefaultPol01ApprovalDetails);
   const [attachments, setAttachments] = useState<SelectedAttachment[]>([]);
+  const [documentChecklist, setDocumentChecklist] = useState(createPol01Checklist);
   const [draft, setDraft] = useState<{ id: string; requestNo: string } | null>(null);
   const [submissionMessage, setSubmissionMessage] = useState("");
   const [error, setError] = useState("");
@@ -132,6 +136,10 @@ export default function NewRequestPage() {
   );
   const vendorErrorMessage = error.includes("ผู้ประกอบการ") ? error : undefined;
   const requiredAttachmentCount = Number(vendorSelection.kind === "new");
+  const checklistContext = {
+    newVendor: vendorSelection.kind === "new",
+    borrowing: loanRequirement === "borrow_before_purchase",
+  };
 
   function updateItem(index: number, patch: Partial<RequestItem>) {
     setItems((current) =>
@@ -225,6 +233,7 @@ export default function NewRequestPage() {
                 : null,
             requiresVendorDocuments: vendorSelection.kind === "new",
             approvalDetails,
+            documentChecklist: reconcilePol01Checklist(documentChecklist, checklistContext),
             budgetCodes: {
               sourceCode: sourceCode.trim(),
               departmentCode: departmentCode.trim(),
@@ -627,7 +636,15 @@ export default function NewRequestPage() {
                         name="loan-requirement"
                         value={option.value}
                         checked={selected}
-                        onChange={() => setLoanRequirement(option.value)}
+                        onChange={() => {
+                          setLoanRequirement(option.value);
+                          setDocumentChecklist((current) =>
+                            reconcilePol01Checklist(current, {
+                              ...checklistContext,
+                              borrowing: option.value === "borrow_before_purchase",
+                            }),
+                          );
+                        }}
                         required
                         className="mt-1 size-4 shrink-0 accent-orange-600"
                       />
@@ -664,6 +681,12 @@ export default function NewRequestPage() {
                 value={vendorSelection}
                 onChange={(value) => {
                   setVendorSelection(value);
+                  setDocumentChecklist((current) =>
+                    reconcilePol01Checklist(current, {
+                      ...checklistContext,
+                      newVendor: value.kind === "new",
+                    }),
+                  );
                   if (vendorErrorMessage) setError("");
                 }}
                 newVendorName={newVendorName}
@@ -793,6 +816,12 @@ export default function NewRequestPage() {
 
         {step === 3 && (
           <div className="space-y-4">
+            <Pol01ChecklistFields
+              value={documentChecklist}
+              context={checklistContext}
+              onChange={setDocumentChecklist}
+              disabled={isPending || Boolean(draft)}
+            />
             {vendorSelection.kind === "new" && (
               <section
                 role="status"
@@ -889,6 +918,7 @@ export default function NewRequestPage() {
                 <dd className="mt-1 font-semibold text-slate-900">{attachments.length} ไฟล์</dd>
               </div>
             </dl>
+            <Pol01ChecklistSummary value={documentChecklist} context={checklistContext} />
             {vendorSelection.kind === "new" && (
               <div className="border border-amber-300 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
                 โปรดตรวจสอบว่าได้แนบเอกสารผู้ประกอบการ/ผู้รับจ้างรายใหม่แล้ว

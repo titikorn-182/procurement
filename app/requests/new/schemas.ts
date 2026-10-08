@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { pol01ChecklistSchema } from "../pol01-checklist-schema";
+import { reconcilePol01Checklist } from "../pol01-checklist";
 
 const isoDateSchema = z
   .string()
@@ -99,6 +101,7 @@ export const standardRequestFormSchema = z
     vendor: z.union([registeredVendorSchema, newVendorSchema]).nullable(),
     requiresVendorDocuments: z.boolean().optional(),
     approvalDetails: pol01ApprovalDetailsSchema.optional(),
+    documentChecklist: pol01ChecklistSchema.optional(),
     budgetCodes: z
       .object({
         sourceCode: budgetCodeSchema.optional(),
@@ -121,6 +124,14 @@ export const standardRequestFormSchema = z
     // POL-01 does not require a loan agreement, including payloads from older clients.
     requiresLoanAgreement: false,
     requiresVendorDocuments: data.vendor?.type === "new",
+    ...(data.documentChecklist
+      ? {
+          documentChecklist: reconcilePol01Checklist(data.documentChecklist, {
+            newVendor: data.vendor?.type === "new",
+            borrowing: data.advanceFundingOption === "borrow_before_purchase",
+          }),
+        }
+      : {}),
   }));
 
 export const w119RequestFormSchema = z

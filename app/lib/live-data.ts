@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { toSafeActionError } from "@/lib/server/action-errors";
 import type { ReturnedRequestEditData } from "../requests/[id]/edit/types";
+import { readPol01Checklist } from "../requests/pol01-checklist-schema";
 import { normalizePol01ApprovalDetails } from "../requests/pol01";
 import type { RequestStatus } from "./mock-data";
 
@@ -240,6 +241,10 @@ export async function getReturnedRequestForEdit(requestNo: string): Promise<{
       fundCode: String(budgetCodes.fundCode ?? ""),
       activityCode: String(budgetCodes.activityCode ?? ""),
       approvalDetails: normalizePol01ApprovalDetails(formData.approvalDetails),
+      documentChecklist: readPol01Checklist(formData.documentChecklist, {
+        newVendor: vendor.kind === "new",
+        borrowing: advanceFundingOption === "borrow_before_purchase",
+      }),
       items,
       attachments: (data.request_attachments ?? []).map((attachment) => ({
         id: String(attachment.id),
