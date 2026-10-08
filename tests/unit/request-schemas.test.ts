@@ -47,6 +47,42 @@ describe("newRequestInputSchema", () => {
 });
 
 describe("parseRequestFormData", () => {
+  it.each([
+    "borrow_before_purchase",
+    "reimburse_after_purchase",
+    "faculty_direct_pay_credit_vendor",
+  ])("does not require a loan agreement for POL01 %s, even from an older client", (option) => {
+    const result = parseRequestFormData({
+      advanceFundingOption: option,
+      requiresLoanAgreement: true,
+      vendor: { type: "registered", id: "existing-vendor", name: "ผู้ประกอบการเดิม" },
+      budgetCodes: { departmentCode: "2301", fundCode: "2", activityCode: "100210230004" },
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success && result.data.formType === "standard") {
+      expect(result.data.advanceFundingOption).toBe(option);
+      expect(result.data.requiresLoanAgreement).toBe(false);
+      expect(result.data.requiresVendorDocuments).toBe(false);
+    }
+  });
+
+  it("still requires new vendor documents when borrowing without a loan agreement", () => {
+    const result = parseRequestFormData({
+      advanceFundingOption: "borrow_before_purchase",
+      requiresLoanAgreement: true,
+      requiresVendorDocuments: false,
+      vendor: { type: "new", name: "ผู้ประกอบการรายใหม่" },
+      budgetCodes: { departmentCode: "2301", fundCode: "2", activityCode: "100210230004" },
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success && result.data.formType === "standard") {
+      expect(result.data.requiresLoanAgreement).toBe(false);
+      expect(result.data.requiresVendorDocuments).toBe(true);
+    }
+  });
+
   it("normalizes derived fields for the standard form", () => {
     const result = parseRequestFormData({
       advanceFundingOption: "borrow_before_purchase",
@@ -63,7 +99,7 @@ describe("parseRequestFormData", () => {
     if (result.success && result.data.formType === "standard") {
       expect(result.data.formType).toBe("standard");
       expect(result.data.formVersion).toBe(1);
-      expect(result.data.requiresLoanAgreement).toBe(true);
+      expect(result.data.requiresLoanAgreement).toBe(false);
       expect(result.data.requiresVendorDocuments).toBe(false);
     }
   });

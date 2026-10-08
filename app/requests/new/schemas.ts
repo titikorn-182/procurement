@@ -118,7 +118,8 @@ export const standardRequestFormSchema = z
     formType: "standard" as const,
     formVersion: 1 as const,
     ...data,
-    requiresLoanAgreement: data.advanceFundingOption === "borrow_before_purchase",
+    // POL-01 does not require a loan agreement, including payloads from older clients.
+    requiresLoanAgreement: false,
     requiresVendorDocuments: data.vendor?.type === "new",
   }));
 

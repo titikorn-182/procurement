@@ -27,7 +27,7 @@ type LoanRequirement =
 const loanRequirementOptions: Array<{ value: LoanRequirement; label: string }> = [
   {
     value: "borrow_before_purchase",
-    label: "ต้องการยืมเงินก่อน (ต้องแนบสัญญายืมในเอกสารแนบ)",
+    label: "ต้องการยืมเงินก่อน",
   },
   {
     value: "reimburse_after_purchase",
@@ -131,8 +131,7 @@ export default function NewRequestPage() {
     approvalDetails.approver.position.trim(),
   );
   const vendorErrorMessage = error.includes("ผู้ประกอบการ") ? error : undefined;
-  const requiredAttachmentCount =
-    Number(loanRequirement === "borrow_before_purchase") + Number(vendorSelection.kind === "new");
+  const requiredAttachmentCount = Number(vendorSelection.kind === "new");
 
   function updateItem(index: number, patch: Partial<RequestItem>) {
     setItems((current) =>
@@ -215,7 +214,7 @@ export default function NewRequestPage() {
           expenseCategory,
           formData: {
             advanceFundingOption: loanRequirement,
-            requiresLoanAgreement: loanRequirement === "borrow_before_purchase",
+            requiresLoanAgreement: false,
             vendor:
               vendorSelection.kind !== "none"
                 ? {
@@ -794,7 +793,7 @@ export default function NewRequestPage() {
 
         {step === 3 && (
           <div className="space-y-4">
-            {(loanRequirement === "borrow_before_purchase" || vendorSelection.kind === "new") && (
+            {vendorSelection.kind === "new" && (
               <section
                 role="status"
                 className="border border-amber-300 bg-amber-50 p-4 text-amber-950"
@@ -811,14 +810,9 @@ export default function NewRequestPage() {
                       เอกสารที่ต้องแนบตามข้อมูลที่เลือก
                     </h3>
                     <ul className="mt-2 list-disc space-y-1 pl-5 text-sm leading-6">
-                      {loanRequirement === "borrow_before_purchase" && (
-                        <li>สัญญายืมเงินสำหรับกรณีต้องการยืมเงินก่อน</li>
-                      )}
-                      {vendorSelection.kind === "new" && (
-                        <li>
-                          เอกสารของผู้ประกอบการ/ผู้รับจ้างรายใหม่ เพื่อให้เจ้าหน้าที่พัสดุตรวจสอบ
-                        </li>
-                      )}
+                      <li>
+                        เอกสารของผู้ประกอบการ/ผู้รับจ้างรายใหม่ เพื่อให้เจ้าหน้าที่พัสดุตรวจสอบ
+                      </li>
                     </ul>
                   </div>
                 </div>
@@ -895,15 +889,9 @@ export default function NewRequestPage() {
                 <dd className="mt-1 font-semibold text-slate-900">{attachments.length} ไฟล์</dd>
               </div>
             </dl>
-            {(loanRequirement === "borrow_before_purchase" || vendorSelection.kind === "new") && (
+            {vendorSelection.kind === "new" && (
               <div className="border border-amber-300 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
-                โปรดตรวจสอบว่าได้เตรียม
-                {loanRequirement === "borrow_before_purchase" ? "สัญญายืมเงิน" : ""}
-                {loanRequirement === "borrow_before_purchase" && vendorSelection.kind === "new"
-                  ? " และ"
-                  : ""}
-                {vendorSelection.kind === "new" ? "เอกสารผู้ประกอบการ/ผู้รับจ้างรายใหม่" : ""}
-                ไว้ในเอกสารแนบแล้ว
+                โปรดตรวจสอบว่าได้แนบเอกสารผู้ประกอบการ/ผู้รับจ้างรายใหม่แล้ว
               </div>
             )}
             <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">

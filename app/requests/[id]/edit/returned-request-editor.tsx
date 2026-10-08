@@ -23,7 +23,7 @@ const loanOptions: Array<{
 }> = [
   {
     value: "borrow_before_purchase",
-    label: "ต้องการยืมเงินก่อน (ต้องแนบสัญญายืมในเอกสารแนบ)",
+    label: "ต้องการยืมเงินก่อน",
   },
   {
     value: "reimburse_after_purchase",
@@ -100,8 +100,7 @@ export function ReturnedRequestEditor({ initial }: { initial: ReturnedRequestEdi
     () => items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0),
     [items],
   );
-  const requiredAttachmentCount =
-    Number(loanRequirement === "borrow_before_purchase") + Number(vendorSelection.kind === "new");
+  const requiredAttachmentCount = Number(vendorSelection.kind === "new");
   const totalAttachmentCount = initial.attachments.length + newAttachments.length;
 
   function updateItem(index: number, patch: Partial<ReturnedRequestItem>) {
@@ -175,7 +174,7 @@ export function ReturnedRequestEditor({ initial }: { initial: ReturnedRequestEdi
         expenseCategory,
         formData: {
           advanceFundingOption: loanRequirement,
-          requiresLoanAgreement: loanRequirement === "borrow_before_purchase",
+          requiresLoanAgreement: false,
           vendor:
             vendorSelection.kind === "registered"
               ? {

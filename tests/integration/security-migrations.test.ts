@@ -3,10 +3,52 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 function readMigration(name: string) {
-  return readFileSync(resolve(process.cwd(), "supabase", "migrations", name), "utf8");
+  return readFileSync(resolve(process.cwd(), "supabase", "migrations", name), "utf8").replace(
+    /\r\n/g,
+    "\n",
+  );
 }
 
 describe("security hardening migrations", () => {
+  it("only removes the POL01 loan requirement from submission and resubmission checks", () => {
+    const sql = readMigration("202610080001_pol01_optional_loan_agreement.sql");
+    const functions = [
+      {
+        name: "submit_procurement_request_draft",
+        migration: "202610020001_request_attachment_submission.sql",
+        record: "current_request",
+      },
+      {
+        name: "validate_request_submission_attachments",
+        migration: "202610020004_validate_request_submission_attachments.sql",
+        record: "new",
+      },
+    ];
+
+    for (const { name, migration, record } of functions) {
+      const pattern = new RegExp(`create or replace function public\\.${name}\\([\\s\\S]*?\\$\\$;`);
+      const original = readMigration(migration).match(pattern)?.[0];
+      const updated = sql.match(pattern)?.[0];
+      expect(original).toBeDefined();
+      expect(updated).toBeDefined();
+      expect(updated).toBe(
+        original?.replace(
+          `if coalesce((${record}.form_data->>'requiresLoanAgreement')::boolean, false) then`,
+          `if (${record}.form_data->>'formType') is distinct from 'standard'\n` +
+            `    and coalesce((${record}.form_data->>'requiresLoanAgreement')::boolean, false) then`,
+        ),
+      );
+    }
+
+    expect(sql).toContain(
+      "revoke all on function public.submit_procurement_request_draft(uuid) from public",
+    );
+    expect(sql).toContain(
+      "grant execute on function public.submit_procurement_request_draft(uuid) to authenticated",
+    );
+    expect(sql).not.toMatch(/delete from|drop trigger|disable row level security/i);
+  });
+
   it("removes direct writes to workflow-controlled tables", () => {
     const sql = readMigration("202608300001_authorization_hardening.sql");
     expect(sql).toContain(
