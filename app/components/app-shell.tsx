@@ -29,7 +29,7 @@ import { logout } from "../login/actions";
 const nav = [
   {
     href: "/",
-    label: "แผงควบคุม",
+    label: "Dashboard บริหารงานพัสดุ",
     icon: LayoutDashboard,
     roles: ["ผู้ดูแลระบบ", "ผู้ยื่นคำขอ", "เจ้าหน้าที่", "ผู้บริหาร"],
   },
