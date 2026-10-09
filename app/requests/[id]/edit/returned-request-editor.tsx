@@ -12,7 +12,7 @@ import { uploadRequestAttachments } from "../../../lib/request-attachments.clien
 import { Pol01ApprovalDetailsFields } from "../../new/pol01-approval-details";
 import { VendorPicker, type VendorChoice } from "../../new/vendor-picker";
 import { resubmitReturnedRequest, updateReturnedRequest } from "./actions";
-import type { ReturnedRequestEditData, ReturnedRequestItem } from "./types";
+import type { ReturnedStandardRequestEditData, ReturnedRequestItem } from "./types";
 import { Pol01ChecklistFields } from "../../components/pol01-checklist-fields";
 import { reconcilePol01Checklist } from "../../pol01-checklist";
 
@@ -20,7 +20,7 @@ const fieldClass =
   "min-h-11 w-full border border-[var(--line-dark)] bg-white px-3.5 py-2.5 text-base text-[var(--ink)] outline-none transition placeholder:text-stone-500 hover:border-stone-900 focus:border-[var(--blue)] focus:ring-2 focus:ring-blue-100 sm:text-sm";
 
 const loanOptions: Array<{
-  value: ReturnedRequestEditData["advanceFundingOption"];
+  value: ReturnedStandardRequestEditData["advanceFundingOption"];
   label: string;
 }> = [
   {
@@ -62,7 +62,7 @@ function EditSection({
   );
 }
 
-export function ReturnedRequestEditor({ initial }: { initial: ReturnedRequestEditData }) {
+export function ReturnedRequestEditor({ initial }: { initial: ReturnedStandardRequestEditData }) {
   const router = useRouter();
   const [kind, setKind] = useState(initial.kind);
   const [title, setTitle] = useState(initial.title);

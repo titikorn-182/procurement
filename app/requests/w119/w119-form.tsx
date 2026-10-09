@@ -17,8 +17,12 @@ import {
 import { AttachmentPicker } from "../../components/attachment-picker";
 import { Button, PageHeader } from "../../components/ui";
 import { uploadRequestAttachments } from "../../lib/request-attachments.client";
-import type { SelectedAttachment } from "../../lib/request-attachments";
+import { formatAttachmentSize, type SelectedAttachment } from "../../lib/request-attachments";
 import { createRequestDraft, submitRequestDraft } from "../new/actions";
+import { updateReturnedRequest, resubmitReturnedRequest } from "../[id]/edit/actions";
+import type { ReturnedW119RequestEditData } from "../[id]/edit/types";
+import type { NewRequestInput } from "../new/schemas";
+import { validateW119Submission } from "./validation";
 import { W119PrintPreview } from "./w119-print-preview";
 import { toW119PrintData, type W119PrintData } from "./w119-print-data";
 
@@ -27,7 +31,7 @@ type RequestItem = {
   quantity: number;
   unit: string;
   unitPrice: number;
-  marketPrice: number;
+  marketPrice: number | null;
   priceSource: string;
 };
 
@@ -68,10 +72,12 @@ function SectionCard({
   title,
   description,
   children,
+  disabled = false,
 }: {
   title: string;
   description: string;
   children: React.ReactNode;
+  disabled?: boolean;
 }) {
   return (
     <section className="border border-[var(--line-dark)] bg-[var(--paper)]">
@@ -79,7 +85,9 @@ function SectionCard({
         <h2 className="text-lg font-bold text-[var(--ink)]">{title}</h2>
         <p className="mt-1 text-sm text-stone-500">{description}</p>
       </header>
-      <div className="p-5 sm:p-6">{children}</div>
+      <fieldset disabled={disabled} className="min-w-0 p-5 sm:p-6">
+        {children}
+      </fieldset>
     </section>
   );
 }
@@ -88,42 +96,58 @@ function money(value: number) {
   return new Intl.NumberFormat("th-TH", { style: "currency", currency: "THB" }).format(value);
 }
 
-export function W119Form({ printFontClassName }: { printFontClassName: string }) {
+export function W119Form({
+  printFontClassName,
+  initial,
+}: {
+  printFontClassName: string;
+  initial?: ReturnedW119RequestEditData;
+}) {
   const router = useRouter();
+  const submittingRef = useRef(false);
+  const existingAttachments = initial?.attachments ?? [];
+  const form = initial?.formData;
   const previewButtonRef = useRef<HTMLButtonElement>(null);
   const [previewData, setPreviewData] = useState<W119PrintData | null>(null);
   const [step, setStep] = useState(0);
-  const [requestType, setRequestType] = useState<"purchase" | "hire">("purchase");
-  const [documentNo, setDocumentNo] = useState("อว 0604.19/");
-  const [memoDate, setMemoDate] = useState("");
+  const [requestType, setRequestType] = useState<"purchase" | "hire">(initial?.kind ?? "purchase");
+  const [documentNo, setDocumentNo] = useState(form?.documentNo ?? "อว 0604.19/");
+  const [memoDate, setMemoDate] = useState(form?.memoDate ?? "");
   const [departmentName, setDepartmentName] = useState(
-    "สำนักงานเลขานุการ คณะรัฐศาสตร์ มหาวิทยาลัยอุบลราชธานี",
+    form?.departmentName ?? "สำนักงานเลขานุการ คณะรัฐศาสตร์ มหาวิทยาลัยอุบลราชธานี",
   );
-  const [phone, setPhone] = useState("3944");
-  const [addressee, setAddressee] = useState("คณบดีคณะรัฐศาสตร์");
-  const [title, setTitle] = useState("จัดซื้อวัสดุสำนักงานประจำปีงบประมาณ 2569");
+  const [phone, setPhone] = useState(form?.phone ?? "3944");
+  const [addressee, setAddressee] = useState(form?.addressee ?? "คณบดีคณะรัฐศาสตร์");
+  const [title, setTitle] = useState(initial?.title ?? "จัดซื้อวัสดุสำนักงานประจำปีงบประมาณ 2569");
   const [rationale, setRationale] = useState(
-    "เพื่อสนับสนุนการปฏิบัติงานของหน่วยงานให้เป็นไปอย่างต่อเนื่อง",
+    initial?.rationale ?? "เพื่อสนับสนุนการปฏิบัติงานของหน่วยงานให้เป็นไปอย่างต่อเนื่อง",
   );
-  const [requiredDate, setRequiredDate] = useState("");
-  const [items, setItems] = useState<RequestItem[]>(initialItems);
-  const [fiscalYear, setFiscalYear] = useState("2569");
-  const [fundSource, setFundSource] = useState("เงินงบประมาณแผ่นดิน");
-  const [planName, setPlanName] = useState("แผนงานบริหารทั่วไป");
-  const [expenseCategory, setExpenseCategory] = useState("ค่าวัสดุ");
-  const [sourceCode, setSourceCode] = useState("2");
-  const [departmentCode, setDepartmentCode] = useState("2301");
-  const [fundCode, setFundCode] = useState("6");
-  const [planCode, setPlanCode] = useState("5102");
-  const [subprojectCode, setSubprojectCode] = useState("51025200");
-  const [activityCode, setActivityCode] = useState("510252000024");
-  const [selectionCriteria, setSelectionCriteria] = useState("เกณฑ์ราคา");
-  const [advanceRequired, setAdvanceRequired] = useState(false);
+  const [requiredDate, setRequiredDate] = useState(initial?.requiredDate ?? "");
+  const [items, setItems] = useState<RequestItem[]>(initial?.items ?? initialItems);
+  const [fiscalYear, setFiscalYear] = useState(String(initial?.budgetYear ?? "2569"));
+  const [fundSource, setFundSource] = useState(initial?.fundSource ?? "เงินงบประมาณแผ่นดิน");
+  const [planName, setPlanName] = useState(initial?.planName ?? "แผนงานบริหารทั่วไป");
+  const [expenseCategory, setExpenseCategory] = useState(initial?.expenseCategory ?? "ค่าวัสดุ");
+  const [sourceCode, setSourceCode] = useState(form?.budgetCodes.sourceCode ?? "2");
+  const [departmentCode, setDepartmentCode] = useState(form?.budgetCodes.departmentCode ?? "2301");
+  const [fundCode, setFundCode] = useState(form?.budgetCodes.fundCode ?? "6");
+  const [planCode, setPlanCode] = useState(form?.budgetCodes.planCode ?? "5102");
+  const [subprojectCode, setSubprojectCode] = useState(
+    form?.budgetCodes.subprojectCode ?? "51025200",
+  );
+  const [activityCode, setActivityCode] = useState(
+    form?.budgetCodes.activityCode ?? "510252000024",
+  );
+  const [selectionCriteria, setSelectionCriteria] = useState(
+    form?.selectionCriteria ?? "เกณฑ์ราคา",
+  );
+  const [advanceRequired, setAdvanceRequired] = useState(form?.advanceRequired ?? false);
   const [attachments, setAttachments] = useState<SelectedAttachment[]>([]);
   const [draft, setDraft] = useState<{ id: string; requestNo: string } | null>(null);
   const [submissionMessage, setSubmissionMessage] = useState("");
   const [error, setError] = useState("");
   const [isPending, startTransition] = useTransition();
+  const attachmentCount = existingAttachments.length + attachments.length;
 
   const total = useMemo(
     () => items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0),
@@ -159,6 +183,7 @@ export function W119Form({ printFontClassName }: { printFontClassName: string })
             !item.unit.trim() ||
             item.quantity <= 0 ||
             item.unitPrice < 0 ||
+            item.marketPrice == null ||
             item.marketPrice < 0 ||
             !item.priceSource.trim(),
         ))
@@ -180,7 +205,7 @@ export function W119Form({ printFontClassName }: { printFontClassName: string })
     ) {
       return "กรุณาระบุข้อมูลงบประมาณให้ครบถ้วน";
     }
-    if (step === 3 && attachments.length === 0) {
+    if (step === 3 && attachmentCount === 0) {
       return "กรุณาแนบใบเสนอราคา รายละเอียดคุณลักษณะ หรือหลักฐานราคาอย่างน้อย 1 ไฟล์";
     }
     return "";
@@ -198,86 +223,126 @@ export function W119Form({ printFontClassName }: { printFontClassName: string })
   }
 
   function handleSubmit() {
+    if (submittingRef.current) return;
+    const input: NewRequestInput = {
+      kind: requestType,
+      title,
+      rationale,
+      requiredDate,
+      budgetYear: Number(fiscalYear),
+      fundSource,
+      planName,
+      expenseCategory,
+      formData: {
+        regulation:
+          form?.regulation ?? "หนังสือ ด่วนที่สุด ที่ กค (กวจ) 0405.2/ว119 ลงวันที่ 7 มีนาคม 2561",
+        documentNo,
+        memoDate,
+        departmentName,
+        phone,
+        addressee,
+        selectionCriteria,
+        advanceRequired,
+        budgetCodes: {
+          sourceCode,
+          departmentCode,
+          fundCode,
+          planCode,
+          subprojectCode,
+          activityCode,
+        },
+        requiresItemAttachment: items.length > 10,
+      },
+      items: items.map((item, index) => ({
+        line_no: index + 1,
+        description: item.description,
+        quantity: item.quantity,
+        unit: item.unit,
+        unit_price: item.unitPrice,
+        market_price: item.marketPrice ?? undefined,
+        price_source: item.priceSource,
+      })),
+    };
+    const validation = validateW119Submission(
+      input,
+      attachmentCount,
+      existingAttachments.reduce((sum, item) => sum + item.sizeBytes, 0) +
+        attachments.reduce((sum, item) => sum + item.file.size, 0),
+    );
+    if (validation) {
+      setError(validation.message);
+      setStep(validation.step);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+    submittingRef.current = true;
     setError("");
-    setSubmissionMessage("กำลังจัดเตรียมฉบับร่าง...");
+    setSubmissionMessage(initial ? "กำลังบันทึกการแก้ไขคำขอเดิม..." : "กำลังจัดเตรียมฉบับร่าง...");
     startTransition(async () => {
-      let activeDraft = draft;
-      if (!activeDraft) {
-        const result = await createRequestDraft({
-          kind: requestType,
-          title,
-          rationale,
-          requiredDate,
-          budgetYear: Number(fiscalYear),
-          fundSource,
-          planName,
-          expenseCategory,
-          formData: {
-            regulation: "หนังสือ ด่วนที่สุด ที่ กค (กวจ) 0405.2/ว119 ลงวันที่ 7 มีนาคม 2561",
-            documentNo,
-            memoDate,
-            departmentName,
-            phone,
-            addressee,
-            selectionCriteria,
-            advanceRequired,
-            budgetCodes: {
-              sourceCode,
-              departmentCode,
-              fundCode,
-              planCode,
-              subprojectCode,
-              activityCode,
-            },
-            requiresItemAttachment: items.length > 10,
-          },
-          items: items.map((item, index) => ({
-            line_no: index + 1,
-            description: item.description,
-            quantity: item.quantity,
-            unit: item.unit,
-            unit_price: item.unitPrice,
-            market_price: item.marketPrice,
-            price_source: item.priceSource,
-          })),
-        });
+      try {
+        let activeDraft = initial ? { id: initial.id, requestNo: initial.requestNo } : draft;
+        if (initial) {
+          const result = await updateReturnedRequest(initial.id, input);
+          if (result.error) {
+            setError(result.error);
+            return;
+          }
+        } else if (!activeDraft) {
+          const result = await createRequestDraft(input);
 
-        if (result.error || !result.requestId || !result.requestNo) {
-          setError(result.error ?? "ไม่สามารถสร้างฉบับร่างได้ กรุณาลองใหม่");
+          if (result.error || !result.requestId || !result.requestNo) {
+            setError(result.error ?? "ไม่สามารถสร้างฉบับร่างได้ กรุณาลองใหม่");
+            setSubmissionMessage("");
+            return;
+          }
+          activeDraft = { id: result.requestId, requestNo: result.requestNo };
+          setDraft(activeDraft);
+        }
+
+        if (!activeDraft) return;
+
+        setSubmissionMessage(`กำลังอัปโหลดเอกสาร 0/${attachments.length} ไฟล์...`);
+        const uploadResult = await uploadRequestAttachments(
+          activeDraft.id,
+          attachments,
+          ({ completed, total, currentFileName }) =>
+            setSubmissionMessage(
+              currentFileName
+                ? `กำลังอัปโหลด ${completed + 1}/${total}: ${currentFileName}`
+                : `อัปโหลดเอกสารครบ ${completed}/${total} ไฟล์แล้ว`,
+            ),
+          { preserveExisting: Boolean(initial) },
+        );
+        if (uploadResult.error) {
+          setError(
+            initial
+              ? "บันทึกการแก้ไขแล้ว แต่อัปโหลดเอกสารเพิ่มไม่สำเร็จ คำขอยังไม่ได้ส่งใหม่ กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองอีกครั้ง"
+              : uploadResult.error,
+          );
           setSubmissionMessage("");
           return;
         }
-        activeDraft = { id: result.requestId, requestNo: result.requestNo };
-        setDraft(activeDraft);
-      }
 
-      setSubmissionMessage(`กำลังอัปโหลดเอกสาร 0/${attachments.length} ไฟล์...`);
-      const uploadResult = await uploadRequestAttachments(
-        activeDraft.id,
-        attachments,
-        ({ completed, total, currentFileName }) =>
-          setSubmissionMessage(
-            currentFileName
-              ? `กำลังอัปโหลด ${completed + 1}/${total}: ${currentFileName}`
-              : `อัปโหลดเอกสารครบ ${completed}/${total} ไฟล์แล้ว`,
-          ),
-      );
-      if (uploadResult.error) {
-        setError(uploadResult.error);
+        setSubmissionMessage("กำลังส่งคำขอเข้าสู่สายอนุมัติ...");
+        const submitResult = initial
+          ? await resubmitReturnedRequest(activeDraft.id)
+          : await submitRequestDraft(activeDraft.id);
+        if (submitResult.error || !submitResult.requestNo) {
+          setError(submitResult.error ?? "ไม่สามารถส่งคำขอได้ กรุณาลองใหม่");
+          setSubmissionMessage("");
+          return;
+        }
+
+        router.push(`/requests/${submitResult.requestNo}`);
+        router.refresh();
+      } catch {
+        setError(
+          "การเชื่อมต่อขัดข้อง กรุณาตรวจสอบสถานะคำขอในหน้ารายละเอียดก่อนลองส่งอีกครั้ง ข้อมูลที่กรอกยังอยู่ในหน้านี้",
+        );
+      } finally {
+        submittingRef.current = false;
         setSubmissionMessage("");
-        return;
       }
-
-      setSubmissionMessage("กำลังส่งคำขอเข้าสู่สายอนุมัติ...");
-      const submitResult = await submitRequestDraft(activeDraft.id);
-      if (submitResult.error || !submitResult.requestNo) {
-        setError(submitResult.error ?? "ไม่สามารถส่งคำขอได้ กรุณาลองใหม่");
-        setSubmissionMessage("");
-        return;
-      }
-
-      router.push(`/requests/${submitResult.requestNo}`);
-      router.refresh();
     });
   }
 
@@ -335,9 +400,29 @@ export function W119Form({ printFontClassName }: { printFontClassName: string })
   return (
     <AppShell>
       <PageHeader
-        title="แบบฟอร์มขอซื้อขอจ้าง ว119"
-        description="สร้างบันทึกข้อความ รายการพัสดุ และข้อมูลงบประมาณในชุดเดียว พร้อมส่งต่อเจ้าหน้าที่พัสดุตรวจสอบ"
+        title={initial ? `แก้ไขคำขอ ว119 · ${initial.requestNo}` : "แบบฟอร์มขอซื้อขอจ้าง ว119"}
+        description={
+          initial
+            ? "แก้ไขคำขอที่ถูกส่งกลับ โดยใช้เลขคำขอเดิมและเก็บประวัติการดำเนินการไว้"
+            : "สร้างบันทึกข้อความ รายการพัสดุ และข้อมูลงบประมาณในชุดเดียว พร้อมส่งต่อเจ้าหน้าที่พัสดุตรวจสอบ"
+        }
       />
+
+      {initial && (
+        <div className="mb-5 border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
+          <h2 className="font-bold">เหตุผลที่ส่งกลับแก้ไข</h2>
+          <p className="mt-1 whitespace-pre-wrap break-words">{initial.returnReason}</p>
+          <p className="mt-2">
+            เมื่อส่งใหม่ งานจะกลับไปยังขั้นตอนที่ {initial.currentStep} เอกสารแนบเดิมจะไม่ถูกลบ
+          </p>
+          <Link
+            className="mt-2 inline-block underline underline-offset-4"
+            href={`/requests/${initial.requestNo}`}
+          >
+            กลับไปดูสถานะคำขอ
+          </Link>
+        </div>
+      )}
 
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-stone-600">ดูแบบ ว119 และดาวน์โหลดฉบับร่างได้ก่อนส่งคำขอ</p>
@@ -373,7 +458,8 @@ export function W119Form({ printFontClassName }: { printFontClassName: string })
               <button
                 type="button"
                 onClick={() => index < step && setStep(index)}
-                disabled={index > step}
+                disabled={index > step || isPending || Boolean(draft)}
+                aria-current={index === step ? "step" : undefined}
                 className="flex min-h-11 flex-1 items-center gap-2 rounded-xl px-3 text-left disabled:cursor-not-allowed"
               >
                 <span
@@ -406,6 +492,7 @@ export function W119Form({ printFontClassName }: { printFontClassName: string })
       )}
 
       <SectionCard
+        disabled={isPending}
         title={steps[step]}
         description={`ขั้นตอนที่ ${step + 1} จาก ${steps.length} · ข้อมูลจะถูกบันทึกในคำขอเดียวกัน`}
       >
@@ -525,7 +612,13 @@ export function W119Form({ printFontClassName }: { printFontClassName: string })
                 <select
                   className={inputClass}
                   value={selectionCriteria}
-                  onChange={(event) => setSelectionCriteria(event.target.value)}
+                  onChange={(event) =>
+                    setSelectionCriteria(
+                      event.target.value === "เกณฑ์ราคาประกอบเกณฑ์อื่น"
+                        ? "เกณฑ์ราคาประกอบเกณฑ์อื่น"
+                        : "เกณฑ์ราคา",
+                    )
+                  }
                 >
                   <option>เกณฑ์ราคา</option>
                   <option>เกณฑ์ราคาประกอบเกณฑ์อื่น</option>
@@ -607,9 +700,12 @@ export function W119Form({ printFontClassName }: { printFontClassName: string })
                           min="0"
                           step="0.01"
                           className={inputClass}
-                          value={item.marketPrice}
+                          value={item.marketPrice ?? ""}
                           onChange={(event) =>
-                            updateItem(index, { marketPrice: Number(event.target.value) })
+                            updateItem(index, {
+                              marketPrice:
+                                event.target.value === "" ? null : Number(event.target.value),
+                            })
                           }
                         />
                       </td>
@@ -699,6 +795,9 @@ export function W119Form({ printFontClassName }: { printFontClassName: string })
                     พ.ศ. {year}
                   </option>
                 ))}
+                {!fiscalYears.some((year) => year === fiscalYear) && (
+                  <option value={fiscalYear}>พ.ศ. {fiscalYear}</option>
+                )}
               </select>
             </label>
             <label className="block">
@@ -710,6 +809,9 @@ export function W119Form({ printFontClassName }: { printFontClassName: string })
               >
                 <option>เงินงบประมาณแผ่นดิน</option>
                 <option>เงินรายได้</option>
+                {!["เงินงบประมาณแผ่นดิน", "เงินรายได้"].includes(fundSource) && (
+                  <option>{fundSource}</option>
+                )}
               </select>
             </label>
             <label className="block">
@@ -730,6 +832,9 @@ export function W119Form({ printFontClassName }: { printFontClassName: string })
                 <option>ค่าวัสดุ</option>
                 <option>ค่าใช้สอย</option>
                 <option>ค่าครุภัณฑ์</option>
+                {!["ค่าวัสดุ", "ค่าใช้สอย", "ค่าครุภัณฑ์"].includes(expenseCategory) && (
+                  <option>{expenseCategory}</option>
+                )}
               </select>
             </label>
             <div className="sm:col-span-2 border-t border-slate-200 pt-5">
@@ -788,7 +893,44 @@ export function W119Form({ printFontClassName }: { printFontClassName: string })
                 </span>
               </span>
             </label>
+            {existingAttachments.length > 0 && (
+              <section aria-label="เอกสารแนบเดิม">
+                <h3 className="font-bold">
+                  เอกสารแนบเดิม {existingAttachments.length} ไฟล์ (เก็บไว้ในคำขอนี้)
+                </h3>
+                <ul className="mt-3 divide-y border border-[var(--line)]">
+                  {existingAttachments.map((attachment) => (
+                    <li
+                      key={attachment.id}
+                      className="flex flex-wrap items-center justify-between gap-2 p-3"
+                    >
+                      <span className="min-w-0 break-all">
+                        {attachment.fileName} · {formatAttachmentSize(attachment.sizeBytes)}
+                      </span>
+                      <a
+                        href={`/api/request-attachments/${attachment.id}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="shrink-0 p-2 underline underline-offset-4"
+                        aria-label={`เปิด ${attachment.fileName} ในแท็บใหม่`}
+                      >
+                        เปิดไฟล์เดิม
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-2 text-sm">
+                  ไม่ต้องแนบไฟล์เดิมซ้ำ หากมีเอกสารแก้ไขให้แนบเพิ่มด้านล่าง
+                </p>
+              </section>
+            )}
             <AttachmentPicker files={attachments} onChange={setAttachments} disabled={isPending} />
+            {initial && (
+              <p className="text-sm">
+                ตัวอย่างก่อนบันทึกจะแสดงข้อมูลที่แก้ไขและรวมได้เฉพาะไฟล์ที่แนบใหม่
+                หลังส่งใหม่สามารถดาวน์โหลด PDF รวมเอกสารทั้งหมดจากหน้าคำขอได้
+              </p>
+            )}
             <p className="text-sm leading-6 text-[var(--ink)]">
               ต้องการรวมแบบ ว119 และเอกสารแนบเป็น PDF ไฟล์เดียว ให้แนบ PDF, JPG หรือ PNG แล้วกด
               “ดูตัวอย่าง / พิมพ์ / PDF” และเลือก “ดาวน์โหลด PDF รวมเอกสารแนบ” หากเป็น Word/Excel
@@ -844,19 +986,24 @@ export function W119Form({ printFontClassName }: { printFontClassName: string })
               </div>
               <div>
                 <dt className="text-sm text-slate-500">เอกสารแนบ</dt>
-                <dd className="mt-1 font-semibold text-slate-900">{attachments.length} ไฟล์</dd>
+                <dd className="mt-1 font-semibold text-slate-900">
+                  {attachmentCount} ไฟล์
+                  {initial &&
+                    ` (เดิม ${existingAttachments.length} / เพิ่มใหม่ ${attachments.length})`}
+                </dd>
               </div>
             </dl>
             <div className="border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
-              เมื่อส่งคำขอ ระบบจะออกเลขเอกสารอัตโนมัติ บันทึกข้อมูลตามแบบ ว119
-              และสร้างงานตรวจสอบให้เจ้าหน้าที่พัสดุ
+              {initial
+                ? `บันทึกและส่งคำขอ ${initial.requestNo} ใหม่ กลับไปตรวจสอบในขั้นตอนที่ ${initial.currentStep} โดยไม่ออกเลขคำขอใหม่`
+                : "เมื่อส่งคำขอ ระบบจะออกเลขเอกสารอัตโนมัติ บันทึกข้อมูลตามแบบ ว119 และสร้างงานตรวจสอบให้เจ้าหน้าที่พัสดุ"}
             </div>
           </div>
         )}
 
         <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-5">
           {step === 0 ? (
-            <Link href="/requests">
+            <Link href={initial ? `/requests/${initial.requestNo}` : "/requests"}>
               <Button type="button" variant="secondary">
                 <ArrowLeft size={17} /> ยกเลิก
               </Button>
@@ -880,7 +1027,13 @@ export function W119Form({ printFontClassName }: { printFontClassName: string })
             </Button>
           ) : (
             <Button type="button" onClick={handleSubmit} disabled={isPending}>
-              {isPending ? "กำลังดำเนินการ..." : draft ? "ลองส่งคำขออีกครั้ง" : "ยืนยันและส่งคำขอ"}{" "}
+              {isPending
+                ? "กำลังดำเนินการ..."
+                : initial
+                  ? "บันทึกการแก้ไขและส่งใหม่"
+                  : draft
+                    ? "ลองส่งคำขออีกครั้ง"
+                    : "ยืนยันและส่งคำขอ"}{" "}
               {!isPending && <Check size={17} />}
             </Button>
           )}

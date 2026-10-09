@@ -20,10 +20,16 @@ export async function updateReturnedRequest(requestId: string, input: NewRequest
   if (!uuidPattern.test(requestId)) return { error: "ไม่พบคำขอที่ต้องการแก้ไข" };
 
   const parsedInput = newRequestInputSchema.safeParse(input);
-  if (!parsedInput.success) return { error: "ข้อมูลคำขอยังไม่ครบถ้วน กรุณาตรวจสอบอีกครั้ง" };
+  if (!parsedInput.success) {
+    return {
+      error: parsedInput.error.issues.some((issue) => issue.path[0] === "requiredDate")
+        ? "กรุณาตรวจสอบวันที่ต้องการใช้ โดยระบุวันที่วันนี้หรือวันถัดไปตามเงื่อนไขของระบบ"
+        : "ข้อมูลคำขอยังไม่ครบถ้วน กรุณาตรวจสอบอีกครั้ง",
+    };
+  }
 
   const parsedFormData = parseRequestFormData(parsedInput.data.formData);
-  if (!parsedFormData.success || parsedFormData.data.formType !== "standard") {
+  if (!parsedFormData.success) {
     return { error: "ข้อมูลแบบฟอร์มไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง" };
   }
 
@@ -33,8 +39,34 @@ export async function updateReturnedRequest(requestId: string, input: NewRequest
   } = await supabase.auth.getUser();
   if (!user) return { error: "กรุณาเข้าสู่ระบบใหม่" };
 
+  // The RPC rechecks ownership/status under a row lock. This read also prevents
+  // changing the form family through a crafted server-action payload.
+  const { data: existing, error: readError } = await supabase
+    .from("procurement_requests")
+    .select("form_data")
+    .eq("id", requestId)
+    .eq("requester_id", user.id)
+    .eq("status", "returned")
+    .maybeSingle();
+  if (readError || !existing) return { error: "ไม่พบคำขอที่แก้ไขได้หรือคำขอไม่ได้ถูกส่งกลับ" };
+  const storedForm: unknown = existing.form_data;
+  if (
+    !storedForm ||
+    typeof storedForm !== "object" ||
+    !("formType" in storedForm) ||
+    storedForm.formType !== parsedFormData.data.formType
+  ) {
+    return { error: "ไม่สามารถเปลี่ยนประเภทแบบฟอร์มของคำขอเดิมได้" };
+  }
+  if (
+    parsedFormData.data.formType === "w119" &&
+    parsedInput.data.items.some((item) => item.market_price == null || !item.price_source?.trim())
+  ) {
+    return { error: "กรุณาระบุราคากลางและแหล่งที่มาของราคาทุกรายการในแบบ ว119" };
+  }
+
   let submittedFormData: Record<string, unknown> = parsedFormData.data;
-  const { vendor } = parsedFormData.data;
+  const vendor = parsedFormData.data.formType === "standard" ? parsedFormData.data.vendor : null;
   if (vendor?.type === "registered") {
     if (!uuidPattern.test(vendor.id)) {
       return { error: "ไม่พบผู้ประกอบการที่เลือก กรุณาค้นหาและเลือกใหม่" };

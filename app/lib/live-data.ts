@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { toSafeActionError } from "@/lib/server/action-errors";
-import type { ReturnedRequestEditData } from "../requests/[id]/edit/types";
+import type { ReturnedRequestEditData, ReturnedRequestVendor } from "../requests/[id]/edit/types";
 import { readPol01Checklist } from "../requests/pol01-checklist-schema";
 import { normalizePol01ApprovalDetails } from "../requests/pol01";
 import type { RequestStatus } from "./mock-data";
@@ -167,7 +167,7 @@ export async function getReturnedRequestForEdit(requestNo: string): Promise<{
   const { data, error } = await supabase
     .from("procurement_requests")
     .select(
-      "id, request_no, requester_id, kind, title, rationale, required_date, budget_year, fund_source, plan_name, expense_category, form_data, status, current_step, request_items(line_no, description, quantity, unit, unit_price), request_attachments(id, file_name, size_bytes), workflow_actions(action, comment, created_at)",
+      "id, request_no, requester_id, kind, title, rationale, required_date, budget_year, fund_source, plan_name, expense_category, form_data, status, current_step, request_items(line_no, description, quantity, unit, unit_price, market_price, price_source), request_attachments(id, file_name, size_bytes), workflow_actions(action, comment, created_at)",
     )
     .eq("request_no", requestNo)
     .eq("requester_id", user.id)
@@ -187,12 +187,12 @@ export async function getReturnedRequestForEdit(requestNo: string): Promise<{
   if (!data) return { data: null, error: "ไม่พบคำขอที่แก้ไขได้หรือคำขอไม่ได้ถูกส่งกลับ" };
 
   const formData = editRecord(data.form_data);
-  if (formData.formType !== "standard") {
+  if (formData.formType !== "standard" && formData.formType !== "w119") {
     return { data: null, error: "แบบคำขอนี้ยังไม่รองรับการแก้ไขจากหน้านี้" };
   }
   const budgetCodes = editRecord(formData.budgetCodes);
   const vendorRecord = editRecord(formData.vendor);
-  const vendor: ReturnedRequestEditData["vendor"] =
+  const vendor: ReturnedRequestVendor =
     vendorRecord.type === "registered" && typeof vendorRecord.id === "string"
       ? {
           kind: "registered",
@@ -208,32 +208,83 @@ export async function getReturnedRequestForEdit(requestNo: string): Promise<{
     formData.advanceFundingOption === "faculty_direct_pay_credit_vendor"
       ? formData.advanceFundingOption
       : "reimburse_after_purchase";
-  const items = [...(data.request_items ?? [])]
-    .sort((left, right) => Number(left.line_no) - Number(right.line_no))
-    .map((item) => ({
-      description: String(item.description),
-      quantity: Number(item.quantity),
-      unit: String(item.unit),
-      unitPrice: Number(item.unit_price),
-    }));
+  const sortedItems = [...(data.request_items ?? [])].sort(
+    (left, right) => Number(left.line_no) - Number(right.line_no),
+  );
+  const items = sortedItems.map((item) => ({
+    description: String(item.description),
+    quantity: Number(item.quantity),
+    unit: String(item.unit),
+    unitPrice: Number(item.unit_price),
+  }));
   const actions = [...(data.workflow_actions ?? [])].sort(
     (left, right) => Date.parse(String(right.created_at)) - Date.parse(String(left.created_at)),
   );
   const latestReturn = actions.find((action) => action.action === "return");
 
+  const common = {
+    id: String(data.id),
+    requestNo: String(data.request_no),
+    currentStep: Number(data.current_step),
+    kind: data.kind === "hire" ? ("hire" as const) : ("purchase" as const),
+    title: String(data.title),
+    rationale: String(data.rationale),
+    requiredDate: String(data.required_date ?? ""),
+    budgetYear: Number(data.budget_year),
+    fundSource: String(data.fund_source),
+    planName: String(data.plan_name ?? ""),
+    expenseCategory: String(data.expense_category ?? ""),
+    attachments: (data.request_attachments ?? []).map((attachment) => ({
+      id: String(attachment.id),
+      fileName: String(attachment.file_name),
+      sizeBytes: Number(attachment.size_bytes ?? 0),
+    })),
+    returnReason:
+      typeof latestReturn?.comment === "string" && latestReturn.comment.trim()
+        ? latestReturn.comment
+        : "เจ้าหน้าที่ส่งคำขอกลับเพื่อแก้ไข",
+  };
+
+  if (formData.formType === "w119") {
+    return {
+      data: {
+        ...common,
+        formType: "w119",
+        formData: {
+          regulation: String(formData.regulation ?? ""),
+          documentNo: String(formData.documentNo ?? ""),
+          memoDate: String(formData.memoDate ?? ""),
+          departmentName: String(formData.departmentName ?? ""),
+          phone: String(formData.phone ?? ""),
+          addressee: String(formData.addressee ?? ""),
+          selectionCriteria:
+            formData.selectionCriteria === "เกณฑ์ราคาประกอบเกณฑ์อื่น"
+              ? "เกณฑ์ราคาประกอบเกณฑ์อื่น"
+              : "เกณฑ์ราคา",
+          advanceRequired: formData.advanceRequired === true,
+          budgetCodes: {
+            sourceCode: String(budgetCodes.sourceCode ?? ""),
+            departmentCode: String(budgetCodes.departmentCode ?? ""),
+            fundCode: String(budgetCodes.fundCode ?? ""),
+            planCode: String(budgetCodes.planCode ?? ""),
+            subprojectCode: String(budgetCodes.subprojectCode ?? ""),
+            activityCode: String(budgetCodes.activityCode ?? ""),
+          },
+        },
+        items: sortedItems.map((item, index) => ({
+          ...items[index],
+          marketPrice: item.market_price == null ? null : Number(item.market_price),
+          priceSource: String(item.price_source ?? ""),
+        })),
+      },
+      error: null,
+    };
+  }
+
   return {
     data: {
-      id: String(data.id),
-      requestNo: String(data.request_no),
-      currentStep: Number(data.current_step),
-      kind: data.kind === "hire" ? "hire" : "purchase",
-      title: String(data.title),
-      rationale: String(data.rationale),
-      requiredDate: String(data.required_date ?? ""),
-      budgetYear: Number(data.budget_year),
-      fundSource: String(data.fund_source),
-      planName: String(data.plan_name ?? ""),
-      expenseCategory: String(data.expense_category ?? ""),
+      ...common,
+      formType: "standard",
       advanceFundingOption,
       vendor,
       sourceCode: String(budgetCodes.sourceCode ?? "2"),
@@ -246,15 +297,6 @@ export async function getReturnedRequestForEdit(requestNo: string): Promise<{
         borrowing: advanceFundingOption === "borrow_before_purchase",
       }),
       items,
-      attachments: (data.request_attachments ?? []).map((attachment) => ({
-        id: String(attachment.id),
-        fileName: String(attachment.file_name),
-        sizeBytes: Number(attachment.size_bytes ?? 0),
-      })),
-      returnReason:
-        typeof latestReturn?.comment === "string" && latestReturn.comment.trim()
-          ? latestReturn.comment
-          : "เจ้าหน้าที่ส่งคำขอกลับเพื่อแก้ไข",
     },
     error: null,
   };

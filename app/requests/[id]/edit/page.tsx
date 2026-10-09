@@ -3,6 +3,8 @@ import { AppShell } from "../../../components/app-shell";
 import { PageHeader } from "../../../components/ui";
 import { getReturnedRequestForEdit } from "../../../lib/live-data";
 import { ReturnedRequestEditor } from "./returned-request-editor";
+import { W119Form } from "../../w119/w119-form";
+import { sarabunPsk } from "@/app/components/print/fonts";
 
 export default async function EditReturnedRequestPage({
   params,
@@ -30,5 +32,9 @@ export default async function EditReturnedRequestPage({
     );
   }
 
-  return <ReturnedRequestEditor initial={data} />;
+  return data.formType === "w119" ? (
+    <W119Form initial={data} printFontClassName={sarabunPsk.className} />
+  ) : (
+    <ReturnedRequestEditor initial={data} />
+  );
 }
