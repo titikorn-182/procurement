@@ -20,6 +20,7 @@ import { uploadRequestAttachments } from "../../lib/request-attachments.client";
 import { formatAttachmentSize, type SelectedAttachment } from "../../lib/request-attachments";
 import { createRequestDraft, submitRequestDraft } from "../new/actions";
 import { updateReturnedRequest, resubmitReturnedRequest } from "../[id]/edit/actions";
+import { removeReturnedW119Attachments } from "../[id]/edit/attachment-actions";
 import type { ReturnedW119RequestEditData } from "../[id]/edit/types";
 import type { NewRequestInput } from "../new/schemas";
 import { validateW119Submission } from "./validation";
@@ -105,7 +106,14 @@ export function W119Form({
 }) {
   const router = useRouter();
   const submittingRef = useRef(false);
-  const existingAttachments = initial?.attachments ?? [];
+  const [existingAttachments, setExistingAttachments] = useState(initial?.attachments ?? []);
+  const [pendingRemovalIds, setPendingRemovalIds] = useState<string[]>([]);
+  const retainedAttachments = existingAttachments.filter(
+    (file) => !pendingRemovalIds.includes(file.id),
+  );
+  const pendingRemovalAttachments = existingAttachments.filter((file) =>
+    pendingRemovalIds.includes(file.id),
+  );
   const form = initial?.formData;
   const previewButtonRef = useRef<HTMLButtonElement>(null);
   const [previewData, setPreviewData] = useState<W119PrintData | null>(null);
@@ -147,7 +155,7 @@ export function W119Form({
   const [submissionMessage, setSubmissionMessage] = useState("");
   const [error, setError] = useState("");
   const [isPending, startTransition] = useTransition();
-  const attachmentCount = existingAttachments.length + attachments.length;
+  const attachmentCount = retainedAttachments.length + attachments.length;
 
   const total = useMemo(
     () => items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0),
@@ -266,7 +274,7 @@ export function W119Form({
     const validation = validateW119Submission(
       input,
       attachmentCount,
-      existingAttachments.reduce((sum, item) => sum + item.sizeBytes, 0) +
+      retainedAttachments.reduce((sum, item) => sum + item.sizeBytes, 0) +
         attachments.reduce((sum, item) => sum + item.file.size, 0),
     );
     if (validation) {
@@ -321,6 +329,22 @@ export function W119Form({
           );
           setSubmissionMessage("");
           return;
+        }
+
+        if (initial && pendingRemovalIds.length > 0) {
+          setSubmissionMessage("กำลังลบเอกสารที่เลือกออกจากคำขอ...");
+          const removal = await removeReturnedW119Attachments(initial.id, pendingRemovalIds);
+          // Reflect confirmed removals even if a later deletion/resubmission fails.
+          setExistingAttachments((current) =>
+            current.filter((file) => !removal.removedIds.includes(file.id)),
+          );
+          setPendingRemovalIds((current) =>
+            current.filter((id) => !removal.removedIds.includes(id)),
+          );
+          if (removal.error || removal.warning) {
+            setError(removal.error ?? removal.warning ?? "ลบเอกสารไม่สำเร็จ");
+            return;
+          }
         }
 
         setSubmissionMessage("กำลังส่งคำขอเข้าสู่สายอนุมัติ...");
@@ -413,7 +437,8 @@ export function W119Form({
           <h2 className="font-bold">เหตุผลที่ส่งกลับแก้ไข</h2>
           <p className="mt-1 whitespace-pre-wrap break-words">{initial.returnReason}</p>
           <p className="mt-2">
-            เมื่อส่งใหม่ งานจะกลับไปยังขั้นตอนที่ {initial.currentStep} เอกสารแนบเดิมจะไม่ถูกลบ
+            เมื่อส่งใหม่ งานจะกลับไปยังขั้นตอนที่ {initial.currentStep}{" "}
+            ระบบจะเก็บเอกสารเดิมที่ไม่ได้เลือกลบไว้
           </p>
           <Link
             className="mt-2 inline-block underline underline-offset-4"
@@ -895,32 +920,61 @@ export function W119Form({
             </label>
             {existingAttachments.length > 0 && (
               <section aria-label="เอกสารแนบเดิม">
-                <h3 className="font-bold">
-                  เอกสารแนบเดิม {existingAttachments.length} ไฟล์ (เก็บไว้ในคำขอนี้)
-                </h3>
+                <h3 className="font-bold">เอกสารแนบเดิม {existingAttachments.length} ไฟล์</h3>
                 <ul className="mt-3 divide-y border border-[var(--line)]">
-                  {existingAttachments.map((attachment) => (
-                    <li
-                      key={attachment.id}
-                      className="flex flex-wrap items-center justify-between gap-2 p-3"
-                    >
-                      <span className="min-w-0 break-all">
-                        {attachment.fileName} · {formatAttachmentSize(attachment.sizeBytes)}
-                      </span>
-                      <a
-                        href={`/api/request-attachments/${attachment.id}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="shrink-0 p-2 underline underline-offset-4"
-                        aria-label={`เปิด ${attachment.fileName} ในแท็บใหม่`}
+                  {existingAttachments.map((attachment) => {
+                    const pendingRemoval = pendingRemovalIds.includes(attachment.id);
+                    return (
+                      <li
+                        key={attachment.id}
+                        className={`flex flex-wrap items-center justify-between gap-3 p-3 ${pendingRemoval ? "bg-[var(--red-soft)]" : ""}`}
                       >
-                        เปิดไฟล์เดิม
-                      </a>
-                    </li>
-                  ))}
+                        <span className="min-w-0 basis-full break-words [overflow-wrap:anywhere] sm:flex-1 sm:basis-auto">
+                          {attachment.fileName} · {formatAttachmentSize(attachment.sizeBytes)}
+                          {pendingRemoval && (
+                            <span className="mt-1 block text-sm font-semibold text-[var(--red)]">
+                              รอลบเมื่อบันทึก
+                            </span>
+                          )}
+                        </span>
+                        <div className="ml-auto flex flex-wrap items-center gap-2">
+                          <a
+                            href={`/api/request-attachments/${attachment.id}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="shrink-0 p-2 underline underline-offset-4"
+                            aria-label={`เปิด ${attachment.fileName} ในแท็บใหม่`}
+                          >
+                            เปิดไฟล์เดิม
+                          </a>
+                          <button
+                            type="button"
+                            disabled={isPending}
+                            aria-label={`${pendingRemoval ? "ยกเลิกการลบ" : "ลบเอกสารเดิม"} ${attachment.fileName}`}
+                            onClick={() =>
+                              setPendingRemovalIds((current) =>
+                                pendingRemoval
+                                  ? current.filter((id) => id !== attachment.id)
+                                  : [...current, attachment.id],
+                              )
+                            }
+                            className="inline-flex min-h-11 items-center gap-2 border border-[var(--red)] px-3 text-sm font-semibold text-[var(--red)] hover:bg-white disabled:opacity-45"
+                          >
+                            {!pendingRemoval && <Trash2 size={16} aria-hidden="true" />}
+                            {pendingRemoval ? "ยกเลิกการลบ" : "ลบ"}
+                          </button>
+                        </div>
+                      </li>
+                    );
+                  })}
                 </ul>
                 <p className="mt-2 text-sm">
-                  ไม่ต้องแนบไฟล์เดิมซ้ำ หากมีเอกสารแก้ไขให้แนบเพิ่มด้านล่าง
+                  กด “ลบ” เพื่อเลือกไฟล์ที่จะนำออก ยังยกเลิกการลบได้ก่อนกด
+                  “บันทึกการแก้ไขและส่งใหม่” หากต้องการแทนที่ไฟล์ ให้แนบไฟล์ใหม่ด้านล่าง
+                </p>
+                <p role="status" className="mt-2 text-sm font-semibold">
+                  เก็บไฟล์เดิม {retainedAttachments.length} ไฟล์ · รอลบ{" "}
+                  {pendingRemovalAttachments.length} ไฟล์
                 </p>
               </section>
             )}
@@ -989,10 +1043,27 @@ export function W119Form({
                 <dd className="mt-1 font-semibold text-slate-900">
                   {attachmentCount} ไฟล์
                   {initial &&
-                    ` (เดิม ${existingAttachments.length} / เพิ่มใหม่ ${attachments.length})`}
+                    ` (เดิม ${retainedAttachments.length} / เพิ่มใหม่ ${attachments.length})`}
                 </dd>
               </div>
             </dl>
+            {pendingRemovalAttachments.length > 0 && (
+              <section
+                aria-label="ตรวจสอบเอกสารที่จะลบ"
+                className="border border-[var(--red)] bg-[var(--red-soft)] p-4 text-[var(--red)]"
+              >
+                <h3 className="font-bold">เอกสารที่จะลบ {pendingRemovalAttachments.length} ไฟล์</h3>
+                <ul className="mt-2 list-inside list-disc break-words [overflow-wrap:anywhere]">
+                  {pendingRemovalAttachments.map((file) => (
+                    <li key={file.id}>{file.fileName}</li>
+                  ))}
+                </ul>
+                <p className="mt-2 text-sm">
+                  เมื่อกด “บันทึกการแก้ไขและส่งใหม่” ระบบจะลบไฟล์ที่เลือก หากส่งคำขอใหม่ไม่สำเร็จ
+                  ไฟล์ที่ลบแล้วจะไม่กลับคืน ต้องแนบใหม่หากต้องการใช้อีก
+                </p>
+              </section>
+            )}
             <div className="border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
               {initial
                 ? `บันทึกและส่งคำขอ ${initial.requestNo} ใหม่ กลับไปตรวจสอบในขั้นตอนที่ ${initial.currentStep} โดยไม่ออกเลขคำขอใหม่`
