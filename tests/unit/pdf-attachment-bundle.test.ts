@@ -128,20 +128,23 @@ describe("POL-01 attachment bundle", () => {
     const original = await pdf.save();
     await expect(
       mergePdfAttachments(await pdfBytes(), [attachment()], async () => original),
-    ).rejects.toThrow("ช่องกรอกข้อมูลหรือลายเซ็นดิจิทัล");
+    ).rejects.toThrow("ช่องกรอกข้อมูลที่ยังรวมอัตโนมัติไม่ได้");
     expect(
       (await PDFDocument.load(original)).getForm().getTextField("invoiceNumber").getText(),
     ).toBe("INV-001");
   });
 
-  it("rejects PDFs marked as digitally certified", async () => {
+  it("makes a static copy of PDFs marked as digitally certified", async () => {
     const pdf = await PDFDocument.create();
     pdf.addPage();
     pdf.catalog.set(PDFName.of("Perms"), pdf.context.obj({}));
     const bytes = await pdf.save();
-    await expect(
-      mergePdfAttachments(await pdfBytes(), [attachment()], async () => bytes),
-    ).rejects.toThrow("ลายเซ็นดิจิทัล");
+    const result = await mergePdfAttachments(await pdfBytes(), [attachment()], async () => bytes);
+    const merged = await PDFDocument.load(result);
+    expect(merged.getPageCount()).toBe(2);
+    expect(merged.catalog.has(PDFName.of("Perms"))).toBe(false);
+    expect(merged.getSubject()).toContain("ไม่ใช้ตรวจสอบลายเซ็นดิจิทัล");
+    expect((await PDFDocument.load(bytes)).catalog.has(PDFName.of("Perms"))).toBe(true);
   });
 
   it("honors encryption rather than ignoring password protection", async () => {

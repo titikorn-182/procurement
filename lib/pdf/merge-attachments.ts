@@ -1,4 +1,5 @@
-import { EncryptedPDFError, PDFDict, PDFDocument, PDFName, PageSizes } from "pdf-lib";
+import { EncryptedPDFError, PDFDocument, PageSizes } from "pdf-lib";
+import { prepareStaticSignatureCopy } from "./static-signature-copy";
 import { maxAttachmentSizeBytes, maxTotalAttachmentSizeBytes } from "@/app/lib/request-attachments";
 import {
   maxBundlePages,
@@ -20,36 +21,21 @@ function checkPageLimit(count: number) {
   }
 }
 
-async function appendPdf(output: PDFDocument, bytes: Uint8Array, name: string) {
+async function appendPdf(
+  output: PDFDocument,
+  bytes: Uint8Array,
+  name: string,
+  onProgress?: (message: string) => void,
+) {
   const input = await PDFDocument.load(bytes, {
     updateMetadata: false,
     throwOnInvalidObject: true,
   });
-  // Do not silently lose interactive values or invalidate digital signatures.
-  // Reject forms (including orphan widgets) instead of flattening the originals.
-  const acroForm = input.catalog.lookupMaybe(PDFName.of("AcroForm"), PDFDict);
-  const hasWidget = input.getPages().some((page) => {
-    const annotations = page.node.Annots();
-    return annotations?.asArray().some((ref) => {
-      const annotation = input.context.lookup(ref);
-      return (
-        annotation instanceof PDFDict &&
-        annotation.get(PDFName.of("Subtype"))?.toString() === "/Widget"
-      );
-    });
-  });
-  if (
-    acroForm?.has(PDFName.of("XFA")) ||
-    input.catalog.has(PDFName.of("Perms")) ||
-    hasWidget ||
-    input.getForm().getFields().length > 0
-  ) {
-    throw new PdfBundleError(
-      `ไฟล์ “${name}” มีช่องกรอกข้อมูลหรือลายเซ็นดิจิทัล กรุณาแนบสำเนา PDF แบบปกติสำหรับรวมเอกสาร และเก็บไฟล์ต้นฉบับไว้ตรวจสอบ`,
-    );
-  }
   if (!input.getPageCount()) throw new Error("empty attachment PDF");
   checkPageLimit(output.getPageCount() + input.getPageCount());
+  if (prepareStaticSignatureCopy(input, name)) {
+    onProgress?.(`กำลังรวมสำเนา “${name}” โดยเก็บต้นฉบับไว้ตรวจสอบลายเซ็นดิจิทัล`);
+  }
   const pages = await output.copyPages(input, input.getPageIndices());
   pages.forEach((page) => output.addPage(page));
 }
@@ -63,6 +49,10 @@ export async function mergePdfAttachments(
 ): Promise<Uint8Array> {
   validateBundleAttachments(attachments);
   const output = await PDFDocument.load(formBytes, { updateMetadata: false });
+  output.setTitle(`สำเนารวมเอกสารแนบ - ${output.getTitle() ?? "คำขอจัดซื้อจัดจ้าง"}`);
+  output.setSubject(
+    "สำเนาสำหรับอ่านและพิมพ์ ไม่ใช้ตรวจสอบลายเซ็นดิจิทัล ให้ตรวจสอบจากไฟล์ต้นฉบับที่แนบในระบบ",
+  );
   checkPageLimit(output.getPageCount());
   let totalBytes = 0;
   for (const [index, attachment] of attachments.entries()) {
@@ -83,7 +73,7 @@ export async function mergePdfAttachments(
         attachment.mimeType === "application/pdf" ||
         attachment.name.toLowerCase().endsWith(".pdf")
       ) {
-        await appendPdf(output, bytes, attachment.name);
+        await appendPdf(output, bytes, attachment.name, onProgress);
       } else {
         checkPageLimit(output.getPageCount() + 1);
         // The browser loader normalizes photo orientation before embedding.

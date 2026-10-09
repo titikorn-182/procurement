@@ -241,12 +241,18 @@ export function PrintButton({
         </button>
       </div>
       {hasAttachments && (
-        <p className="max-w-xl text-right text-sm text-[var(--ink)]">
-          ต่อท้ายแบบฟอร์มด้วยเอกสารแนบ {attachments.length} ไฟล์ ตามลำดับที่แนบ รองรับ PDF, JPG และ
-          PNG
-          <br />
-          Word/Excel ต้องแปลงเป็น PDF ก่อนรวม ไฟล์ต้นฉบับไม่ถูกแก้ไข
-        </p>
+        <div className="max-w-xl text-right text-sm text-[var(--ink)]">
+          <p>
+            ต่อท้ายแบบฟอร์มด้วยเอกสารแนบ {attachments.length} ไฟล์ ตามลำดับที่แนบ รองรับ PDF, JPG
+            และ PNG
+            <br />
+            Word/Excel ต้องแปลงเป็น PDF ก่อนรวม ไฟล์ต้นฉบับไม่ถูกแก้ไข
+          </p>
+          <p className="mt-2 font-semibold">
+            ไฟล์ที่มีลายเซ็นดิจิทัลจะรวมเป็นสำเนาสำหรับอ่านและพิมพ์ โดยคงภาพลายเซ็นที่แสดงอยู่
+            ไม่ใช้ตรวจสอบลายเซ็นดิจิทัล ให้ตรวจสอบจากไฟล์ต้นฉบับที่แนบเท่านั้น
+          </p>
+        </div>
       )}
       {progress && (
         <p role="status" className="max-w-xl break-words text-right text-sm text-[var(--ink)]">

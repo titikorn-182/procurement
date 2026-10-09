@@ -154,7 +154,7 @@ export async function downloadRequestBundle(
   const url = URL.createObjectURL(new Blob([new Uint8Array(bytes)], { type: "application/pdf" }));
   const link = document.createElement("a");
   link.href = url;
-  link.download = fileName.replace(/\.pdf$/i, "") + "-พร้อมเอกสารแนบ.pdf";
+  link.download = fileName.replace(/\.pdf$/i, "") + "-สำเนารวมเอกสารแนบ.pdf";
   document.body.append(link);
   try {
     link.click();

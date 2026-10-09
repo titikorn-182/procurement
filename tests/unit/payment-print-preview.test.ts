@@ -37,6 +37,9 @@ describe("POL-02 PDF bundle controls", () => {
     expect(html).toContain("เอกสารแนบ 2 ไฟล์");
     expect(html).toContain("ดาวน์โหลดเฉพาะแบบฟอร์ม");
     expect(html).toContain("พิมพ์แบบฟอร์ม");
+    expect(html).toContain("สำเนาสำหรับอ่านและพิมพ์");
+    expect(html).toContain("ไม่ใช้ตรวจสอบลายเซ็นดิจิทัล");
+    expect(html).toContain("ไฟล์ต้นฉบับไม่ถูกแก้ไข");
     expect(html).toContain("จะไม่บันทึกหรือส่งคำขอเข้าสายอนุมัติ");
     expect(attachments[0].file.name).toBe("ใบแจ้งหนี้.pdf");
   });
