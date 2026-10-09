@@ -7,12 +7,14 @@ export default async function SettingsPage() {
   const supabase = await createClient();
   const {
     data: { user },
+    error: authError,
   } = await supabase.auth.getUser();
-  const { data: profile } = user
-    ? await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle()
-    : { data: null };
+  const { data: profile, error: profileError } =
+    user && !authError
+      ? await supabase.from("profiles").select("role, active").eq("id", user.id).maybeSingle()
+      : { data: null, error: null };
 
-  if (profile?.role !== "admin") {
+  if (authError || profileError || profile?.role !== "admin" || profile.active !== true) {
     return (
       <AppShell>
         <PageHeader title="ตั้งค่าระบบ" description="พื้นที่สำหรับผู้ดูแลระบบ" />
@@ -22,7 +24,7 @@ export default async function SettingsPage() {
         >
           <h2 className="font-bold">ไม่มีสิทธิ์แก้ไขการตั้งค่า</h2>
           <p className="mt-1 text-sm">
-            บัญชีนี้ต้องมีบทบาทผู้ดูแลระบบ (admin) กรุณาติดต่อผู้ดูแลระบบหลัก
+            บัญชีนี้ต้องมีบทบาทผู้ดูแลระบบ (admin) และเปิดใช้งานอยู่ กรุณาติดต่อผู้ดูแลระบบหลัก
           </p>
         </div>
       </AppShell>

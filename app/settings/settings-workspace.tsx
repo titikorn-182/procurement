@@ -10,11 +10,13 @@ import {
   Settings,
   ShieldCheck,
   SlidersHorizontal,
+  Store,
   UsersRound,
   WalletCards,
 } from "lucide-react";
 import { Button } from "../components/ui";
 import { createDepartment, saveSystemSetting, updateUserSettings } from "./actions";
+import { VendorDirectoryManager } from "../components/vendors/vendor-directory-manager";
 
 type Profile = {
   id: string;
@@ -30,6 +32,7 @@ type Setting = { key: string; value: Record<string, unknown>; updated_at: string
 type SectionKey =
   | "users"
   | "departments"
+  | "vendors"
   | "workflow"
   | "budget"
   | "documents"
@@ -44,6 +47,12 @@ const sections = [
     title: "หน่วยงานและตำแหน่ง",
     detail: "จัดการโครงสร้างหน่วยงาน",
     icon: Building2,
+  },
+  {
+    key: "vendors",
+    title: "ผู้ประกอบการ/ร้านค้า",
+    detail: "เพิ่มรายชื่อกลางสำหรับเลือกในคำขอ",
+    icon: Store,
   },
   {
     key: "workflow",
@@ -150,7 +159,7 @@ export function SettingsWorkspace({
             {sections.find((item) => item.key === section)?.detail}
           </p>
         </header>
-        {!databaseReady && section !== "users" && section !== "departments" && (
+        {!databaseReady && !["users", "departments", "vendors"].includes(section) && (
           <div
             role="alert"
             className="m-5 border border-amber-300 bg-[var(--amber-soft)] p-4 text-sm text-[var(--amber)]"
@@ -180,7 +189,17 @@ export function SettingsWorkspace({
           {section === "departments" && (
             <DepartmentsPanel departments={departments} pending={pending} run={run} />
           )}
-          {!["users", "departments"].includes(section) && (
+          {section === "vendors" && (
+            <div className="max-w-2xl space-y-5">
+              <p className="text-sm leading-6 text-stone-600">
+                เพิ่มชื่อผู้ประกอบการที่ยังไม่มีในระบบได้จากหน้านี้ โดยไม่ต้องสร้างคำขอ
+                รายชื่อจะใช้ฐานเดียวกับเมนูเลือกผู้ประกอบการในคำขอหลักการ POL-01
+                ระบบจะตรวจชื่อซ้ำก่อนเพิ่มรายชื่อใหม่
+              </p>
+              <VendorDirectoryManager purpose="manage" />
+            </div>
+          )}
+          {!["users", "departments", "vendors"].includes(section) && (
             <GenericPanel
               section={section}
               initial={settingsMap[section] ?? {}}

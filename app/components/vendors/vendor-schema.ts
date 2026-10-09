@@ -14,6 +14,8 @@ export const createdVendorSchema = z.object({
   created: z.boolean(),
 });
 
+export type VendorDirectoryItem = { id: string; name: string };
+
 export type VendorCreateResult =
-  | { vendor: { id: string; name: string }; created: boolean; error: null }
+  | { vendor: VendorDirectoryItem; created: boolean; error: null }
   | { vendor: null; created: false; error: string };

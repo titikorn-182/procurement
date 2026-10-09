@@ -15,8 +15,11 @@ vi.mock("../../lib/supabase/server", () => ({
 }));
 vi.mock("../../lib/server/action-errors", () => ({ toSafeActionError: mocks.safeError }));
 
-import { canManageVendorDirectory, createVendor } from "../../app/requests/new/vendor-actions";
-import { vendorNameSchema } from "../../app/requests/new/vendor-schema";
+import {
+  canManageVendorDirectory,
+  createVendor,
+} from "../../app/components/vendors/vendor-actions";
+import { vendorNameSchema } from "../../app/components/vendors/vendor-schema";
 
 const vendor = {
   id: "11111111-1111-4111-8111-111111111111",

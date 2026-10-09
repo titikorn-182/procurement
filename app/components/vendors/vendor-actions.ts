@@ -16,7 +16,7 @@ async function getVendorAdminContext() {
   return !error && profile?.active === true && profile.role === "admin" ? supabase : null;
 }
 
-/** A UI hint only. The write action and database each re-check the current permission. */
+/** Shared UI hint only. Every write and the database re-check the current permission. */
 export async function canManageVendorDirectory(): Promise<boolean> {
   try {
     return (await getVendorAdminContext()) !== null;

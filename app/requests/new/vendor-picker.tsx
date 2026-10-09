@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { Check, Search, Store, X } from "lucide-react";
 import { searchVendors, type VendorSearchItem, type VendorSearchResult } from "./actions";
-import { VendorDirectoryManager } from "./vendor-directory-manager";
+import { VendorDirectoryManager } from "@/app/components/vendors/vendor-directory-manager";
 
 export type VendorChoice =
   { kind: "none" } | { kind: "registered"; vendorId: string; vendorName: string } | { kind: "new" };

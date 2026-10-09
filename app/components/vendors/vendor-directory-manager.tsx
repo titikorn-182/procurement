@@ -3,23 +3,27 @@
 import { useEffect, useId, useRef, useState, useTransition } from "react";
 import { LoaderCircle, Plus, Save } from "lucide-react";
 import { canManageVendorDirectory, createVendor } from "./vendor-actions";
-import { vendorNameSchema } from "./vendor-schema";
-import type { VendorSearchItem } from "./actions";
+import { vendorNameSchema, type VendorDirectoryItem } from "./vendor-schema";
 
-export function VendorDirectoryManager({
-  initialName,
-  onSelect,
-}: {
-  initialName: string;
-  onSelect: (vendor: VendorSearchItem) => void;
-}) {
-  const [allowed, setAllowed] = useState(false);
+type VendorDirectoryManagerProps =
+  | {
+      purpose?: "select";
+      initialName: string;
+      onSelect: (vendor: VendorDirectoryItem) => void;
+    }
+  | { purpose: "manage"; initialName?: never; onSelect?: never };
+
+export function VendorDirectoryManager(props: VendorDirectoryManagerProps) {
+  const { initialName = "", onSelect } = props;
+  const managing = props.purpose === "manage";
+  const [allowed, setAllowed] = useState<boolean | null>(null);
   const [expanded, setExpanded] = useState(false);
   const [name, setName] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [pending, startTransition] = useTransition();
   const savingRef = useRef(false);
+  const restoreFocusRef = useRef(false);
   const nameRef = useRef<HTMLInputElement>(null);
   const toggleRef = useRef<HTMLButtonElement>(null);
   const id = useId();
@@ -42,6 +46,13 @@ export function VendorDirectoryManager({
   useEffect(() => {
     if (expanded) nameRef.current?.focus();
   }, [expanded]);
+
+  useEffect(() => {
+    if (!pending && restoreFocusRef.current) {
+      toggleRef.current?.focus();
+      restoreFocusRef.current = false;
+    }
+  }, [pending]);
 
   function cancel() {
     if (savingRef.current) return;
@@ -69,12 +80,17 @@ export function VendorDirectoryManager({
           return;
         }
         setNotice(
-          result.created
-            ? `เพิ่ม “${result.vendor.name}” เข้ารายชื่อกลางและเลือกให้แล้ว`
-            : `มี “${result.vendor.name}” ในระบบแล้ว เลือกรายชื่อเดิมให้โดยไม่เพิ่มซ้ำ`,
+          managing
+            ? result.created
+              ? `เพิ่ม “${result.vendor.name}” เข้ารายชื่อกลางแล้ว สามารถค้นหาและเลือกใช้ในคำขอได้`
+              : `มี “${result.vendor.name}” ในระบบแล้ว ไม่เพิ่มรายชื่อซ้ำ`
+            : result.created
+              ? `เพิ่ม “${result.vendor.name}” เข้ารายชื่อกลางและเลือกให้แล้ว`
+              : `มี “${result.vendor.name}” ในระบบแล้ว เลือกรายชื่อเดิมให้โดยไม่เพิ่มซ้ำ`,
         );
         setExpanded(false);
-        onSelect(result.vendor);
+        if (onSelect) onSelect(result.vendor);
+        else restoreFocusRef.current = true;
       } catch {
         setError("ติดต่อระบบไม่สำเร็จ กรุณาค้นหาชื่อนี้ก่อนลองบันทึกอีกครั้ง");
       } finally {
@@ -83,10 +99,19 @@ export function VendorDirectoryManager({
     });
   }
 
-  if (!allowed) return null;
+  if (!allowed) {
+    if (!managing) return null;
+    return (
+      <p role={allowed === null ? "status" : "alert"} className="text-sm leading-6">
+        {allowed === null
+          ? "กำลังตรวจสอบสิทธิ์ผู้ดูแลระบบ..."
+          : "ไม่สามารถยืนยันสิทธิ์ผู้ดูแลระบบที่ใช้งานอยู่ได้ กรุณาเข้าสู่ระบบใหม่แล้วลองอีกครั้ง"}
+      </p>
+    );
+  }
 
   return (
-    <div className="mt-4 border-t border-[var(--line)] pt-4">
+    <div className={managing ? undefined : "mt-4 border-t border-[var(--line)] pt-4"}>
       <button
         ref={toggleRef}
         type="button"
@@ -176,7 +201,11 @@ export function VendorDirectoryManager({
               ) : (
                 <Save size={17} aria-hidden="true" />
               )}
-              {pending ? "กำลังบันทึก..." : "บันทึกและเลือกผู้ประกอบการ"}
+              {pending
+                ? "กำลังบันทึก..."
+                : managing
+                  ? "บันทึกผู้ประกอบการ"
+                  : "บันทึกและเลือกผู้ประกอบการ"}
             </button>
             <button
               type="button"
