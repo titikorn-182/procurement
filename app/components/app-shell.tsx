@@ -3,7 +3,8 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { W804Navigation } from "./w804-navigation";
 import {
   AlertTriangle,
   Bell,
@@ -47,6 +48,12 @@ const nav = [
   {
     href: "/requests/w119",
     label: "คำขอซื้อ/จ้าง ว119",
+    icon: FilePlus2,
+    roles: ["ผู้ดูแลระบบ", "ผู้ยื่นคำขอ"],
+  },
+  {
+    href: "/requests/w804",
+    label: "คำขอซื้อ ว804 ไม่เกิน 50,000 บาท",
     icon: FilePlus2,
     roles: ["ผู้ดูแลระบบ", "ผู้ยื่นคำขอ"],
   },
@@ -213,6 +220,26 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {nav
             .filter((item) => item.roles.includes(contextRole))
             .map(({ href, label, icon: Icon, badge }) => {
+              if (href === "/requests/w804") {
+                return (
+                  <div
+                    key={href}
+                    onClick={(event) => {
+                      if ((event.target as HTMLElement).closest("a")) setOpen(false);
+                    }}
+                  >
+                    <Suspense
+                      fallback={
+                        <Link href={href} className="block border border-white/25 px-4 py-3">
+                          {label}
+                        </Link>
+                      }
+                    >
+                      <W804Navigation active={path === href} />
+                    </Suspense>
+                  </div>
+                );
+              }
               const active =
                 href === "/"
                   ? path === "/"

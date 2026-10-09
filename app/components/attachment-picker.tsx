@@ -14,10 +14,12 @@ export function AttachmentPicker({
   files,
   onChange,
   disabled = false,
+  mode = "upload",
 }: {
   files: readonly SelectedAttachment[];
   onChange: (files: SelectedAttachment[]) => void;
   disabled?: boolean;
+  mode?: "upload" | "local-pdf";
 }) {
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -26,6 +28,16 @@ export function AttachmentPicker({
   function addFiles(fileList: FileList | null) {
     if (!fileList) return;
     const additions = Array.from(fileList).map((file) => ({ id: crypto.randomUUID(), file }));
+    if (
+      mode === "local-pdf" &&
+      additions.some(({ file }) => !/\.(pdf|jpe?g|png)$/i.test(file.name))
+    ) {
+      setValidationError(
+        "การรวม PDF รองรับเฉพาะ PDF, JPG และ PNG กรุณาแปลง Word/Excel เป็น PDF ก่อนแนบ",
+      );
+      if (inputRef.current) inputRef.current.value = "";
+      return;
+    }
     const nextFiles = [...files, ...additions];
     const error = validateAttachmentCandidates(nextFiles.map((selection) => selection.file));
     if (error) {
@@ -44,14 +56,17 @@ export function AttachmentPicker({
         <Upload className="mx-auto text-[var(--orange)]" size={32} aria-hidden="true" />
         <p className="mt-3 font-bold text-[var(--ink)]">เอกสารประกอบคำขอ</p>
         <p className="mx-auto mt-1 max-w-2xl text-sm leading-6 text-stone-600">
-          รองรับ PDF, JPG, PNG, DOCX และ XLSX ขนาดไม่เกิน 20 MB ต่อไฟล์ รวมไม่เกิน 50 MB
+          {mode === "local-pdf"
+            ? "รองรับ PDF, JPG และ PNG ใช้รวมใน PDF บนเครื่องนี้เท่านั้น ไม่อัปโหลดเข้าเซิร์ฟเวอร์"
+            : "รองรับ PDF, JPG, PNG, DOCX และ XLSX"}{" "}
+          ขนาดไม่เกิน 20 MB ต่อไฟล์ รวมไม่เกิน 50 MB
         </p>
         <input
           ref={inputRef}
           id={inputId}
           type="file"
           multiple
-          accept={acceptedAttachmentTypes}
+          accept={mode === "local-pdf" ? ".pdf,.jpg,.jpeg,.png" : acceptedAttachmentTypes}
           className="sr-only"
           disabled={disabled}
           aria-describedby={`${inputId}-error`}
@@ -89,7 +104,10 @@ export function AttachmentPicker({
                   {selection.file.name}
                 </p>
                 <p className="text-xs text-stone-500">
-                  {formatAttachmentSize(selection.file.size)} · รออัปโหลดเมื่อส่งคำขอ
+                  {formatAttachmentSize(selection.file.size)} ·{" "}
+                  {mode === "local-pdf"
+                    ? "ใช้รวม PDF เฉพาะครั้งนี้ ไม่อัปโหลด"
+                    : "รออัปโหลดเมื่อส่งคำขอ"}
                 </p>
               </div>
               <button

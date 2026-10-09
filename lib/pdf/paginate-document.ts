@@ -62,6 +62,7 @@ export function paginateDocument(source: HTMLElement, destination: HTMLElement):
   newPage();
   for (const child of Array.from(content.children)) {
     if (!(child instanceof HTMLElement)) continue;
+    if (child.hasAttribute("data-page-break-before") && hasContent) newPage();
     if (child instanceof HTMLTableElement) {
       activeTable = null;
       for (const row of Array.from(child.tBodies[0].rows)) {

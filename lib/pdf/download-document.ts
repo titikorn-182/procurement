@@ -34,13 +34,21 @@ export async function createPaginatedDocumentPdf(documentElement: HTMLElement, f
       await new Promise<void>((resolve) =>
         requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
       );
-      const canvas = await toCanvas(clone, {
-        backgroundColor: "#ffffff",
-        pixelRatio: 3,
-        fontEmbedCSS,
-        width: page.offsetWidth,
-        height: page.offsetHeight,
-      });
+      const canvas = await captureCompletePage(
+        () =>
+          toCanvas(clone, {
+            backgroundColor: "#ffffff",
+            pixelRatio: 3,
+            fontEmbedCSS,
+            width: page.offsetWidth,
+            height: page.offsetHeight,
+          }),
+        clone,
+        () =>
+          new Promise<void>((resolve) =>
+            requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+          ),
+      );
       if (index > 0) pdf.addPage();
       pdf.addImage(canvas.toDataURL("image/png"), "PNG", 0, 0, 210, 297, undefined, "FAST");
     } finally {
@@ -54,3 +62,4 @@ export async function downloadPaginatedDocument(documentElement: HTMLElement, fi
   const pdf = await createPaginatedDocumentPdf(documentElement, fileName);
   await pdf.save(fileName, { returnPromise: true });
 }
+import { captureCompletePage } from "./verify-capture";

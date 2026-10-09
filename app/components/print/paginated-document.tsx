@@ -14,6 +14,7 @@ type Props = {
   children: ReactNode;
   header?: ReactNode;
   pageClassName?: string;
+  verifyCapture?: boolean;
 };
 
 export function PaginatedDocument({
@@ -26,6 +27,7 @@ export function PaginatedDocument({
   children,
   header,
   pageClassName = "",
+  verifyCapture = false,
 }: Props) {
   const sourceRef = useRef<HTMLDivElement>(null);
   const pagesRef = useRef<HTMLDivElement>(null);
@@ -65,7 +67,17 @@ export function PaginatedDocument({
     return () => {
       cancelled = true;
     };
-  }, [children, fontClassName, title, formCode, identifier, footer, header, pageClassName]);
+  }, [
+    children,
+    fontClassName,
+    title,
+    formCode,
+    identifier,
+    footer,
+    header,
+    pageClassName,
+    verifyCapture,
+  ]);
 
   return (
     <>
@@ -114,8 +126,8 @@ export function PaginatedDocument({
             )}
             <div data-page-body className={styles.body} />
             <footer className={styles.footer}>
-              <span>{footer}</span>
-              <span data-page-number />
+              <span data-pdf-required-content={verifyCapture ? "" : undefined}>{footer}</span>
+              <span data-page-number data-pdf-required-content={verifyCapture ? "" : undefined} />
             </footer>
           </section>
         </div>
