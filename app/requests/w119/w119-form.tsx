@@ -946,15 +946,7 @@ export function W119Form({
               <input
                 type="checkbox"
                 checked={advanceRequired}
-                onChange={(event) => {
-                  setAdvanceRequired(event.target.checked);
-                  if (event.target.checked)
-                    setLoanAgreement((current) => ({
-                      ...current,
-                      projectName: current.projectName || title,
-                      purpose: current.purpose || rationale.slice(0, 1000),
-                    }));
-                }}
+                onChange={(event) => setAdvanceRequired(event.target.checked)}
                 className="mt-1 size-4 accent-orange-600"
               />
               <span>

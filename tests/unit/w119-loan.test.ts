@@ -10,6 +10,7 @@ import {
 import { w119RequestFormSchema } from "../../app/requests/new/schemas";
 import { toW119PrintData } from "../../app/requests/w119/w119-print-data";
 import { W119Document } from "../../app/requests/w119/w119-document";
+import { LoanAgreementFields } from "../../app/requests/w119/loan-agreement-fields";
 import { createLoanAgreementFixture } from "../fixtures/w119-loan";
 import { createW119Fixture } from "../fixtures/w119-print";
 
@@ -34,6 +35,32 @@ const form = {
 };
 
 describe("W119 loan contract", () => {
+  it("renders blank project and purpose fields without sample text", () => {
+    const value = emptyLoanAgreement();
+    expect(value.projectName).toBe("");
+    expect(value.purpose).toBe("");
+    const html = renderToStaticMarkup(
+      createElement(LoanAgreementFields, { value, onChange: () => {}, total: 0 }),
+    );
+    const labels = Array.from(html.matchAll(/<label\b[^>]*>([\s\S]*?)<\/label>/g));
+    expect(labels.find((label) => label[1].includes("ชื่อโครงการหรือกิจกรรม"))?.[1]).toContain(
+      'value=""',
+    );
+    expect(
+      labels.find((label) => label[1].includes("รายละเอียดค่าใช้จ่าย / วัตถุประสงค์"))?.[1],
+    ).toMatch(/<textarea[^>]*><\/textarea>/);
+  });
+  it("preserves project and purpose entered in a saved agreement", () => {
+    const saved = {
+      ...createLoanAgreementFixture(),
+      projectName: "โครงการที่ผู้ขอกรอกไว้",
+      purpose: "วัตถุประสงค์ที่ผู้ขอกรอกไว้",
+    };
+    expect(readLoanAgreement(saved)).toMatchObject({
+      projectName: saved.projectName,
+      purpose: saved.purpose,
+    });
+  });
   it("validates borrower and transfer fields while preserving leading zeroes", () => {
     const result = loanAgreementSchema.parse(createLoanAgreementFixture());
     expect(result.accountNumber).toBe("000-000000-0");
