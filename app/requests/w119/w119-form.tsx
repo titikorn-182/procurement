@@ -127,11 +127,9 @@ export function W119Form({
     form?.departmentName ?? "สำนักงานเลขานุการ คณะรัฐศาสตร์ มหาวิทยาลัยอุบลราชธานี",
   );
   const [phone, setPhone] = useState(form?.phone ?? "3944");
-  const [addressee, setAddressee] = useState(form?.addressee ?? "คณบดีคณะรัฐศาสตร์");
-  const [title, setTitle] = useState(initial?.title ?? "จัดซื้อวัสดุสำนักงานประจำปีงบประมาณ 2569");
-  const [rationale, setRationale] = useState(
-    initial?.rationale ?? "เพื่อสนับสนุนการปฏิบัติงานของหน่วยงานให้เป็นไปอย่างต่อเนื่อง",
-  );
+  const [addressee, setAddressee] = useState(form?.addressee ?? "อธิการบดีมหาวิทยาลัยอุบลราชธานี");
+  const [title, setTitle] = useState(initial?.title ?? "");
+  const [rationale, setRationale] = useState(initial?.rationale ?? "");
   const [requiredDate, setRequiredDate] = useState(initial?.requiredDate ?? "");
   const [items, setItems] = useState<RequestItem[]>(initial?.items ?? initialItems);
   const [fiscalYear, setFiscalYear] = useState(String(initial?.budgetYear ?? "2569"));
