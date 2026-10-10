@@ -37,7 +37,9 @@ import {
 } from "./item-input";
 
 const steps = ["บันทึกข้อความ", "รายการพัสดุ", "งบประมาณ", "เอกสารแนบ", "ตรวจสอบและส่ง"];
-const fiscalYears = ["2567", "2568", "2569", "2570", "2571", "2572"] as const;
+const fiscalYears = ["2570", "2571", "2572"] as const;
+const fundSources = ["งบประมาณเงินรายได้", "งบประมาณเงินอุดหนุน"];
+const expenseCategories = ["ค่าวัสดุ", "ค่าใช้สอย"];
 
 const itemExamples: CompleteW119Item[] = [
   {
@@ -132,20 +134,16 @@ export function W119Form({
   const [items, setItems] = useState<RequestItem[]>(
     () => initial?.items ?? itemExamples.map(() => emptyW119Item()),
   );
-  const [fiscalYear, setFiscalYear] = useState(String(initial?.budgetYear ?? "2569"));
-  const [fundSource, setFundSource] = useState(initial?.fundSource ?? "เงินงบประมาณแผ่นดิน");
-  const [planName, setPlanName] = useState(initial?.planName ?? "แผนงานบริหารทั่วไป");
+  const [fiscalYear, setFiscalYear] = useState(String(initial?.budgetYear ?? "2570"));
+  const [fundSource, setFundSource] = useState(initial?.fundSource ?? fundSources[0]);
+  const [planName, setPlanName] = useState(initial?.planName ?? "");
   const [expenseCategory, setExpenseCategory] = useState(initial?.expenseCategory ?? "ค่าวัสดุ");
-  const [sourceCode, setSourceCode] = useState(form?.budgetCodes.sourceCode ?? "2");
-  const [departmentCode, setDepartmentCode] = useState(form?.budgetCodes.departmentCode ?? "2301");
-  const [fundCode, setFundCode] = useState(form?.budgetCodes.fundCode ?? "6");
-  const [planCode, setPlanCode] = useState(form?.budgetCodes.planCode ?? "5102");
-  const [subprojectCode, setSubprojectCode] = useState(
-    form?.budgetCodes.subprojectCode ?? "51025200",
-  );
-  const [activityCode, setActivityCode] = useState(
-    form?.budgetCodes.activityCode ?? "510252000024",
-  );
+  const [sourceCode, setSourceCode] = useState(form?.budgetCodes.sourceCode ?? "");
+  const [departmentCode, setDepartmentCode] = useState(form?.budgetCodes.departmentCode ?? "");
+  const [fundCode, setFundCode] = useState(form?.budgetCodes.fundCode ?? "");
+  const [planCode, setPlanCode] = useState(form?.budgetCodes.planCode ?? "");
+  const [subprojectCode, setSubprojectCode] = useState(form?.budgetCodes.subprojectCode ?? "");
+  const [activityCode, setActivityCode] = useState(form?.budgetCodes.activityCode ?? "");
   const [selectionCriteria, setSelectionCriteria] = useState(
     form?.selectionCriteria ?? "เกณฑ์ราคา",
   );
@@ -191,7 +189,7 @@ export function W119Form({
       step === 2 &&
       (!fiscalYear ||
         !fundSource ||
-        !planName ||
+        !planName.trim() ||
         !expenseCategory ||
         !sourceCode ||
         !departmentCode ||
@@ -829,9 +827,16 @@ export function W119Form({
 
         {step === 2 && (
           <div className="grid gap-5 sm:grid-cols-2">
-            <label className="block">
-              <span className="mb-2 block text-sm font-semibold text-slate-700">ปีงบประมาณ</span>
+            <div>
+              <label
+                htmlFor="w119-fiscal-year"
+                className="mb-2 block text-sm font-semibold text-slate-700"
+              >
+                ปีงบประมาณ
+              </label>
               <select
+                id="w119-fiscal-year"
+                aria-describedby="w119-fiscal-year-period"
                 className={inputClass}
                 value={fiscalYear}
                 onChange={(event) => setFiscalYear(event.target.value)}
@@ -842,10 +847,15 @@ export function W119Form({
                   </option>
                 ))}
                 {!fiscalYears.some((year) => year === fiscalYear) && (
-                  <option value={fiscalYear}>พ.ศ. {fiscalYear}</option>
+                  <option value={fiscalYear} disabled>
+                    พ.ศ. {fiscalYear} (ข้อมูลเดิม)
+                  </option>
                 )}
               </select>
-            </label>
+              <p id="w119-fiscal-year-period" className="mt-2 text-sm text-[var(--line-dark)]">
+                1 ตุลาคม {Number(fiscalYear) - 1} – 30 กันยายน {fiscalYear}
+              </p>
+            </div>
             <label className="block">
               <span className="mb-2 block text-sm font-semibold text-slate-700">แหล่งเงิน</span>
               <select
@@ -853,10 +863,13 @@ export function W119Form({
                 value={fundSource}
                 onChange={(event) => setFundSource(event.target.value)}
               >
-                <option>เงินงบประมาณแผ่นดิน</option>
-                <option>เงินรายได้</option>
-                {!["เงินงบประมาณแผ่นดิน", "เงินรายได้"].includes(fundSource) && (
-                  <option>{fundSource}</option>
+                {fundSources.map((source) => (
+                  <option key={source}>{source}</option>
+                ))}
+                {!fundSources.includes(fundSource) && (
+                  <option value={fundSource} disabled>
+                    {fundSource} (ข้อมูลเดิม)
+                  </option>
                 )}
               </select>
             </label>
@@ -864,6 +877,7 @@ export function W119Form({
               <span className="mb-2 block text-sm font-semibold text-slate-700">แผนงาน</span>
               <input
                 className={inputClass}
+                placeholder="เช่น แผนงานบริหารทั่วไป"
                 value={planName}
                 onChange={(event) => setPlanName(event.target.value)}
               />
@@ -875,35 +889,40 @@ export function W119Form({
                 value={expenseCategory}
                 onChange={(event) => setExpenseCategory(event.target.value)}
               >
-                <option>ค่าวัสดุ</option>
-                <option>ค่าใช้สอย</option>
-                <option>ค่าครุภัณฑ์</option>
-                {!["ค่าวัสดุ", "ค่าใช้สอย", "ค่าครุภัณฑ์"].includes(expenseCategory) && (
-                  <option>{expenseCategory}</option>
+                {expenseCategories.map((category) => (
+                  <option key={category}>{category}</option>
+                ))}
+                {!expenseCategories.includes(expenseCategory) && (
+                  <option value={expenseCategory} disabled>
+                    {expenseCategory} (ข้อมูลเดิม)
+                  </option>
                 )}
               </select>
             </label>
             <div className="sm:col-span-2 border-t border-slate-200 pt-5">
               <h3 className="font-bold text-slate-900">รหัสงบประมาณตามแบบฟอร์ม</h3>
-              <p className="mt-1 text-sm text-slate-500">
-                ใช้สำหรับส่งต่อให้เจ้าหน้าที่การเงินตรวจสอบและคุมยอด
+              <p id="w119-budget-code-help" className="mt-1 text-sm text-[var(--line-dark)]">
+                ข้อความสีเทาเป็นตัวอย่าง
+                กรุณากรอกรหัสจริงสำหรับให้เจ้าหน้าที่การเงินตรวจสอบและคุมยอด
               </p>
             </div>
             {[
-              ["รหัสแหล่งเงิน", sourceCode, setSourceCode],
-              ["รหัสหน่วยงาน", departmentCode, setDepartmentCode],
-              ["รหัสกองทุน", fundCode, setFundCode],
-              ["รหัสแผนงาน", planCode, setPlanCode],
-              ["รหัสโครงการย่อย", subprojectCode, setSubprojectCode],
-              ["รหัสกิจกรรม", activityCode, setActivityCode],
-            ].map(([label, value, setter]) => (
+              ["รหัสแหล่งเงิน", sourceCode, setSourceCode, "2"],
+              ["รหัสหน่วยงาน", departmentCode, setDepartmentCode, "2301"],
+              ["รหัสกองทุน", fundCode, setFundCode, "6"],
+              ["รหัสแผนงาน", planCode, setPlanCode, "5102"],
+              ["รหัสโครงการย่อย", subprojectCode, setSubprojectCode, "51025200"],
+              ["รหัสกิจกรรม", activityCode, setActivityCode, "510252000024"],
+            ].map(([label, value, setter, example]) => (
               <label key={label as string} className="block">
                 <span className="mb-2 block text-sm font-semibold text-slate-700">
                   {label as string}
                 </span>
                 <input
                   inputMode="numeric"
+                  aria-describedby="w119-budget-code-help"
                   className={inputClass}
+                  placeholder={`เช่น ${example}`}
                   value={value as string}
                   onChange={(event) =>
                     (setter as (value: string) => void)(event.target.value.replace(/\D/g, ""))

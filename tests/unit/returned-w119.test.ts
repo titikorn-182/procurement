@@ -279,6 +279,37 @@ describe("returned request actions", () => {
 });
 
 describe("W119 final validation", () => {
+  it.each([2570, 2571, 2572])(
+    "accepts both revised fund sources in fiscal year %s",
+    (budgetYear) => {
+      for (const fundSource of ["งบประมาณเงินรายได้", "งบประมาณเงินอุดหนุน"]) {
+        expect(validateW119Submission({ ...input, budgetYear, fundSource }, 1, 100)).toBeNull();
+      }
+    },
+  );
+  it("rejects an unfilled plan instead of treating its placeholder as real data", () => {
+    for (const planName of ["", "  "]) {
+      expect(validateW119Submission({ ...input, planName }, 1, 100)?.step).toBe(2);
+    }
+  });
+  it.each([
+    "sourceCode",
+    "departmentCode",
+    "fundCode",
+    "planCode",
+    "subprojectCode",
+    "activityCode",
+  ])("rejects a blank %s and preserves entered leading zeroes", (code) => {
+    const budgetCodes = { ...formData.budgetCodes, [code]: "" };
+    expect(
+      validateW119Submission({ ...input, formData: { ...formData, budgetCodes } }, 1, 100)?.step,
+    ).toBe(2);
+    budgetCodes[code as keyof typeof budgetCodes] = "00123";
+    expect(
+      validateW119Submission({ ...input, formData: { ...formData, budgetCodes } }, 1, 100),
+    ).toBeNull();
+    expect(budgetCodes[code as keyof typeof budgetCodes]).toBe("00123");
+  });
   it("sends missing loan fields back to attachments without requiring an uploaded contract", () => {
     expect(
       validateW119Submission(

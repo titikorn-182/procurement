@@ -27,6 +27,9 @@ export function validateW119Submission(
         "กรุณาตรวจสอบเรื่องและเหตุผล (อย่างน้อย 3 ตัวอักษร เรื่องไม่เกิน 300 และเหตุผลไม่เกิน 5,000 ตัวอักษร)",
     };
   }
+  if (!input.planName.trim() || !input.expenseCategory.trim()) {
+    return { step: 2, message: "กรุณาระบุแผนงานและหมวดรายจ่ายให้ครบถ้วน" };
+  }
   const form = w119RequestFormSchema.safeParse(input.formData);
   if (!form.success) {
     const loan = form.error.issues.find((issue) => issue.path[0] === "loanAgreement");
