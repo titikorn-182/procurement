@@ -28,20 +28,18 @@ import { W119PrintPreview } from "./w119-print-preview";
 import { toW119PrintData, type W119PrintData } from "./w119-print-data";
 import { emptyLoanAgreement, loanAgreementSchema } from "./loan-agreement";
 import { LoanAgreementFields } from "./loan-agreement-fields";
-
-type RequestItem = {
-  description: string;
-  quantity: number;
-  unit: string;
-  unitPrice: number;
-  marketPrice: number | null;
-  priceSource: string;
-};
+import {
+  emptyW119Item,
+  isCompleteW119Item,
+  w119ItemAmount,
+  type W119ItemInput as RequestItem,
+  type CompleteW119Item,
+} from "./item-input";
 
 const steps = ["บันทึกข้อความ", "รายการพัสดุ", "งบประมาณ", "เอกสารแนบ", "ตรวจสอบและส่ง"];
 const fiscalYears = ["2567", "2568", "2569", "2570", "2571", "2572"] as const;
 
-const initialItems: RequestItem[] = [
+const itemExamples: CompleteW119Item[] = [
   {
     description: "กระดาษถ่ายเอกสาร A4 80 แกรม",
     quantity: 10,
@@ -64,7 +62,7 @@ const initialItems: RequestItem[] = [
     unit: "ด้าม",
     unitPrice: 8,
     marketPrice: 8,
-    priceSource: "ราคาที่เคยซื้อครั้งล่าสุด",
+    priceSource: "ราคาซื้อครั้งล่าสุด",
   },
 ];
 
@@ -132,7 +130,7 @@ export function W119Form({
   const [rationale, setRationale] = useState(initial?.rationale ?? "");
   const [requiredDate, setRequiredDate] = useState(initial?.requiredDate ?? "");
   const [items, setItems] = useState<RequestItem[]>(
-    () => initial?.items ?? initialItems.map((item) => ({ ...item, description: "" })),
+    () => initial?.items ?? itemExamples.map(() => emptyW119Item()),
   );
   const [fiscalYear, setFiscalYear] = useState(String(initial?.budgetYear ?? "2569"));
   const [fundSource, setFundSource] = useState(initial?.fundSource ?? "เงินงบประมาณแผ่นดิน");
@@ -161,9 +159,10 @@ export function W119Form({
   const attachmentCount = retainedAttachments.length + attachments.length;
 
   const total = useMemo(
-    () => items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0),
+    () => items.reduce((sum, item) => sum + (w119ItemAmount(item) ?? 0), 0),
     [items],
   );
+  const hasAllAmounts = items.length > 0 && items.every((item) => w119ItemAmount(item) !== null);
 
   function updateItem(index: number, patch: Partial<RequestItem>) {
     setItems((current) =>
@@ -185,20 +184,7 @@ export function W119Form({
     ) {
       return "กรุณากรอกข้อมูลบันทึกข้อความ เหตุผลความจำเป็น และวันที่ต้องการใช้ให้ครบถ้วน";
     }
-    if (
-      step === 1 &&
-      (items.length === 0 ||
-        items.some(
-          (item) =>
-            !item.description.trim() ||
-            !item.unit.trim() ||
-            item.quantity <= 0 ||
-            item.unitPrice < 0 ||
-            item.marketPrice == null ||
-            item.marketPrice < 0 ||
-            !item.priceSource.trim(),
-        ))
-    ) {
+    if (step === 1 && (items.length === 0 || !items.every(isCompleteW119Item))) {
       return "กรุณากรอกรายการ จำนวน หน่วย ราคา ราคากลาง และแหล่งที่มาของราคาให้ครบถ้วน";
     }
     if (
@@ -240,6 +226,12 @@ export function W119Form({
 
   function handleSubmit() {
     if (submittingRef.current) return;
+    if (items.length === 0 || !items.every(isCompleteW119Item)) {
+      setError("กรุณากรอกรายการ จำนวน หน่วย ราคา ราคากลาง และแหล่งที่มาของราคาให้ครบถ้วน");
+      setStep(1);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
     const input: NewRequestInput = {
       kind: requestType,
       title,
@@ -410,7 +402,7 @@ export function W119Form({
           quantity: item.quantity,
           unit: item.unit,
           unit_price: item.unitPrice,
-          total_amount: item.quantity * item.unitPrice,
+          total_amount: w119ItemAmount(item) ?? 0,
         })),
       }),
     );
@@ -665,15 +657,15 @@ export function W119Form({
 
         {step === 1 && (
           <div className="space-y-4">
-            <p id="w119-item-description-help" className="text-sm text-[var(--line-dark)]">
-              ข้อความสีเทาเป็นตัวอย่างการกรอก กรุณาระบุรายการ/ขนาด/ลักษณะจริง
+            <p id="w119-item-help" className="text-sm text-[var(--line-dark)]">
+              ข้อความสีเทาเป็นตัวอย่าง กรุณากรอกข้อมูลจริงทุกช่อง ยอดรวมคำนวณจากจำนวน × ราคาต่อหน่วย
             </p>
             <div className="overflow-x-auto rounded-xl border border-slate-200">
-              <table className="w-full min-w-[1080px] text-sm">
+              <table className="w-full min-w-[1100px] text-sm">
                 <thead className="bg-slate-50 text-left text-slate-600">
                   <tr>
                     <th className="p-3">รายการ/ขนาด/ลักษณะ</th>
-                    <th className="w-24 p-3">จำนวน</th>
+                    <th className="w-28 p-3">จำนวน</th>
                     <th className="w-24 p-3">หน่วยนับ</th>
                     <th className="w-32 p-3">ราคาต่อหน่วย</th>
                     <th className="w-32 p-3">ราคากลาง</th>
@@ -690,9 +682,9 @@ export function W119Form({
                       <td className="p-2">
                         <input
                           aria-label={`ชื่อรายการที่ ${index + 1}`}
-                          aria-describedby="w119-item-description-help"
+                          aria-describedby="w119-item-help"
                           className={inputClass}
-                          placeholder={`เช่น ${initialItems[index]?.description ?? initialItems[0].description}`}
+                          placeholder={`เช่น ${(itemExamples[index] ?? itemExamples[0]).description}`}
                           value={item.description}
                           onChange={(event) =>
                             updateItem(index, { description: event.target.value })
@@ -702,20 +694,27 @@ export function W119Form({
                       <td className="p-2">
                         <input
                           aria-label={`จำนวนรายการที่ ${index + 1}`}
+                          aria-describedby="w119-item-help"
                           type="number"
                           min="0.01"
                           step="0.01"
                           className={inputClass}
-                          value={item.quantity}
+                          placeholder={`เช่น ${(itemExamples[index] ?? itemExamples[0]).quantity}`}
+                          value={item.quantity ?? ""}
                           onChange={(event) =>
-                            updateItem(index, { quantity: Number(event.target.value) })
+                            updateItem(index, {
+                              quantity:
+                                event.target.value === "" ? null : Number(event.target.value),
+                            })
                           }
                         />
                       </td>
                       <td className="p-2">
                         <input
                           aria-label={`หน่วยรายการที่ ${index + 1}`}
+                          aria-describedby="w119-item-help"
                           className={inputClass}
+                          placeholder={`เช่น ${(itemExamples[index] ?? itemExamples[0]).unit}`}
                           value={item.unit}
                           onChange={(event) => updateItem(index, { unit: event.target.value })}
                         />
@@ -723,23 +722,30 @@ export function W119Form({
                       <td className="p-2">
                         <input
                           aria-label={`ราคาต่อหน่วยรายการที่ ${index + 1}`}
+                          aria-describedby="w119-item-help"
                           type="number"
                           min="0"
                           step="0.01"
                           className={inputClass}
-                          value={item.unitPrice}
+                          placeholder={`เช่น ${(itemExamples[index] ?? itemExamples[0]).unitPrice}`}
+                          value={item.unitPrice ?? ""}
                           onChange={(event) =>
-                            updateItem(index, { unitPrice: Number(event.target.value) })
+                            updateItem(index, {
+                              unitPrice:
+                                event.target.value === "" ? null : Number(event.target.value),
+                            })
                           }
                         />
                       </td>
                       <td className="p-2">
                         <input
                           aria-label={`ราคากลางรายการที่ ${index + 1}`}
+                          aria-describedby="w119-item-help"
                           type="number"
                           min="0"
                           step="0.01"
                           className={inputClass}
+                          placeholder={`เช่น ${(itemExamples[index] ?? itemExamples[0]).marketPrice}`}
                           value={item.marketPrice ?? ""}
                           onChange={(event) =>
                             updateItem(index, {
@@ -752,7 +758,9 @@ export function W119Form({
                       <td className="p-2">
                         <input
                           aria-label={`แหล่งที่มาของราคารายการที่ ${index + 1}`}
+                          aria-describedby="w119-item-help"
                           className={inputClass}
+                          placeholder={`เช่น ${(itemExamples[index] ?? itemExamples[0]).priceSource}`}
                           value={item.priceSource}
                           onChange={(event) =>
                             updateItem(index, { priceSource: event.target.value })
@@ -760,7 +768,13 @@ export function W119Form({
                         />
                       </td>
                       <td className="p-3 text-right font-semibold text-slate-800">
-                        {money(item.quantity * item.unitPrice)}
+                        {w119ItemAmount(item) === null ? (
+                          <span className="font-normal text-[var(--line-dark)]">
+                            คำนวณอัตโนมัติ
+                          </span>
+                        ) : (
+                          money(w119ItemAmount(item)!)
+                        )}
                       </td>
                       <td className="p-2">
                         <button
@@ -785,7 +799,11 @@ export function W119Form({
                       รวม {items.length} รายการ
                     </td>
                     <td className="p-4 text-right text-lg font-bold text-orange-700">
-                      {money(total)}
+                      {hasAllAmounts ? (
+                        money(total)
+                      ) : (
+                        <span className="text-sm font-normal text-orange-800">รอกรอกข้อมูล</span>
+                      )}
                     </td>
                     <td />
                   </tr>
@@ -796,19 +814,7 @@ export function W119Form({
               <Button
                 type="button"
                 variant="secondary"
-                onClick={() =>
-                  setItems((current) => [
-                    ...current,
-                    {
-                      description: "",
-                      quantity: 1,
-                      unit: "ชิ้น",
-                      unitPrice: 0,
-                      marketPrice: 0,
-                      priceSource: "",
-                    },
-                  ])
-                }
+                onClick={() => setItems((current) => [...current, emptyW119Item()])}
               >
                 <Plus size={17} /> เพิ่มรายการ
               </Button>
