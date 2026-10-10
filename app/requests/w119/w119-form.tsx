@@ -69,7 +69,7 @@ const initialItems: RequestItem[] = [
 ];
 
 const inputClass =
-  "min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-400 focus:ring-4 focus:ring-orange-100";
+  "min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 outline-none transition placeholder:text-[var(--line-dark)] focus:border-orange-400 focus:ring-4 focus:ring-orange-100";
 
 function SectionCard({
   title,
@@ -131,7 +131,9 @@ export function W119Form({
   const [title, setTitle] = useState(initial?.title ?? "");
   const [rationale, setRationale] = useState(initial?.rationale ?? "");
   const [requiredDate, setRequiredDate] = useState(initial?.requiredDate ?? "");
-  const [items, setItems] = useState<RequestItem[]>(initial?.items ?? initialItems);
+  const [items, setItems] = useState<RequestItem[]>(
+    () => initial?.items ?? initialItems.map((item) => ({ ...item, description: "" })),
+  );
   const [fiscalYear, setFiscalYear] = useState(String(initial?.budgetYear ?? "2569"));
   const [fundSource, setFundSource] = useState(initial?.fundSource ?? "เงินงบประมาณแผ่นดิน");
   const [planName, setPlanName] = useState(initial?.planName ?? "แผนงานบริหารทั่วไป");
@@ -663,6 +665,9 @@ export function W119Form({
 
         {step === 1 && (
           <div className="space-y-4">
+            <p id="w119-item-description-help" className="text-sm text-[var(--line-dark)]">
+              ข้อความสีเทาเป็นตัวอย่างการกรอก กรุณาระบุรายการ/ขนาด/ลักษณะจริง
+            </p>
             <div className="overflow-x-auto rounded-xl border border-slate-200">
               <table className="w-full min-w-[1080px] text-sm">
                 <thead className="bg-slate-50 text-left text-slate-600">
@@ -685,7 +690,9 @@ export function W119Form({
                       <td className="p-2">
                         <input
                           aria-label={`ชื่อรายการที่ ${index + 1}`}
+                          aria-describedby="w119-item-description-help"
                           className={inputClass}
+                          placeholder={`เช่น ${initialItems[index]?.description ?? initialItems[0].description}`}
                           value={item.description}
                           onChange={(event) =>
                             updateItem(index, { description: event.target.value })
