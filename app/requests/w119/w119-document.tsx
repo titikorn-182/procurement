@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useRef } from "react";
+import { LoanAgreementDocument } from "./loan-agreement-document";
 import { PaginatedDocument } from "@/app/components/print/paginated-document";
 import { formatDocumentMoney as money } from "@/lib/pdf/format";
 import type { W119PrintData } from "./w119-print-data";
@@ -66,6 +68,60 @@ function BudgetCode({ label, value }: { label: string; value: string }) {
 }
 
 export function W119Document({
+  data,
+  targetId,
+  fontClassName,
+}: {
+  data: W119PrintData;
+  targetId: string;
+  fontClassName: string;
+}) {
+  const groupRef = useRef<HTMLDivElement>(null);
+  const hasLoan = data.advanceRequired && Boolean(data.loanAgreement);
+  useEffect(() => {
+    const group = groupRef.current;
+    if (!group) return;
+    const synchronize = () => {
+      const documents = Array.from(group.querySelectorAll<HTMLElement>("[data-pdf-ready]"));
+      const states = documents.map((document) => document.dataset.pdfReady);
+      group.dataset.pdfReady = states.includes("error")
+        ? "error"
+        : states.length === (hasLoan ? 2 : 1) && states.every((state) => state === "ready")
+          ? "ready"
+          : "loading";
+    };
+    const observer = new MutationObserver(synchronize);
+    // Observe child readiness, not the group's own readiness attribute.
+    for (const child of Array.from(group.children))
+      observer.observe(child, {
+        subtree: true,
+        attributes: true,
+        attributeFilter: ["data-pdf-ready"],
+        childList: true,
+      });
+    synchronize();
+    return () => observer.disconnect();
+  }, [data, hasLoan]);
+  return (
+    <div ref={groupRef} id={targetId} data-pdf-ready="loading" className="min-w-0">
+      <div>
+        <W119Memorandum data={data} targetId={`${targetId}-memo`} fontClassName={fontClassName} />
+      </div>
+      {hasLoan && data.loanAgreement && (
+        <div>
+          <LoanAgreementDocument
+            loan={data.loanAgreement}
+            data={data}
+            targetId={`${targetId}-loan`}
+            fontClassName={fontClassName}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function W119Memorandum({
   data,
   targetId,
   fontClassName,

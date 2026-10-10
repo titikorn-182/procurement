@@ -1,4 +1,5 @@
 import { formatThaiDocumentDate } from "@/lib/pdf/format";
+import { readLoanAgreement, type LoanAgreement } from "./loan-agreement";
 
 export type W119PrintItem = {
   lineNo: number;
@@ -21,6 +22,7 @@ export type W119PrintData = {
   requesterName: string;
   requesterPosition: string;
   advanceRequired: boolean;
+  loanAgreement?: LoanAgreement;
   items: W119PrintItem[];
   total: number;
   budgetCodes: {
@@ -79,6 +81,8 @@ export function toW119PrintData(data: Record<string, unknown>): W119PrintData {
     requesterName: text(requester.full_name),
     requesterPosition: text(requester.position_title),
     advanceRequired: form.advanceRequired === true,
+    loanAgreement:
+      form.advanceRequired === true ? readLoanAgreement(form.loanAgreement) : undefined,
     items,
     total:
       data.estimated_amount == null

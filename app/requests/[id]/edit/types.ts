@@ -57,6 +57,7 @@ export type ReturnedW119RequestEditData = ReturnedRequestBase & {
     addressee: string;
     selectionCriteria: "เกณฑ์ราคา" | "เกณฑ์ราคาประกอบเกณฑ์อื่น";
     advanceRequired: boolean;
+    loanAgreement?: import("../../w119/loan-agreement").LoanAgreement;
     budgetCodes: {
       sourceCode: string;
       departmentCode: string;

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { validateW119Submission } from "../../app/requests/w119/validation";
 import type { NewRequestInput } from "../../app/requests/new/schemas";
+import { createLoanAgreementFixture } from "../fixtures/w119-loan";
 
 const mocks = vi.hoisted(() => ({
   getUser: vi.fn(),
@@ -44,6 +45,7 @@ const formData = {
   addressee: "คณบดีคณะรัฐศาสตร์",
   selectionCriteria: "เกณฑ์ราคา",
   advanceRequired: true,
+  loanAgreement: createLoanAgreementFixture(),
   budgetCodes: {
     sourceCode: "2",
     departmentCode: "2301",
@@ -127,6 +129,7 @@ describe("returned W119 loading", () => {
         phone: "3945",
         addressee: formData.addressee,
         advanceRequired: true,
+        loanAgreement: createLoanAgreementFixture(),
         budgetCodes: formData.budgetCodes,
       },
       returnReason: "แก้ไขรายละเอียดราคา",
@@ -276,6 +279,41 @@ describe("returned request actions", () => {
 });
 
 describe("W119 final validation", () => {
+  it("sends missing loan fields back to attachments without requiring an uploaded contract", () => {
+    expect(
+      validateW119Submission(
+        { ...input, formData: { ...formData, loanAgreement: undefined } },
+        1,
+        100,
+      )?.step,
+    ).toBe(3);
+    expect(
+      validateW119Submission(
+        {
+          ...input,
+          formData: {
+            ...formData,
+            loanAgreement: { ...createLoanAgreementFixture(), borrowerName: "" },
+          },
+        },
+        1,
+        100,
+      )?.message,
+    ).toContain("ชื่อ-นามสกุลผู้ยืม");
+    expect(
+      validateW119Submission(
+        { ...input, formData: { ...formData, advanceRequired: false, loanAgreement: undefined } },
+        1,
+        100,
+      ),
+    ).toBeNull();
+  });
+  it("rejects zero loan amounts before a server write", async () => {
+    const zero = { ...input, items: [{ ...input.items[0], unit_price: 0 }] };
+    expect(validateW119Submission(zero, 1, 100)?.step).toBe(1);
+    expect((await updateReturnedRequest(id, zero)).error).toBeTruthy();
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
   it("accepts valid edits using retained attachments only", () => {
     expect(validateW119Submission(input, 3, 1000)).toBeNull();
   });

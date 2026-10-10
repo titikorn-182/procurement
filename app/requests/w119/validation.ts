@@ -29,6 +29,8 @@ export function validateW119Submission(
   }
   const form = w119RequestFormSchema.safeParse(input.formData);
   if (!form.success) {
+    const loan = form.error.issues.find((issue) => issue.path[0] === "loanAgreement");
+    if (loan) return { step: 3, message: loan.message };
     const budget = form.error.issues[0]?.path[0] === "budgetCodes";
     return {
       step: budget ? 2 : 0,
@@ -40,6 +42,11 @@ export function validateW119Submission(
   if (input.items.some((item) => item.market_price == null || !item.price_source?.trim())) {
     return { step: 1, message: "กรุณาระบุราคากลางและแหล่งที่มาของราคาทุกรายการในแบบ ว119" };
   }
+  if (
+    form.data.advanceRequired &&
+    input.items.reduce((sum, item) => sum + item.quantity * item.unit_price, 0) <= 0
+  )
+    return { step: 1, message: "ยอดขอยืมเงินต้องมากกว่า 0 บาท กรุณาตรวจสอบรายการพัสดุ" };
   if (attachmentCount === 0)
     return {
       step: 3,

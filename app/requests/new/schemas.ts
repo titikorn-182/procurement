@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { pol01ChecklistSchema } from "../pol01-checklist-schema";
 import { reconcilePol01Checklist } from "../pol01-checklist";
+import { loanAgreementSchema } from "../w119/loan-agreement";
 
 const isoDateSchema = z
   .string()
@@ -43,6 +44,20 @@ export const newRequestInputSchema = z
     const lineNumbers = new Set(input.items.map((item) => item.line_no));
     if (lineNumbers.size !== input.items.length) {
       context.addIssue({ code: "custom", path: ["items"], message: "duplicate line number" });
+    }
+    if (
+      input.formData &&
+      typeof input.formData === "object" &&
+      "regulation" in input.formData &&
+      "advanceRequired" in input.formData &&
+      input.formData.advanceRequired === true &&
+      input.items.reduce((sum, item) => sum + item.quantity * item.unit_price, 0) <= 0
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["items"],
+        message: "ยอดขอยืมเงินต้องมากกว่า 0 บาท",
+      });
     }
   });
 
@@ -144,6 +159,7 @@ export const w119RequestFormSchema = z
     addressee: shortRequiredText(300),
     selectionCriteria: z.enum(["เกณฑ์ราคา", "เกณฑ์ราคาประกอบเกณฑ์อื่น"]),
     advanceRequired: z.boolean(),
+    loanAgreement: loanAgreementSchema.optional(),
     inspectors: z.array(shortRequiredText(200)).max(3).optional(),
     budgetCodes: z
       .object({
@@ -158,10 +174,24 @@ export const w119RequestFormSchema = z
     requiresItemAttachment: z.boolean(),
   })
   .strict()
-  .transform(({ inspectors, ...data }) => {
+  .superRefine((data, context) => {
+    if (data.advanceRequired && !data.loanAgreement) {
+      context.addIssue({
+        code: "custom",
+        path: ["loanAgreement"],
+        message: "กรุณากรอกสัญญาการยืมเงินในขั้นตอนเอกสารแนบ",
+      });
+    }
+  })
+  .transform(({ inspectors, loanAgreement, ...data }) => {
     // Accept legacy records but do not carry proposed inspectors into new or resubmitted W119 data.
     void inspectors;
-    return { formType: "w119" as const, formVersion: 1 as const, ...data };
+    return {
+      formType: "w119" as const,
+      formVersion: 1 as const,
+      ...data,
+      ...(data.advanceRequired ? { loanAgreement } : {}),
+    };
   });
 
 export function parseRequestFormData(value: unknown) {

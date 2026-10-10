@@ -26,6 +26,8 @@ import type { NewRequestInput } from "../new/schemas";
 import { validateW119Submission } from "./validation";
 import { W119PrintPreview } from "./w119-print-preview";
 import { toW119PrintData, type W119PrintData } from "./w119-print-data";
+import { emptyLoanAgreement, loanAgreementSchema } from "./loan-agreement";
+import { LoanAgreementFields } from "./loan-agreement-fields";
 
 type RequestItem = {
   description: string;
@@ -150,6 +152,7 @@ export function W119Form({
     form?.selectionCriteria ?? "เกณฑ์ราคา",
   );
   const [advanceRequired, setAdvanceRequired] = useState(form?.advanceRequired ?? false);
+  const [loanAgreement, setLoanAgreement] = useState(form?.loanAgreement ?? emptyLoanAgreement());
   const [attachments, setAttachments] = useState<SelectedAttachment[]>([]);
   const [draft, setDraft] = useState<{ id: string; requestNo: string } | null>(null);
   const [submissionMessage, setSubmissionMessage] = useState("");
@@ -213,6 +216,11 @@ export function W119Form({
     ) {
       return "กรุณาระบุข้อมูลงบประมาณให้ครบถ้วน";
     }
+    if (step === 3 && advanceRequired) {
+      const loan = loanAgreementSchema.safeParse(loanAgreement);
+      if (!loan.success) return loan.error.issues[0].message;
+      if (total <= 0) return "ยอดขอยืมเงินต้องมากกว่า 0 บาท กรุณาตรวจสอบรายการพัสดุ";
+    }
     if (step === 3 && attachmentCount === 0) {
       return "กรุณาแนบใบเสนอราคา รายละเอียดคุณลักษณะ หรือหลักฐานราคาอย่างน้อย 1 ไฟล์";
     }
@@ -251,6 +259,7 @@ export function W119Form({
         addressee,
         selectionCriteria,
         advanceRequired,
+        ...(advanceRequired ? { loanAgreement } : {}),
         budgetCodes: {
           sourceCode,
           departmentCode,
@@ -385,6 +394,7 @@ export function W119Form({
           phone,
           addressee,
           advanceRequired,
+          ...(advanceRequired ? { loanAgreement } : {}),
           budgetCodes: {
             sourceCode,
             departmentCode,
@@ -906,7 +916,15 @@ export function W119Form({
               <input
                 type="checkbox"
                 checked={advanceRequired}
-                onChange={(event) => setAdvanceRequired(event.target.checked)}
+                onChange={(event) => {
+                  setAdvanceRequired(event.target.checked);
+                  if (event.target.checked)
+                    setLoanAgreement((current) => ({
+                      ...current,
+                      projectName: current.projectName || title,
+                      purpose: current.purpose || rationale.slice(0, 1000),
+                    }));
+                }}
                 className="mt-1 size-4 accent-orange-600"
               />
               <span>
@@ -918,6 +936,18 @@ export function W119Form({
                 </span>
               </span>
             </label>
+            {advanceRequired && (
+              <LoanAgreementFields
+                value={loanAgreement}
+                onChange={setLoanAgreement}
+                total={total}
+              />
+            )}
+            {advanceRequired && (
+              <Button variant="secondary" onClick={openPreview} disabled={isPending}>
+                <Printer size={17} aria-hidden="true" /> ดู ว119 และสัญญายืมเงิน / PDF
+              </Button>
+            )}
             {existingAttachments.length > 0 && (
               <section aria-label="เอกสารแนบเดิม">
                 <h3 className="font-bold">เอกสารแนบเดิม {existingAttachments.length} ไฟล์</h3>
@@ -1036,6 +1066,11 @@ export function W119Form({
                 <dt className="text-sm text-slate-500">การยืมเงินทดรองราชการ</dt>
                 <dd className="mt-1 font-semibold text-slate-900">
                   {advanceRequired ? "ประสงค์ยืมเงิน" : "ไม่ประสงค์ยืมเงิน"}
+                  {advanceRequired && (
+                    <span className="mt-1 block text-sm font-normal">
+                      ผู้ยืม {loanAgreement.borrowerName} · สัญญาจะต่อท้ายแบบฟอร์ม ว119
+                    </span>
+                  )}
                 </dd>
               </div>
               <div>

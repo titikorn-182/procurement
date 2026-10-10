@@ -1,0 +1,230 @@
+/* Source-specific print density; the application's type scale is unchanged. */
+.page.page {
+  padding: 7mm;
+  font-size: 10.56pt;
+  line-height: 1.18;
+  overflow-wrap: anywhere;
+}
+.heading {
+  display: grid;
+  grid-template-columns: 68% 32%;
+  border: 0.3mm solid #000;
+  flex: none;
+  font-size: 11.28pt;
+}
+.headingMain {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 1mm;
+  min-height: 15mm;
+}
+.heading h1 {
+  text-align: center;
+  text-decoration: underline;
+  font-size: 13.56pt;
+  margin: 0;
+}
+.registration {
+  border-left: 0.2mm solid #000;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.registration > p {
+  padding: 1mm;
+  min-height: 7mm;
+}
+.due {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  border-top: 0.2mm solid #000;
+}
+.due > * {
+  padding: 1mm;
+}
+.due strong {
+  background: #f4cfb5;
+  font-weight: 400;
+}
+.identity,
+.details,
+.endDate,
+.declaration,
+.receipt {
+  border: solid #000;
+  border-width: 0 0.2mm 0.2mm;
+  padding: 1mm;
+}
+.identity {
+  border-bottom: 0;
+  font-size: 11.28pt;
+}
+.identityRow {
+  display: grid;
+  grid-template-columns: 18mm minmax(0, 1fr) 20mm minmax(0, 1fr);
+  gap: 1mm;
+  margin-bottom: 1mm;
+}
+.affiliation {
+  display: grid;
+  grid-template-columns: 18mm 1fr;
+  gap: 1mm;
+  margin-bottom: 1mm;
+}
+.indent {
+  margin-left: 4mm;
+}
+.faculty {
+  margin-left: 8mm;
+}
+.project {
+  display: grid;
+  grid-template-columns: 55mm 23mm 22mm minmax(0, 1fr);
+  align-items: baseline;
+  gap: 1mm;
+  margin-top: 1mm;
+}
+.line {
+  border-bottom: 0.2mm solid #000;
+  padding-inline: 1mm;
+}
+.details {
+  white-space: pre-wrap;
+  padding-top: 1mm;
+}
+.endDate {
+  padding-block: 1mm;
+}
+.expenses,
+.repayments {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  border: 0.2mm solid #000;
+}
+.expenses td {
+  padding: 0.5mm 1mm;
+  vertical-align: top;
+}
+.expenses td.number {
+  border-left: 0.2mm solid #000;
+}
+.number {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.center {
+  text-align: center;
+}
+.transfer > div {
+  display: grid;
+  grid-template-columns: 18mm minmax(0, 1fr);
+  gap: 1mm;
+  padding-top: 2mm;
+}
+.transfer p {
+  min-height: 5mm;
+  padding-block: 1mm;
+}
+.total td {
+  border-bottom: 0.2mm solid #000;
+}
+.total td:first-child {
+  position: relative;
+  padding-right: 25mm;
+}
+.total strong {
+  position: absolute;
+  right: 1mm;
+  bottom: 0.5mm;
+}
+.declaration {
+  font-size: 10.2pt;
+  line-height: 1.25;
+}
+.borrowerSignature {
+  text-align: center;
+  margin: 2mm 3mm 1mm auto;
+  width: 70mm;
+  line-height: 1.35;
+}
+.approvals {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+.approvals section {
+  border: 0.2mm solid #000;
+  padding: 1mm;
+  font-size: 10.56pt;
+  display: flex;
+  flex-direction: column;
+  min-height: 36mm;
+}
+.approvals h2,
+.receipt h2 {
+  font-size: inherit;
+  font-weight: 400;
+  margin: 0 0 1mm;
+}
+.approvalSignature {
+  width: 70mm;
+  max-width: 100%;
+  text-align: center;
+  align-self: flex-end;
+  margin-top: auto;
+  line-height: 1.35;
+}
+.signSpace {
+  height: 6mm;
+  border-bottom: 0.2mm solid #000;
+}
+.receipt h2 {
+  text-align: center;
+  text-decoration: underline;
+}
+.receiptSignature {
+  display: flex;
+  justify-content: space-between;
+  gap: 6mm;
+  align-items: baseline;
+  padding: 2mm 4mm 0;
+}
+.repayments {
+  font-size: 10.2pt;
+}
+.repayments .repaymentTitle {
+  border: 0.2mm solid #000;
+  padding: 0.8mm;
+  text-decoration: underline;
+}
+.repayments th,
+.repayments td {
+  border: 0.2mm solid #000;
+  padding: 0.6mm;
+}
+.repayments th {
+  vertical-align: middle;
+  font-weight: 400;
+}
+.repayments td {
+  height: 10mm;
+}
+.note {
+  border: 0.2mm solid #000;
+  padding: 0.8mm;
+  font-size: 9pt;
+  line-height: 1.1;
+}
+@media print {
+  .page.page {
+    padding: 7mm;
+  }
+  .page .heading {
+    display: grid !important;
+  }
+}
+.page > footer {
+  font-size: 9pt;
+  padding-top: 2mm;
+}

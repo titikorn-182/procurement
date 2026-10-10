@@ -42,6 +42,9 @@ export function W119PrintPreview({
           <p className="mt-1 max-w-2xl text-sm text-stone-600">
             ฉบับร่างจากข้อมูลที่กรอก การพิมพ์หรือดาวน์โหลดจะไม่บันทึกหรือส่งคำขอ
             ช่องผู้ลงนามที่ยังไม่มีข้อมูลจะเว้นว่างไว้
+            {data.advanceRequired &&
+              data.loanAgreement &&
+              " สัญญาการยืมเงินจะต่อท้าย ว119 ก่อนเอกสารแนบ"}
           </p>
         </div>
         <Button variant="secondary" onClick={onClose} disabled={busy}>

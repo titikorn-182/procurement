@@ -3,6 +3,7 @@ import { toSafeActionError } from "@/lib/server/action-errors";
 import type { ReturnedRequestEditData, ReturnedRequestVendor } from "../requests/[id]/edit/types";
 import { readPol01Checklist } from "../requests/pol01-checklist-schema";
 import { normalizePol01ApprovalDetails } from "../requests/pol01";
+import { readLoanAgreement } from "../requests/w119/loan-agreement";
 import type { RequestStatus } from "./mock-data";
 
 const statusMap: Record<string, RequestStatus> = {
@@ -262,6 +263,7 @@ export async function getReturnedRequestForEdit(requestNo: string): Promise<{
               ? "เกณฑ์ราคาประกอบเกณฑ์อื่น"
               : "เกณฑ์ราคา",
           advanceRequired: formData.advanceRequired === true,
+          loanAgreement: readLoanAgreement(formData.loanAgreement),
           budgetCodes: {
             sourceCode: String(budgetCodes.sourceCode ?? ""),
             departmentCode: String(budgetCodes.departmentCode ?? ""),
