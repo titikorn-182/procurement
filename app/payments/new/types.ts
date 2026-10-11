@@ -59,3 +59,16 @@ export type PaymentDetails = {
 };
 
 export type PaymentFormFiles = readonly SelectedAttachment[];
+
+export type PaymentEditData = {
+  status: "draft" | "returned";
+  currentStep: number;
+  id: string;
+  paymentNo: string;
+  updatedAt: string;
+  idempotencyKey: string;
+  details: PaymentDetails;
+  lines: PaymentLine[];
+  checklist?: import("./pol02-checklist").Pol02Checklist;
+  attachments: import("../payment-model").PaymentAttachment[];
+};

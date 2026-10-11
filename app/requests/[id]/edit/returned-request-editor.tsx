@@ -284,15 +284,25 @@ export function ReturnedRequestEditor({ initial }: { initial: ReturnedStandardRe
     <AppShell>
       <PageHeader
         title={`แก้ไข ${initial.requestNo}`}
-        description="แก้ไขข้อมูลตามความเห็นของผู้ตรวจสอบ แล้วส่งกลับเข้าสู่ขั้นตอนเดิม"
+        description={
+          initial.status === "draft"
+            ? "ทำฉบับร่างต่อและส่งเข้าสู่ขั้นตอนตรวจสอบ"
+            : "แก้ไขข้อมูลตามความเห็นของผู้ตรวจสอบ แล้วส่งกลับเข้าสู่ขั้นตอนเดิม"
+        }
       />
 
       <div className="my-5 border border-amber-300 bg-amber-50 p-5 text-amber-950" role="status">
         <div className="flex items-start gap-3">
           <RotateCcw className="mt-0.5 shrink-0 text-amber-700" size={21} aria-hidden="true" />
           <div className="min-w-0">
-            <h2 className="font-bold">เหตุผลที่ส่งกลับแก้ไข</h2>
-            <p className="mt-1 break-words text-sm leading-6">{initial.returnReason}</p>
+            <h2 className="font-bold">
+              {initial.status === "draft" ? "ฉบับร่างที่ยังไม่ได้ส่ง" : "เหตุผลที่ส่งกลับแก้ไข"}
+            </h2>
+            <p className="mt-1 break-words text-sm leading-6">
+              {initial.status === "draft"
+                ? "ตรวจข้อมูลและเอกสารแนบให้ครบ แล้วส่งคำขอเพื่อเริ่มการตรวจสอบ"
+                : initial.returnReason}
+            </p>
             <p className="mt-2 text-sm text-amber-800">
               ระบบจะใช้เลขคำขอเดิมและเก็บประวัติการดำเนินการทั้งหมดไว้
             </p>
@@ -688,10 +698,12 @@ export function ReturnedRequestEditor({ initial }: { initial: ReturnedStandardRe
 
         <section className="border border-[var(--line-dark)] bg-[var(--ink)] p-5 text-white sm:flex sm:items-center sm:justify-between sm:gap-6 sm:p-6">
           <div>
-            <h2 className="font-bold">พร้อมส่งกลับเข้าสู่กระบวนการ</h2>
+            <h2 className="font-bold">
+              {initial.status === "draft" ? "พร้อมส่งคำขอ" : "พร้อมส่งกลับเข้าสู่กระบวนการ"}
+            </h2>
             <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-300">
-              ระบบจะส่งกลับไปยังขั้นตอนที่ {initial.currentStep} โดยใช้เลขคำขอ {initial.requestNo}{" "}
-              และไม่ลบประวัติเดิม
+              ระบบจะส่งไปยังขั้นตอนที่ {initial.status === "draft" ? 2 : initial.currentStep}{" "}
+              โดยใช้เลขคำขอ {initial.requestNo} และไม่ลบประวัติเดิม
             </p>
             <p className="mt-2 min-h-5 text-sm font-semibold text-orange-300" aria-live="polite">
               {progressMessage}

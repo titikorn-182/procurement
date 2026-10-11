@@ -6,11 +6,19 @@ import { FileText, Search } from "lucide-react";
 import type { RequestRow } from "../requests/requests-client";
 
 const columns = [
+  {
+    title: "ร่าง / ส่งกลับแก้ไข",
+    test: (_step: number, status?: string) => ["draft", "returned"].includes(status ?? ""),
+  },
   { title: "ตรวจสอบ", test: (step: number) => step <= 2 },
   { title: "เห็นชอบ", test: (step: number) => step >= 3 && step <= 5 },
   { title: "คุมยอด", test: (step: number) => step === 6 },
-  { title: "อนุมัติและจัดหา", test: (step: number) => step >= 7 && step < 12 },
-  { title: "เสร็จสิ้น", test: (step: number) => step >= 12 },
+  { title: "อนุมัติและจัดหา", test: (step: number) => step >= 7 },
+  { title: "เสร็จสิ้น", test: (_step: number, status?: string) => status === "completed" },
+  {
+    title: "ยุติคำขอ",
+    test: (_step: number, status?: string) => ["not_approved", "cancelled"].includes(status ?? ""),
+  },
 ];
 export function ProcessBoard({ requests }: { requests: RequestRow[] }) {
   const [kind, setKind] = useState("all");
@@ -28,6 +36,7 @@ export function ProcessBoard({ requests }: { requests: RequestRow[] }) {
     <>
       <div className="mt-5 flex flex-wrap gap-3 border border-[var(--line-dark)] bg-[var(--paper)] p-3">
         <select
+          aria-label="ประเภทคำขอ"
           value={kind}
           onChange={(e) => setKind(e.target.value)}
           className="min-h-11 border border-[var(--line)] bg-white px-3 text-base"
@@ -36,7 +45,7 @@ export function ProcessBoard({ requests }: { requests: RequestRow[] }) {
           <option value="ซื้อ">จัดซื้อ</option>
           <option value="จ้าง">จัดจ้าง</option>
         </select>
-        <label className="relative min-w-64 flex-1 md:max-w-md">
+        <label className="relative min-w-0 w-full flex-1 md:max-w-md">
           <span className="sr-only">ค้นหากระบวนการ</span>
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-500" />
           <input
@@ -49,9 +58,15 @@ export function ProcessBoard({ requests }: { requests: RequestRow[] }) {
         <span className="ml-auto self-center text-sm font-semibold">{filtered.length} รายการ</span>
       </div>
       <section className="mt-4 overflow-x-auto border border-[var(--line-dark)] bg-[var(--paper)]">
-        <div className="grid min-w-[1100px] grid-cols-5 divide-x divide-[var(--line)]">
-          {columns.map((column) => {
-            const rows = filtered.filter((r) => column.test(Number(r.step.replace(/\D/g, ""))));
+        <div className="grid min-w-[1540px] grid-cols-7 divide-x divide-[var(--line)]">
+          {columns.map((column, index) => {
+            const rows = filtered.filter((r) => {
+              if (index === 0 || index === 6) return column.test(0, r.rawStatus);
+              if (["draft", "returned", "not_approved", "cancelled"].includes(r.rawStatus ?? ""))
+                return false;
+              if (r.rawStatus === "completed") return index === 5;
+              return column.test(Number(r.step.replace(/\D/g, "")), r.rawStatus);
+            });
             return (
               <div key={column.title} className="min-h-[560px]">
                 <div className="flex items-center gap-2 border-b border-[var(--line-dark)] bg-stone-100 p-3">

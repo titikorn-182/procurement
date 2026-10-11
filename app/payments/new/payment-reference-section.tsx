@@ -9,6 +9,7 @@ type Props = {
   request: SourceRequest;
   details: PaymentDetails;
   disabled: boolean;
+  sourceLocked?: boolean;
   onRequestChange: (requestId: string) => void;
   onDetailsChange: (next: PaymentDetails) => void;
 };
@@ -28,6 +29,7 @@ export function PaymentReferenceSection({
   request,
   details,
   disabled,
+  sourceLocked = false,
   onRequestChange,
   onDetailsChange,
 }: Props) {
@@ -53,7 +55,7 @@ export function PaymentReferenceSection({
             <select
               required
               value={requestId}
-              disabled={disabled}
+              disabled={disabled || sourceLocked}
               onChange={(event) => onRequestChange(event.target.value)}
               className={inputClass}
             >

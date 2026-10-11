@@ -1,32 +1,31 @@
 import Link from "next/link";
 import { AppShell } from "./components/app-shell";
-import {
-  AlertTriangle,
-  Check,
-  CheckCircle2,
-  ChevronRight,
-  Clock3,
-  Gauge,
-  Search,
-  SlidersHorizontal,
-  UserRound,
-} from "./components/icons";
-import { Button, PageHeader, StatusBadge } from "./components/ui";
+import { ChevronRight, Gauge } from "./components/icons";
+import { PageHeader } from "./components/ui";
 import { ProcurementReport } from "./components/procurement-report";
-import { approvalSteps } from "./lib/mock-data";
 import { getCurrentProfile, getRequests } from "./lib/live-data";
+import { getWorkTasks } from "./lib/task-data";
+import { getPayments } from "./payments/data";
+import { TasksClient } from "./tasks/tasks-client";
 
 export default async function Home() {
-  const [{ rows: requests, error }, profile] = await Promise.all([
+  const [requests, payments, tasks, profile] = await Promise.all([
     getRequests(),
+    getPayments(),
+    getWorkTasks(),
     getCurrentProfile(),
   ]);
-  const overdue = requests.filter((request) => request.status === "เกินกำหนด").length;
+  const overdue = tasks.rows.filter((task) => task.status === "เกินกำหนด").length;
+  const groups = Array.from(new Set(tasks.rows.map((task) => task.step))).map((name) => ({
+    name,
+    count: tasks.rows.filter((task) => task.step === name).length,
+  }));
+  const errors = [requests.error, payments.error, tasks.error].filter(Boolean);
   return (
     <AppShell>
       <PageHeader
         title={`สวัสดี ${profile?.full_name || "ผู้ใช้งาน"}`}
-        description={`มีคำขอที่คุณเข้าถึงได้ ${requests.length} รายการ และ ${overdue} รายการเกินกำหนด`}
+        description="ภาพรวมจากคำขอและงานที่บัญชีนี้มีสิทธิ์เข้าถึง"
         action={
           <Link
             href="/procurement-information"
@@ -37,15 +36,15 @@ export default async function Home() {
           </Link>
         }
       />
-      {error && (
-        <div
+      {errors.map((error, index) => (
+        <p
+          key={index}
           role="alert"
           className="mt-5 border border-red-300 bg-[var(--red-soft)] p-4 text-[var(--red)]"
         >
-          <strong>ยังอ่านข้อมูลจากฐานข้อมูลไม่ได้</strong>
-          <p className="mt-1 text-sm">กรุณารัน migration ก่อนใช้งาน · {error}</p>
-        </div>
-      )}
+          {error}
+        </p>
+      ))}
       <section
         className="mt-6 border border-[var(--line-dark)] bg-[var(--paper)]"
         aria-labelledby="procurement-information-heading"
@@ -69,175 +68,70 @@ export default async function Home() {
         <ProcurementReport className="h-[clamp(560px,70vh,860px)]" />
       </section>
       <section
-        className="paper-grid mt-6 border border-[var(--line-dark)]"
+        className="mt-6 border border-[var(--line-dark)] bg-[var(--paper)]"
         aria-labelledby="workflow-heading"
       >
-        <div className="flex items-center justify-between border-b border-[var(--line)] px-4 py-3">
-          <div>
-            <h2 id="workflow-heading" className="text-lg font-bold">
-              สายงานอนุมัติที่กำลังดำเนินการ
-            </h2>
-            <p className="text-xs text-stone-500">
-              แสดงแบบกลุ่มจากกระบวนการหลัก 12 ขั้นตอน · เปิดรายการเพื่อดูผู้เห็นชอบแต่ละตำแหน่ง
-            </p>
-          </div>
-          <Link
-            href="/process"
-            className="inline-flex items-center gap-1 font-semibold text-[var(--orange-dark)] hover:underline"
-          >
-            ดูภาพรวมทั้งหมด <ChevronRight size={16} />
-          </Link>
+        <div className="border-b p-4">
+          <h2 id="workflow-heading" className="text-lg font-bold">
+            งานรอพิจารณาแยกตามขั้นตอน
+          </h2>
+          <p className="mt-1 text-sm text-stone-600">
+            รวมคำขอหลักการและเบิกจ่ายที่รอคุณดำเนินการ ผู้ดูแลระบบเห็นงานทุกบทบาท
+          </p>
         </div>
-        <div className="scrollbar-thin overflow-x-auto p-4">
-          <div className="signal-in flex min-w-[1000px] items-stretch">
-            {approvalSteps.map((step, i) => (
-              <div key={step.n} className="flex flex-1 items-center">
-                <div
-                  className={`relative flex min-h-36 flex-1 flex-col border p-3 ${step.state === "current" ? "border-[var(--orange)] bg-[var(--orange-soft)]" : step.state === "overdue" ? "hazard border-[var(--orange)]" : "border-[var(--line-dark)] bg-[var(--paper)]"}`}
-                >
-                  <span className="mb-4 flex h-7 w-7 items-center justify-center border border-current bg-white text-xs font-bold">
-                    {step.n}
-                  </span>
-                  {step.state === "current" && (
-                    <span className="absolute -top-3 right-2 bg-[var(--orange)] px-2 py-1 text-xs font-bold text-white">
-                      ขั้นตอนปัจจุบัน
-                    </span>
-                  )}
-                  <div className="mt-auto">
-                    <div className="font-bold">{step.short}</div>
-                    <div className="mt-1 text-xs text-stone-600">{step.count} งานในขั้นตอน</div>
-                    <div className="mt-2 flex items-center gap-1.5 text-xs font-semibold">
-                      {step.state === "done" ? (
-                        <>
-                          <CheckCircle2 size={15} className="text-[var(--green)]" />
-                          เสร็จแล้ว
-                        </>
-                      ) : step.state === "overdue" ? (
-                        <>
-                          <AlertTriangle size={15} className="text-[var(--red)]" />
-                          เกินกำหนด
-                        </>
-                      ) : (
-                        <>
-                          <Clock3 size={15} />
-                          รอดำเนินการ
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                {i < approvalSteps.length - 1 && (
-                  <ChevronRight className="mx-1 shrink-0" size={20} />
-                )}
-              </div>
-            ))}
-          </div>
+        <div className="grid divide-y sm:grid-cols-2 xl:grid-cols-3">
+          {groups.map((group) => (
+            <Link
+              key={group.name}
+              href="/tasks"
+              className="flex items-center justify-between gap-4 p-4 hover:bg-orange-50"
+            >
+              <span className="font-semibold">{group.name}</span>
+              <span className="shrink-0 tabular-nums">{group.count} งาน</span>
+            </Link>
+          ))}
         </div>
+        {!groups.length && (
+          <p className="p-6 text-stone-600">
+            {tasks.error ? "ไม่สามารถสรุปงานได้ในขณะนี้" : "ไม่มีงานรอคุณพิจารณาในขณะนี้"}
+          </p>
+        )}
       </section>
-      <section className="mt-5 grid border border-[var(--line-dark)] bg-[var(--paper)] sm:grid-cols-2 xl:grid-cols-4">
+      <section
+        aria-label="สรุปคำขอ"
+        className="mt-5 grid border border-[var(--line-dark)] bg-[var(--paper)] sm:grid-cols-2 xl:grid-cols-4"
+      >
         {[
-          { label: "รอตรวจสอบ", value: 5, icon: Search },
-          { label: "รอเห็นชอบ", value: 3, icon: UserRound },
-          { label: "เกินกำหนด", value: 2, icon: AlertTriangle },
-          { label: "เสร็จสิ้นวันนี้", value: 8, icon: Check },
-        ].map(({ label, value, icon: Icon }, i) => (
-          <div
-            key={label}
-            className={`flex items-center gap-4 p-5 ${i ? "border-t border-[var(--line)] sm:border-l sm:border-t-0" : ""}`}
+          {
+            label: "คำขอหลักการที่เข้าถึงได้",
+            value: requests.error ? "—" : requests.rows.length,
+            href: "/requests",
+          },
+          {
+            label: "คำขอเบิกจ่ายที่เข้าถึงได้",
+            value: payments.error ? "—" : payments.rows.length,
+            href: "/payments",
+          },
+          { label: "งานรอพิจารณา", value: tasks.error ? "—" : tasks.rows.length, href: "/tasks" },
+          { label: "งานรอพิจารณาเกินกำหนด", value: tasks.error ? "—" : overdue, href: "/activity" },
+        ].map((item) => (
+          <Link
+            key={item.label}
+            href={item.href}
+            className="border-[var(--line)] p-5 hover:bg-orange-50 sm:border-r"
           >
-            <Icon size={28} />
-            <div>
-              <div className="text-sm text-stone-600">{label}</div>
-              <div className="text-3xl font-bold tabular-nums text-[var(--orange)]">
-                {value}
-                <span className="ml-1 text-sm font-normal text-stone-600">งาน</span>
-              </div>
-            </div>
-          </div>
+            <p className="text-sm text-stone-600">{item.label}</p>
+            <p className="mt-1 text-3xl font-bold tabular-nums text-[var(--orange)]">
+              {item.value}
+            </p>
+          </Link>
         ))}
       </section>
-      <section className="mt-5 border border-[var(--line-dark)] bg-[var(--paper)]">
-        <div className="flex flex-col gap-3 border-b border-[var(--line)] p-4 md:flex-row md:items-center">
-          <h2 className="text-lg font-bold">งานที่ต้องดำเนินการ</h2>
-          <div className="ml-auto flex flex-wrap gap-2">
-            <select className="min-h-10 border border-[var(--line)] bg-white px-3">
-              <option>คำขอทุกประเภท</option>
-              <option>คำขอหลักการ</option>
-              <option>คำขอเบิกจ่าย</option>
-            </select>
-            <Button variant="secondary">
-              <SlidersHorizontal size={16} />
-              ตัวกรอง
-            </Button>
-          </div>
-        </div>
-        <div className="scrollbar-thin overflow-x-auto">
-          <table className="w-full min-w-[960px] border-collapse text-left">
-            <thead className="bg-stone-100 text-xs uppercase">
-              <tr>
-                {[
-                  "เลขที่คำขอ",
-                  "เรื่อง",
-                  "ผู้ยื่น / หน่วยงาน",
-                  "วงเงิน (บาท)",
-                  "กำหนด",
-                  "สถานะ",
-                  "ขั้นตอนปัจจุบัน",
-                  "",
-                ].map((h) => (
-                  <th
-                    key={h}
-                    className="border-b border-r border-[var(--line)] px-3 py-3 font-bold last:border-r-0"
-                  >
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {requests.slice(0, 5).map((r) => (
-                <tr key={r.id} className="hover:bg-orange-50/50">
-                  <td className="border-b border-r border-[var(--line)] px-3 py-3 font-semibold">
-                    <Link
-                      href={`/requests/${r.id}`}
-                      className="hover:text-[var(--orange-dark)] hover:underline"
-                    >
-                      {r.id}
-                    </Link>
-                  </td>
-                  <td className="max-w-sm border-b border-r border-[var(--line)] px-3 py-3">
-                    {r.title}
-                  </td>
-                  <td className="border-b border-r border-[var(--line)] px-3 py-3">
-                    <span className="block font-medium">{r.requester}</span>
-                    <span className="text-xs text-stone-500">{r.unit}</span>
-                  </td>
-                  <td className="border-b border-r border-[var(--line)] px-3 py-3 text-right tabular-nums">
-                    {r.amount.toLocaleString("th-TH", { minimumFractionDigits: 2 })}
-                  </td>
-                  <td
-                    className={`border-b border-r border-[var(--line)] px-3 py-3 ${r.status === "เกินกำหนด" ? "font-semibold text-[var(--red)]" : ""}`}
-                  >
-                    {r.due}
-                  </td>
-                  <td className="border-b border-r border-[var(--line)] px-3 py-3">
-                    <StatusBadge status={r.status} />
-                  </td>
-                  <td className="border-b border-r border-[var(--line)] px-3 py-3">{r.step}</td>
-                  <td className="border-b border-[var(--line)] px-3 py-3">
-                    <Link
-                      href={`/requests/${r.id}`}
-                      className="inline-flex min-h-9 items-center border border-[var(--line-dark)] px-3 font-semibold hover:bg-stone-100"
-                    >
-                      เปิดงาน
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
+      <p className="mt-2 text-xs text-stone-600">
+        ข้อมูลคำขอและงานแสดงไม่เกิน 1,000 รายการล่าสุดต่อประเภท ไม่ใช่ยอดรวมบัญชีการเงิน
+      </p>
+      <h2 className="mt-8 text-xl font-bold">งานที่ต้องดำเนินการ</h2>
+      <TasksClient tasks={tasks.rows} />
     </AppShell>
   );
 }

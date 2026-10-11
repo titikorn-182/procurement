@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { Download, Search } from "lucide-react";
 import { StatusBadge } from "../components/ui";
 import type { RequestStatus } from "../lib/mock-data";
+import { csvCell } from "../lib/csv";
 
 export type RequestRow = {
   id: string;
@@ -15,6 +16,8 @@ export type RequestRow = {
   amount: number;
   status: RequestStatus;
   step: string;
+  budgetYear?: number;
+  rawStatus?: string;
 };
 const pageSize = 10;
 
@@ -43,7 +46,7 @@ export function RequestsClient({ requests }: { requests: RequestRow[] }) {
       ["เลขคำขอ", "ประเภท", "ชื่อเรื่อง", "วันที่", "วงเงิน", "สถานะ", "ขั้นตอน"],
       ...rows.map((r) => [r.id, r.type, r.title, r.date, String(r.amount), r.status, r.step]),
     ]
-      .map((line) => line.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(","))
+      .map((line) => line.map(csvCell).join(","))
       .join("\r\n");
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -56,7 +59,7 @@ export function RequestsClient({ requests }: { requests: RequestRow[] }) {
   return (
     <div className="mt-6 border border-[var(--line-dark)] bg-[var(--paper)]">
       <div className="flex flex-col gap-3 border-b border-[var(--line)] p-4 lg:flex-row lg:items-center">
-        <label className="relative min-w-72 flex-1 lg:max-w-md">
+        <label className="relative min-w-0 flex-1 lg:max-w-md">
           <span className="sr-only">ค้นหาคำขอ</span>
           <Search size={17} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-500" />
           <input

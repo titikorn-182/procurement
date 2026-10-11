@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   rpc: vi.fn(),
   select: vi.fn(),
   eq: vi.fn(),
+  in: vi.fn(),
   order: vi.fn(),
 }));
 vi.mock("../../lib/supabase/server", () => ({
@@ -18,11 +19,13 @@ vi.mock("../../lib/supabase/server", () => ({
       const query = {
         select: mocks.select,
         eq: mocks.eq,
+        in: mocks.in,
         order: mocks.order,
         maybeSingle: mocks.single,
       };
       mocks.select.mockReturnValue(query);
       mocks.eq.mockReturnValue(query);
+      mocks.in.mockReturnValue(query);
       mocks.order.mockReturnValue(query);
       return query;
     },

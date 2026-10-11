@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   getUser: vi.fn(),
   select: vi.fn(),
   eq: vi.fn(),
+  in: vi.fn(),
   maybeSingle: vi.fn(),
   rpc: vi.fn(),
   revalidate: vi.fn(),
@@ -16,9 +17,15 @@ vi.mock("../../lib/supabase/server", () => ({
   createClient: async () => ({
     auth: { getUser: mocks.getUser },
     from: () => {
-      const query = { select: mocks.select, eq: mocks.eq, maybeSingle: mocks.maybeSingle };
+      const query = {
+        select: mocks.select,
+        eq: mocks.eq,
+        in: mocks.in,
+        maybeSingle: mocks.maybeSingle,
+      };
       mocks.select.mockReturnValue(query);
       mocks.eq.mockReturnValue(query);
+      mocks.in.mockReturnValue(query);
       return query;
     },
     rpc: mocks.rpc,
@@ -113,6 +120,18 @@ beforeEach(() => {
 });
 
 describe("returned W119 loading", () => {
+  it("resumes an owner's draft and submits through the draft RPC", async () => {
+    mocks.maybeSingle.mockResolvedValue({
+      data: { ...structuredClone(stored), status: "draft", current_step: 1 },
+      error: null,
+    });
+    expect((await getReturnedRequestForEdit(stored.request_no)).data?.status).toBe("draft");
+    expect((await resubmitReturnedRequest(id)).error).toBeNull();
+    expect(mocks.rpc).toHaveBeenCalledWith("submit_procurement_request_draft", {
+      target_request_id: id,
+    });
+    expect(mocks.eq).toHaveBeenCalledWith("requester_id", owner);
+  });
   it("loads W119 instead of rejecting it, preserving all fields and sorting items", async () => {
     const result = await getReturnedRequestForEdit(stored.request_no);
     expect(result.error).toBeNull();
@@ -146,7 +165,7 @@ describe("returned W119 loading", () => {
     });
     expect(mocks.eq).toHaveBeenCalledWith("request_no", stored.request_no);
     expect(mocks.eq).toHaveBeenCalledWith("requester_id", owner);
-    expect(mocks.eq).toHaveBeenCalledWith("status", "returned");
+    expect(mocks.in).toHaveBeenCalledWith("status", ["returned", "draft"]);
     expect(mocks.select).toHaveBeenCalledWith(
       expect.stringContaining("market_price, price_source"),
     );
@@ -194,14 +213,14 @@ describe("returned request actions", () => {
       }),
     );
     expect(mocks.eq).toHaveBeenCalledWith("requester_id", owner);
-    expect(mocks.eq).toHaveBeenCalledWith("status", "returned");
+    expect(mocks.in).toHaveBeenCalledWith("status", ["returned", "draft"]);
   });
   it("requires a session and returned ownership before any write", async () => {
     mocks.getUser.mockResolvedValue({ data: { user: null } });
     expect((await updateReturnedRequest(id, input)).error).toContain("เข้าสู่ระบบ");
     mocks.getUser.mockResolvedValue({ data: { user: { id: owner } } });
     mocks.maybeSingle.mockResolvedValue({ data: null });
-    expect((await updateReturnedRequest(id, input)).error).toContain("ไม่ได้ถูกส่งกลับ");
+    expect((await updateReturnedRequest(id, input)).error).toContain("ไม่พบฉบับร่าง");
     expect(mocks.rpc).not.toHaveBeenCalled();
   });
   it("blocks form-family conversion even with a valid payload", async () => {

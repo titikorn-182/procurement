@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   single: vi.fn(),
   rpc: vi.fn(),
   eq: vi.fn(),
+  in: vi.fn(),
   select: vi.fn(),
 }));
 vi.mock("../../lib/supabase/server", () => ({
@@ -15,9 +16,10 @@ vi.mock("../../lib/supabase/server", () => ({
     auth: { getUser: mocks.getUser },
     rpc: mocks.rpc,
     from: () => {
-      const query = { select: mocks.select, eq: mocks.eq, maybeSingle: mocks.single };
+      const query = { select: mocks.select, eq: mocks.eq, in: mocks.in, maybeSingle: mocks.single };
       mocks.select.mockReturnValue(query);
       mocks.eq.mockReturnValue(query);
+      mocks.in.mockReturnValue(query);
       return query;
     },
   }),
@@ -83,7 +85,7 @@ describe("POL external shares POL01 workflow and ownership", () => {
   it("updates returned data in place and checks owner/status", async () => {
     expect((await updateReturnedRequest(id, externalInput(externalFixture()))).error).toBeNull();
     expect(mocks.eq).toHaveBeenCalledWith("requester_id", "owner");
-    expect(mocks.eq).toHaveBeenCalledWith("status", "returned");
+    expect(mocks.in).toHaveBeenCalledWith("status", ["returned", "draft"]);
     expect(mocks.rpc).toHaveBeenCalledWith(
       "update_returned_procurement_request",
       expect.objectContaining({

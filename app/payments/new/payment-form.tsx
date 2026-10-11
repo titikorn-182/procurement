@@ -4,7 +4,11 @@ import { useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Check, LoaderCircle, Printer } from "lucide-react";
 import { uploadPaymentAttachments } from "@/app/lib/payment-attachments.client";
-import type { SelectedAttachment } from "@/app/lib/request-attachments";
+import {
+  validateAttachmentCandidates,
+  type SelectedAttachment,
+} from "@/app/lib/request-attachments";
+import type { PaymentEditData } from "./types";
 import { Button } from "../../components/ui";
 import { createPaymentDraft, submitPaymentDraft } from "./actions";
 import { PaymentDocumentsSection } from "./payment-documents-section";
@@ -20,24 +24,36 @@ import { createPol02Checklist, getPol02DocumentIds } from "./pol02-checklist";
 export function PaymentForm({
   requests,
   printFontClassName,
+  initial,
 }: {
   requests: SourceRequest[];
   printFontClassName: string;
+  initial?: PaymentEditData;
 }) {
   const router = useRouter();
   const previewButtonRef = useRef<HTMLButtonElement>(null);
   const [previewData, setPreviewData] = useState<Pol02PrintData | null>(null);
-  const [idempotencyKey] = useState(() => crypto.randomUUID());
+  const [idempotencyKey] = useState(() => initial?.idempotencyKey ?? crypto.randomUUID());
+  const [saved, setSaved] = useState<{ id: string; paymentNo: string; updatedAt: string } | null>(
+    initial ? { id: initial.id, paymentNo: initial.paymentNo, updatedAt: initial.updatedAt } : null,
+  );
+  const [existing, setExisting] = useState(initial?.attachments ?? []);
+  const [removedIds, setRemovedIds] = useState<string[]>([]);
+  const retained = existing.filter((file) => !removedIds.includes(file.id));
   const [requestId, setRequestId] = useState(requests[0]?.id ?? "");
   const initialRequest = requests[0];
-  const [details, setDetails] = useState<PaymentDetails>(() =>
-    initialRequest ? createPaymentDetails(initialRequest) : ({} as PaymentDetails),
+  const [details, setDetails] = useState<PaymentDetails>(
+    () =>
+      initial?.details ??
+      (initialRequest ? createPaymentDetails(initialRequest) : ({} as PaymentDetails)),
   );
-  const [lines, setLines] = useState<PaymentLine[]>(() =>
-    initialRequest ? createPaymentLines(initialRequest) : [],
+  const [lines, setLines] = useState<PaymentLine[]>(
+    () => initial?.lines ?? (initialRequest ? createPaymentLines(initialRequest) : []),
   );
-  const [checklist, setChecklist] = useState(() =>
-    createPol02Checklist(initialRequest?.checklistCategories, initialRequest?.isNewVendor),
+  const [checklist, setChecklist] = useState(
+    () =>
+      initial?.checklist ??
+      createPol02Checklist(initialRequest?.checklistCategories, initialRequest?.isNewVendor),
   );
   const selectedDocuments = getPol02DocumentIds(checklist);
   const [files, setFiles] = useState<SelectedAttachment[]>([]);
@@ -64,7 +80,7 @@ export function PaymentForm({
     setError("");
   }
 
-  function validate() {
+  function validate(saveOnly: boolean) {
     if (
       !request ||
       !details.subject.trim() ||
@@ -94,13 +110,23 @@ export function PaymentForm({
     if (selectedDocuments.length === 0) {
       return "กรุณาเลือกรายการเอกสารประกอบอย่างน้อย 1 รายการ";
     }
-    if (files.length === 0) return "กรุณาแนบเอกสารประกอบอย่างน้อย 1 ไฟล์";
+    if (!saveOnly && files.length + retained.length === 0)
+      return "กรุณาแนบเอกสารประกอบอย่างน้อย 1 ไฟล์";
+    const attachmentError = validateAttachmentCandidates([
+      ...retained.map((file) => ({
+        name: file.file_name,
+        size: file.size_bytes,
+        type: file.mime_type,
+      })),
+      ...files.map(({ file }) => file),
+    ]);
+    if (attachmentError) return attachmentError;
     return null;
   }
 
-  function submit() {
+  function submit(saveOnly = false) {
     setError("");
-    const validationError = validate();
+    const validationError = validate(saveOnly);
     if (validationError) {
       setError(validationError);
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -108,82 +134,110 @@ export function PaymentForm({
     }
 
     startTransition(async () => {
-      setProgress("กำลังสร้างฉบับร่าง POL02...");
-      const draft = await createPaymentDraft({
-        requestId,
-        idempotencyKey,
-        invoiceNo: details.invoiceNo,
-        invoiceDate: details.invoiceDate,
-        subtotal,
-        vat: Number(details.vat) || 0,
-        delivery: details.delivery,
-        formData: {
-          formType: "pol02",
-          formVersion: 1,
-          approvalDate: details.approvalDate,
-          departmentName: request.departmentName,
-          requesterName: request.requesterName,
-          subject: details.subject,
-          projectActivity: details.projectActivity,
-          budgetYear: request.budgetYear,
-          fundSource: request.fundSource,
-          departmentCode: request.departmentCode,
-          fundCode: request.fundCode,
-          activityCode: request.activityCode,
-          expenseCategory: request.expenseCategory,
-          procurementMethod: details.procurementMethod,
-          egpProjectNo: details.egpProjectNo,
-          contractNo: details.contractNo,
-          contractDate: details.contractDate,
-          vendorName: details.vendorName,
-          vendorTaxId: details.vendorTaxId,
-          contractAmount: Number(details.contractAmount),
-          installmentNumber: Number(details.installmentNumber),
-          installmentCount: Number(details.installmentCount),
-          documentChecklist: selectedDocuments,
-          supportingDocumentChecklist: checklist,
-        },
-        items: lines.map((line, index) => ({
-          lineNo: index + 1,
-          description: line.description,
-          attachmentType: line.attachmentType,
-          documentNo: line.documentNo,
-          quantity: Number(line.quantity),
-          unitPrice: Number(line.unitPrice),
-        })),
-      });
-      if (draft.error || !draft.paymentId) {
-        setError(draft.error ?? "ไม่สามารถสร้างฉบับร่างคำขอเบิกจ่ายได้");
-        setProgress("");
-        window.scrollTo({ top: 0, behavior: "smooth" });
-        return;
-      }
-
-      const upload = await uploadPaymentAttachments(draft.paymentId, files, (state) => {
-        setProgress(
-          state.currentFileName
-            ? `กำลังอัปโหลด ${state.completed + 1}/${state.total}: ${state.currentFileName}`
-            : "อัปโหลดเอกสารครบแล้ว กำลังส่งเข้าสายอนุมัติ...",
+      try {
+        setProgress("กำลังบันทึกข้อมูล POL-02...");
+        const draft = await createPaymentDraft(
+          {
+            requestId,
+            idempotencyKey,
+            invoiceNo: details.invoiceNo,
+            invoiceDate: details.invoiceDate,
+            subtotal,
+            vat: Number(details.vat) || 0,
+            delivery: details.delivery,
+            formData: {
+              formType: "pol02",
+              formVersion: 1,
+              approvalDate: details.approvalDate,
+              departmentName: request.departmentName,
+              requesterName: request.requesterName,
+              subject: details.subject,
+              projectActivity: details.projectActivity,
+              budgetYear: request.budgetYear,
+              fundSource: request.fundSource,
+              departmentCode: request.departmentCode,
+              fundCode: request.fundCode,
+              activityCode: request.activityCode,
+              expenseCategory: request.expenseCategory,
+              procurementMethod: details.procurementMethod,
+              egpProjectNo: details.egpProjectNo,
+              contractNo: details.contractNo,
+              contractDate: details.contractDate,
+              vendorName: details.vendorName,
+              vendorTaxId: details.vendorTaxId,
+              contractAmount: Number(details.contractAmount),
+              installmentNumber: Number(details.installmentNumber),
+              installmentCount: Number(details.installmentCount),
+              documentChecklist: selectedDocuments,
+              supportingDocumentChecklist: checklist,
+            },
+            items: lines.map((line, index) => ({
+              lineNo: index + 1,
+              description: line.description,
+              attachmentType: line.attachmentType,
+              documentNo: line.documentNo,
+              quantity: Number(line.quantity),
+              unitPrice: Number(line.unitPrice),
+            })),
+          },
+          saved
+            ? { id: saved.id, updatedAt: saved.updatedAt, removedAttachmentIds: removedIds }
+            : undefined,
         );
-      });
-      if (upload.error) {
-        setError(`${upload.error}${draft.paymentNo ? ` เลขที่ฉบับร่าง ${draft.paymentNo}` : ""}`);
+        if (draft.error || !draft.paymentId) {
+          setError(draft.error ?? "ไม่สามารถสร้างฉบับร่างคำขอเบิกจ่ายได้");
+          setProgress("");
+          window.scrollTo({ top: 0, behavior: "smooth" });
+          return;
+        }
+        if (!draft.paymentNo || !("updatedAt" in draft) || !draft.updatedAt) {
+          setError(
+            "บันทึกข้อมูลแล้ว แต่โหลดรุ่นข้อมูลไม่สำเร็จ กรุณาเปิดฉบับร่างจากเมนูคำขอเบิกจ่ายก่อนทำต่อ",
+          );
+          setProgress("");
+          return;
+        }
+        setSaved({ id: draft.paymentId, paymentNo: draft.paymentNo, updatedAt: draft.updatedAt });
+        setExisting(retained);
+        setRemovedIds([]);
+
+        const upload = await uploadPaymentAttachments(draft.paymentId, files, (state) => {
+          setProgress(
+            state.currentFileName
+              ? `กำลังอัปโหลด ${state.completed + 1}/${state.total}: ${state.currentFileName}`
+              : "อัปโหลดเอกสารครบแล้ว กำลังส่งเข้าสายอนุมัติ...",
+          );
+        });
+        if (upload.error) {
+          setError(`${upload.error}${draft.paymentNo ? ` เลขที่ฉบับร่าง ${draft.paymentNo}` : ""}`);
+          setProgress("");
+          window.scrollTo({ top: 0, behavior: "smooth" });
+          return;
+        }
+        if (saveOnly) {
+          router.push(`/payments/${encodeURIComponent(draft.paymentNo)}`);
+          router.refresh();
+          return;
+        }
+
+        const submitted = await submitPaymentDraft(draft.paymentId);
+        if (submitted.error) {
+          setError(submitted.error);
+          setProgress("");
+          window.scrollTo({ top: 0, behavior: "smooth" });
+          return;
+        }
+
+        setProgress("ส่งคำขอเรียบร้อย");
+        router.push(`/payments/${encodeURIComponent(draft.paymentNo!)}`);
+        router.refresh();
+      } catch {
+        setError(
+          "การเชื่อมต่อขัดข้อง ข้อมูลที่กรอกยังอยู่ในหน้านี้ กรุณาลองใหม่ หรือเปิดฉบับร่างจากเมนูคำขอเบิกจ่าย",
+        );
         setProgress("");
         window.scrollTo({ top: 0, behavior: "smooth" });
-        return;
       }
-
-      const submitted = await submitPaymentDraft(draft.paymentId);
-      if (submitted.error) {
-        setError(submitted.error);
-        setProgress("");
-        window.scrollTo({ top: 0, behavior: "smooth" });
-        return;
-      }
-
-      setProgress("ส่งคำขอเรียบร้อย");
-      router.push("/requests");
-      router.refresh();
     });
   }
 
@@ -204,6 +258,13 @@ export function PaymentForm({
         data={previewData}
         fontClassName={printFontClassName}
         attachments={files}
+        savedAttachments={retained.map((file) => ({
+          id: file.id,
+          name: file.file_name,
+          mimeType: file.mime_type,
+          sizeBytes: file.size_bytes,
+          scope: "payment",
+        }))}
         onClose={() => {
           setPreviewData(null);
           requestAnimationFrame(() => previewButtonRef.current?.focus());
@@ -220,7 +281,10 @@ export function PaymentForm({
         lines,
         selectedDocuments,
         supportingDocumentChecklist: checklist,
-        attachmentNames: files.map(({ file }) => file.name),
+        attachmentNames: [
+          ...retained.map((file) => file.file_name),
+          ...files.map(({ file }) => file.name),
+        ],
       }),
     );
   }
@@ -282,6 +346,7 @@ export function PaymentForm({
         )}
 
         <PaymentReferenceSection
+          sourceLocked={Boolean(saved)}
           requests={requests}
           requestId={requestId}
           request={request}
@@ -297,6 +362,40 @@ export function PaymentForm({
           onLinesChange={setLines}
           onVatChange={(vat) => setDetails({ ...details, vat })}
         />
+        {existing.length > 0 && (
+          <section className="border-t p-5" aria-label="เอกสารแนบเดิม">
+            <h3 className="font-bold">เอกสารแนบเดิม</h3>
+            <p className="mt-1 text-sm text-stone-600">
+              การนำออกจะมีผลเมื่อบันทึกข้อมูล และเก็บไฟล์ต้นฉบับไว้สำหรับตรวจสอบ
+            </p>
+            <ul className="mt-3 divide-y border">
+              {existing.map((file) => (
+                <li key={file.id} className="flex flex-wrap items-center justify-between gap-2 p-3">
+                  <a
+                    href={`/api/payment-attachments/${file.id}`}
+                    className="min-w-0 break-all text-sm underline"
+                  >
+                    {file.file_name}
+                  </a>
+                  <button
+                    type="button"
+                    disabled={pending}
+                    onClick={() =>
+                      setRemovedIds((ids) =>
+                        ids.includes(file.id)
+                          ? ids.filter((id) => id !== file.id)
+                          : [...ids, file.id],
+                      )
+                    }
+                    className="min-h-11 border px-3 text-sm font-semibold"
+                  >
+                    {removedIds.includes(file.id) ? "ยกเลิกการนำออก" : "นำออก"}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
         <PaymentDocumentsSection
           checklist={checklist}
           files={files}
@@ -307,9 +406,14 @@ export function PaymentForm({
 
         <div className="flex flex-col gap-3 border-t border-[var(--line)] bg-stone-50 p-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs leading-5 text-stone-500">
-            เมื่อส่งแล้ว คำขอจะเข้าสู่ขั้นตอนเจ้าหน้าที่พัสดุตรวจสอบเอกสาร
+            {initial?.status === "returned"
+              ? `เมื่อส่งใหม่ คำขอจะกลับไปยังผู้ตรวจขั้นตอนที่ ${initial.currentStep} โดยเก็บประวัติเดิม`
+              : "เมื่อส่งแล้ว คำขอจะเข้าสู่ขั้นตอนเจ้าหน้าที่พัสดุตรวจสอบเอกสาร"}
           </p>
           <div className="flex flex-wrap gap-3">
+            <Button variant="secondary" disabled={pending || over} onClick={() => submit(true)}>
+              บันทึกไว้ทำต่อ
+            </Button>
             <Button variant="secondary" disabled={pending} onClick={openPreview}>
               <Printer size={17} aria-hidden="true" /> ดูตัวอย่าง / พิมพ์ / PDF
             </Button>

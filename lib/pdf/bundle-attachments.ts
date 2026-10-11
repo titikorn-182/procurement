@@ -11,6 +11,7 @@ export type PdfBundleAttachment = {
   name: string;
   mimeType: string;
   sizeBytes: number;
+  scope?: "request" | "payment";
   /** Present only for unsent browser previews; saved records use the authenticated endpoint. */
   file?: File;
 };

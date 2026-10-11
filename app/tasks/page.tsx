@@ -1,10 +1,10 @@
 import { AppShell } from "../components/app-shell";
 import { PageHeader } from "../components/ui";
-import { getMyTasks } from "../lib/live-data";
+import { getWorkTasks } from "../lib/task-data";
 import { TasksClient } from "./tasks-client";
 
 export default async function TasksPage() {
-  const { rows, error } = await getMyTasks();
+  const { rows, error } = await getWorkTasks();
   return (
     <AppShell>
       <PageHeader

@@ -44,6 +44,12 @@ export function StatusBadge({ status }: { status: RequestStatus }) {
     เกินกำหนด: ["bg-[var(--red-soft)] text-[var(--red)] border-red-200", AlertTriangle],
     เสร็จสิ้น: ["bg-[var(--green-soft)] text-[var(--green)] border-green-200", CheckCircle2],
     ร่าง: ["bg-stone-100 text-stone-700 border-stone-300", FileClock],
+    ส่งกลับแก้ไข: ["bg-[var(--amber-soft)] text-[var(--amber)] border-amber-200", FileClock],
+    ไม่เห็นชอบ: ["bg-[var(--red-soft)] text-[var(--red)] border-red-200", AlertTriangle],
+    อนุมัติแล้ว: ["bg-[var(--green-soft)] text-[var(--green)] border-green-200", CheckCircle2],
+    สืบราคา: ["bg-[var(--blue-soft)] text-[var(--blue)] border-blue-200", Clock3],
+    "สั่งซื้อ/จ้างแล้ว": ["bg-[var(--blue-soft)] text-[var(--blue)] border-blue-200", Clock3],
+    ยกเลิก: ["bg-stone-100 text-stone-700 border-stone-300", AlertTriangle],
   }[status] as [string, typeof Clock3];
   const Icon = config[1];
   return (

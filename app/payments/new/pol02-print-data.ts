@@ -14,6 +14,8 @@ export type Pol02PrintItem = {
 };
 
 export type Pol02PrintData = {
+  balanceRecorded?: boolean;
+  savedIdentity?: { paymentNo: string; statusLabel: string };
   source: Pick<
     SourceRequest,
     | "requestNo"

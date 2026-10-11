@@ -95,7 +95,7 @@ export default async function RequestDetailPage({ params }: PageProps<"/requests
                 className="inline-flex min-h-10 items-center justify-center gap-2 bg-[var(--orange)] px-4 font-bold text-white hover:bg-[var(--orange-dark)] focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)]"
               >
                 <PencilLine size={17} aria-hidden="true" />
-                แก้ไขและส่งใหม่
+                {data.status === "draft" ? "ทำฉบับร่างต่อ" : "แก้ไขและส่งใหม่"}
               </Link>
             )}
             <Link

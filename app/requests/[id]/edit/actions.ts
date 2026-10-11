@@ -47,9 +47,9 @@ export async function updateReturnedRequest(requestId: string, input: NewRequest
     .select("form_data")
     .eq("id", requestId)
     .eq("requester_id", user.id)
-    .eq("status", "returned")
+    .in("status", ["returned", "draft"])
     .maybeSingle();
-  if (readError || !existing) return { error: "ไม่พบคำขอที่แก้ไขได้หรือคำขอไม่ได้ถูกส่งกลับ" };
+  if (readError || !existing) return { error: "ไม่พบฉบับร่างหรือคำขอที่ส่งกลับให้คุณแก้ไข" };
   const storedForm: unknown = existing.form_data;
   if (
     !storedForm ||
@@ -153,9 +153,22 @@ export async function resubmitReturnedRequest(requestId: string) {
   } = await supabase.auth.getUser();
   if (!user) return { error: "กรุณาเข้าสู่ระบบใหม่", requestNo: null };
 
-  const { data, error } = await supabase.rpc("resubmit_returned_procurement_request", {
-    target_request_id: requestId,
-  });
+  const { data: current, error: readError } = await supabase
+    .from("procurement_requests")
+    .select("status")
+    .eq("id", requestId)
+    .eq("requester_id", user.id)
+    .maybeSingle();
+  if (readError || !current || !["draft", "returned"].includes(current.status))
+    return { error: "ไม่พบคำขอที่ส่งได้ กรุณาโหลดหน้าใหม่", requestNo: null };
+  const { data, error } = await supabase.rpc(
+    current.status === "draft"
+      ? "submit_procurement_request_draft"
+      : "resubmit_returned_procurement_request",
+    {
+      target_request_id: requestId,
+    },
+  );
   if (error) {
     return {
       error: toSafeActionError(

@@ -9,7 +9,7 @@ export default async function ReportsPage() {
     <AppShell>
       <PageHeader
         title="รายงานและการวิเคราะห์"
-        description="สรุปข้อมูลคำขอที่บัญชีของคุณมีสิทธิ์เข้าถึง"
+        description="สรุปคำขอหลักการที่บัญชีนี้มีสิทธิ์เข้าถึง ไม่เกิน 1,000 รายการล่าสุด · เลือกปีงบประมาณเพื่อกรองรายงาน"
       />
       {error ? (
         <div

@@ -17,6 +17,7 @@ export type ReturnedRequestVendor =
   | { kind: "new"; vendorName: string };
 
 type ReturnedRequestBase = {
+  status?: "draft" | "returned";
   id: string;
   requestNo: string;
   currentStep: number;

@@ -88,11 +88,14 @@ export async function fetchRequestBundleAttachment(
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), attachmentTimeoutMs);
   try {
-    const response = await fetch(`/api/request-attachments/${attachment.id}`, {
-      credentials: "same-origin",
-      cache: "no-store",
-      signal: controller.signal,
-    });
+    const response = await fetch(
+      `/api/${attachment.scope === "payment" ? "payment" : "request"}-attachments/${attachment.id}`,
+      {
+        credentials: "same-origin",
+        cache: "no-store",
+        signal: controller.signal,
+      },
+    );
     if (response.status === 401)
       throw new PdfBundleError("กรุณาเข้าสู่ระบบใหม่ก่อนดาวน์โหลดเอกสารแนบ");
     if (response.status === 403 || response.status === 404) {

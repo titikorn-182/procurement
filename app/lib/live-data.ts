@@ -12,14 +12,14 @@ const statusMap: Record<string, RequestStatus> = {
   draft: "ร่าง",
   submitted: "รอตรวจสอบ",
   under_review: "รอตรวจสอบ",
-  returned: "รอเห็นชอบ",
-  not_approved: "รอเห็นชอบ",
-  approved: "รอเห็นชอบ",
+  returned: "ส่งกลับแก้ไข",
+  not_approved: "ไม่เห็นชอบ",
+  approved: "อนุมัติแล้ว",
   budget_control: "คุมยอด",
-  sourcing: "รอเห็นชอบ",
-  ordered: "รอเห็นชอบ",
+  sourcing: "สืบราคา",
+  ordered: "สั่งซื้อ/จ้างแล้ว",
   completed: "เสร็จสิ้น",
-  cancelled: "เสร็จสิ้น",
+  cancelled: "ยกเลิก",
 };
 
 function formatDate(value: string | null) {
@@ -33,10 +33,10 @@ export async function getRequests() {
   const { data, error } = await supabase
     .from("procurement_requests")
     .select(
-      "id, request_no, kind, title, estimated_amount, status, current_step, created_at, required_date, departments(name_th), profiles!procurement_requests_requester_id_fkey(full_name)",
+      "id, request_no, kind, title, estimated_amount, budget_year, status, current_step, created_at, required_date, departments(name_th), profiles!procurement_requests_requester_id_fkey(full_name), workflow_tasks(status,due_at)",
     )
     .order("created_at", { ascending: false })
-    .limit(50);
+    .limit(1000);
   if (error) {
     return {
       rows: [],
@@ -47,8 +47,14 @@ export async function getRequests() {
     const row = raw as unknown as Record<string, unknown>;
     const department = row.departments as { name_th?: string } | null;
     const profile = row.profiles as { full_name?: string } | null;
+    const tasks = (row.workflow_tasks ?? []) as { status: string; due_at: string | null }[];
+    const overdue = tasks.some(
+      (task) => task.status === "pending" && task.due_at && new Date(task.due_at) < new Date(),
+    );
     return {
       uuid: String(row.id),
+      rawStatus: String(row.status),
+      budgetYear: Number(row.budget_year),
       id: String(row.request_no),
       title: String(row.title),
       requester: profile?.full_name || "—",
@@ -56,7 +62,9 @@ export async function getRequests() {
       amount: Number(row.estimated_amount),
       date: formatDate(String(row.created_at)),
       due: formatDate(row.required_date ? String(row.required_date) : null),
-      status: statusMap[String(row.status)] ?? "รอตรวจสอบ",
+      status: overdue
+        ? ("เกินกำหนด" as RequestStatus)
+        : (statusMap[String(row.status)] ?? "รอตรวจสอบ"),
       step: `ขั้นตอนที่ ${Number(row.current_step)}`,
       type: row.kind === "hire" ? "จ้าง" : "ซื้อ",
     };
@@ -143,7 +151,7 @@ export async function canCurrentUserEditReturnedRequest(
   requesterId: string,
   status: unknown,
 ): Promise<boolean> {
-  if (status !== "returned") return false;
+  if (status !== "returned" && status !== "draft") return false;
   const supabase = await createClient();
   const {
     data: { user },
@@ -174,7 +182,7 @@ export async function getReturnedRequestForEdit(requestNo: string): Promise<{
     )
     .eq("request_no", requestNo)
     .eq("requester_id", user.id)
-    .eq("status", "returned")
+    .in("status", ["returned", "draft"])
     .maybeSingle();
 
   if (error) {
@@ -187,7 +195,7 @@ export async function getReturnedRequestForEdit(requestNo: string): Promise<{
       ),
     };
   }
-  if (!data) return { data: null, error: "ไม่พบคำขอที่แก้ไขได้หรือคำขอไม่ได้ถูกส่งกลับ" };
+  if (!data) return { data: null, error: "ไม่พบฉบับร่างหรือคำขอที่ส่งกลับให้คุณแก้ไข" };
 
   const formData = editRecord(data.form_data);
   if (formData.formType !== "standard" && formData.formType !== "w119") {
@@ -233,6 +241,7 @@ export async function getReturnedRequestForEdit(requestNo: string): Promise<{
 
   const common = {
     id: String(data.id),
+    status: data.status === "draft" ? ("draft" as const) : ("returned" as const),
     requestNo: String(data.request_no),
     currentStep: Number(data.current_step),
     kind: data.kind === "hire" ? ("hire" as const) : ("purchase" as const),

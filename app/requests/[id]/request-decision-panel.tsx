@@ -13,6 +13,7 @@ import {
 import { transitionProcurementRequest, type TransitionRequestState } from "./actions";
 
 type RequestDecisionPanelProps = {
+  transitionAction?: typeof transitionProcurementRequest;
   requestId: string;
   canAct: boolean;
   taskName: string | null;
@@ -82,11 +83,9 @@ export function RequestDecisionPanel({
   taskName,
   requiredRole,
   dueAt,
+  transitionAction = transitionProcurementRequest,
 }: RequestDecisionPanelProps) {
-  const [state, formAction] = useActionState(
-    transitionProcurementRequest,
-    initialTransitionRequestState,
-  );
+  const [state, formAction] = useActionState(transitionAction, initialTransitionRequestState);
   const [comment, setComment] = useState("");
   const formattedDueAt = dueAt
     ? new Intl.DateTimeFormat("th-TH", {

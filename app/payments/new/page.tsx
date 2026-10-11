@@ -74,7 +74,7 @@ export default async function NewPaymentPage() {
       fundSource: row.fund_source,
       planName: row.plan_name ?? "",
       expenseCategory: row.expense_category ?? "",
-      approvedDate: row.completed_at?.slice(0, 10) ?? new Date().toISOString().slice(0, 10),
+      approvedDate: "",
       approved: Number(row.estimated_amount),
       paid,
       vendorName: text(vendor.name),

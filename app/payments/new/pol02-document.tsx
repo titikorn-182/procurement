@@ -42,8 +42,12 @@ export function Pol02Document({
     <PaginatedDocument
       title="ใบขอเบิกจ่ายจัดซื้อจัดจ้าง"
       formCode="POL - 02"
-      identifier="ฉบับร่างก่อนส่งคำขอ"
-      footer={`POL-02 ฉบับร่าง · อ้างอิง ${source.requestNo}`}
+      identifier={
+        data.savedIdentity
+          ? `${data.savedIdentity.paymentNo} · ${data.savedIdentity.statusLabel}`
+          : "ฉบับร่างก่อนส่งคำขอ"
+      }
+      footer={`POL-02 ${data.savedIdentity ? `${data.savedIdentity.paymentNo} · ${data.savedIdentity.statusLabel}` : "ฉบับร่าง"} · อ้างอิง ${source.requestNo}`}
       targetId={targetId}
       fontClassName={fontClassName}
     >
@@ -161,8 +165,18 @@ export function Pol02Document({
             ["รหัสกองทุน", source.fundCode],
             ["รหัสกิจกรรม", source.activityCode],
             ["วงเงินอนุมัติ", `${money(source.approved)} บาท`],
-            ["เบิกแล้ว/อยู่ระหว่างดำเนินการ", `${money(source.paid)} บาท`],
-            ["คงเหลือก่อนเบิกครั้งนี้", `${money(source.approved - source.paid)} บาท`],
+            [
+              "เบิกแล้ว/อยู่ระหว่างดำเนินการ",
+              data.balanceRecorded === false
+                ? "ไม่มีข้อมูลยอด ณ วันส่ง"
+                : `${money(source.paid)} บาท`,
+            ],
+            [
+              "คงเหลือก่อนเบิกครั้งนี้",
+              data.balanceRecorded === false
+                ? "ไม่มีข้อมูลยอด ณ วันส่ง"
+                : `${money(source.approved - source.paid)} บาท`,
+            ],
           ].map(([label, text]) => (
             <div key={label}>
               <dt>{label}</dt>

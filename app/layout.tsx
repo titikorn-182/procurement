@@ -49,6 +49,12 @@ OWN-WORLD: สืบทอดกระดาษ/graphite/orange, Sarabun, กร
 STORY: เลือกประเภท เปิดฟอร์ม ตรวจทาน 12 หัวข้อ แล้วสร้างไฟล์แนบจากข้อมูลล่าสุดเมื่อส่ง.
 FIRST VIEWPORT: เช็คลิสต์เดิมอยู่บน TOR accordion; สองคอลัมน์เป็นหนึ่งบนมือถือ; เอกสารอื่นอยู่ล่าง.
 FORM: user-approved A accordion, local extension under new-work section 3, no concept roll required.
+SURFACE FLOW-COMPLETION:
+THESIS: Close existing request journeys without replacing finished forms or approval roles.
+OWN-WORLD: Existing square paper ledgers, graphite navigation, orange actions and Sarabun.
+STORY: Find a request, resume a draft, review at the assigned step, inspect history and print saved data.
+FIRST VIEWPORT: Existing shell and page header; POL-02 list follows task-ledger rows, detail follows POL-01 document and decision columns; mobile stacks.
+FORM: Local flow extension under new-work section 3; inherits incumbent POL-01 composition and seed c8707b00, no new visual-world roll.
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md
 -->`;
 

@@ -3,13 +3,14 @@
 import { useMemo, useState } from "react";
 import { Download, FileText } from "lucide-react";
 import type { RequestRow } from "../requests/requests-client";
+import { csvCell } from "../lib/csv";
 
 function downloadCsv(name: string, rows: RequestRow[]) {
   const csv = [
     ["เลขคำขอ", "ประเภท", "ชื่อเรื่อง", "หน่วยงาน", "วันที่", "วงเงิน", "สถานะ", "ขั้นตอน"],
     ...rows.map((r) => [r.id, r.type, r.title, r.unit, r.date, String(r.amount), r.status, r.step]),
   ]
-    .map((line) => line.map((v) => `"${String(v).replaceAll('"', '""')}"`).join(","))
+    .map((line) => line.map(csvCell).join(","))
     .join("\r\n");
   const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
@@ -20,20 +21,33 @@ function downloadCsv(name: string, rows: RequestRow[]) {
   URL.revokeObjectURL(url);
 }
 
-export function ReportsDashboard({ requests }: { requests: RequestRow[] }) {
-  const years = useMemo(() => [new Date().getFullYear() + 543], []);
-  const [year, setYear] = useState(years[0]);
+export function ReportsDashboard({ requests: allRequests }: { requests: RequestRow[] }) {
+  const years = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          allRequests.map((row) => row.budgetYear).filter((year): year is number => Boolean(year)),
+        ),
+      ).sort((a, b) => b - a),
+    [allRequests],
+  );
+  const [year, setYear] = useState(0);
+  const requests = year ? allRequests.filter((row) => row.budgetYear === year) : allRequests;
   const total = requests.reduce((sum, r) => sum + r.amount, 0);
   const completed = requests.filter((r) => r.status === "เสร็จสิ้น");
   const overdue = requests.filter((r) => r.status === "เกินกำหนด");
+  const terminated = requests.filter((r) =>
+    ["cancelled", "not_approved"].includes(r.rawStatus ?? ""),
+  );
   const statusRows = [
     { label: "เสร็จสิ้น", count: completed.length, color: "var(--green)" },
     { label: "เกินกำหนด", count: overdue.length, color: "var(--red)" },
     {
       label: "อยู่ระหว่างดำเนินการ",
-      count: Math.max(0, requests.length - completed.length - overdue.length),
+      count: Math.max(0, requests.length - completed.length - overdue.length - terminated.length),
       color: "var(--orange)",
     },
+    { label: "ยกเลิก / ไม่อนุมัติ", count: terminated.length, color: "var(--line-dark)" },
   ];
   return (
     <>
@@ -45,11 +59,10 @@ export function ReportsDashboard({ requests }: { requests: RequestRow[] }) {
             onChange={(e) => setYear(Number(e.target.value))}
             className="ml-2 min-h-10 border border-[var(--line-dark)] bg-white px-3"
           >
-            {years.length ? (
-              years.map((y) => <option key={y}>{y}</option>)
-            ) : (
-              <option>{year}</option>
-            )}
+            <option value={0}>ทุกปีงบประมาณ</option>
+            {years.map((y) => (
+              <option key={y}>{y}</option>
+            ))}
           </select>
         </label>
         <button

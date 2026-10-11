@@ -5,10 +5,10 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { W804Navigation } from "./w804-navigation";
+import { GlobalSearch } from "./global-search";
 import {
   AlertTriangle,
   Bell,
-  ChevronDown,
   ClipboardCheck,
   FilePlus2,
   FileText,
@@ -18,7 +18,6 @@ import {
   PackageCheck,
   Menu,
   ReceiptText,
-  Search,
   Settings,
   UserRound,
   WalletCards,
@@ -44,13 +43,13 @@ const nav = [
     href: "/requests",
     label: "คำขอหลักการ POL-01",
     icon: FileText,
-    roles: ["ผู้ดูแลระบบ", "ผู้ยื่นคำขอ"],
+    roles: ["ผู้ดูแลระบบ", "ผู้ยื่นคำขอ", "เจ้าหน้าที่", "ผู้บริหาร"],
   },
   {
-    href: "/payments/new",
+    href: "/payments",
     label: "คำขอเบิกจ่าย POL-02",
     icon: ReceiptText,
-    roles: ["ผู้ดูแลระบบ", "ผู้ยื่นคำขอ"],
+    roles: ["ผู้ดูแลระบบ", "ผู้ยื่นคำขอ", "เจ้าหน้าที่", "ผู้บริหาร"],
   },
   {
     href: "/requests/w119",
@@ -80,7 +79,6 @@ const nav = [
     href: "/tasks",
     label: "งานรอตรวจสอบ",
     icon: ClipboardCheck,
-    badge: 5,
     roles: ["ผู้ดูแลระบบ", "เจ้าหน้าที่", "ผู้บริหาร"],
   },
   {
@@ -238,7 +236,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         >
           {nav
             .filter((item) => item.roles.includes(contextRole))
-            .map(({ href, label, icon: Icon, badge }) => {
+            .map(({ href, label, icon: Icon }) => {
               if (href === "/requests/w804") {
                 return (
                   <div
@@ -266,23 +264,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 >
                   <Icon size={20} aria-hidden="true" />
                   <span className="flex-1 font-semibold">{label}</span>
-                  {badge && (
-                    <span className="min-w-6 bg-white px-1.5 text-center text-xs font-bold text-[var(--orange-dark)]">
-                      {badge}
-                    </span>
-                  )}
                 </Link>
               );
             })}
         </nav>
         <div className="shrink-0 p-3">
-          <div className="hazard fasteners flex items-center gap-3 border border-[#9f3208] p-3 text-[var(--ink)]">
+          <Link
+            href="/activity"
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-3 border border-white/25 p-3 text-white hover:bg-white/10"
+          >
             <AlertTriangle size={22} />
             <div>
-              <div className="font-bold">งานเกินกำหนด</div>
-              <div className="text-xs">3 รายการต้องติดตาม</div>
+              <div className="font-bold">รายการที่ต้องติดตาม</div>
+              <div className="text-xs">เปิดงานรอพิจารณาและคำขอที่ส่งกลับ</div>
             </div>
-          </div>
+          </Link>
         </div>
         <div className="shrink-0 border-t border-white/15 px-4 py-3 text-xs leading-5 text-slate-300">
           <span className="block whitespace-nowrap">พัฒนาโดย สำนักงานเลขานุการ คณะรัฐศาสตร์</span>
@@ -318,40 +315,35 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="lg:pl-80">
         <header className="sticky top-0 z-30 flex min-h-16 items-center border-b border-[var(--line-dark)] bg-[var(--paper)] px-4 pl-16 lg:px-6">
           <div className="hidden text-sm font-semibold text-stone-600 md:block">
-            ต้นแบบ UI · ข้อมูลจำลอง
+            ระบบบริหารงานพัสดุ
           </div>
           <div className="ml-auto flex items-center gap-2">
-            <label className="relative hidden md:block">
-              <span className="sr-only">ค้นหา</span>
-              <Search
-                size={17}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-500"
-              />
-              <input
-                className="h-10 w-72 border border-[var(--line)] bg-white pl-9 pr-3"
-                placeholder="ค้นหาเลขคำขอ ชื่อเรื่อง ผู้ยื่น"
-              />
-            </label>
-            <button
+            <div className="hidden w-80 lg:block">
+              <GlobalSearch />
+            </div>
+            <Link
+              href="/search"
+              className="inline-flex min-h-11 items-center border border-[var(--line)] px-3 font-semibold lg:hidden"
+            >
+              ค้นหา
+            </Link>
+            <Link
+              href="/activity"
               className="relative border border-[var(--line)] bg-white p-2.5 hover:bg-stone-100"
-              aria-label="การแจ้งเตือน 5 รายการ"
+              aria-label="เปิดรายการที่ต้องติดตาม"
             >
               <Bell size={19} />
-              <span className="absolute -right-1 -top-1 min-w-5 bg-[var(--orange)] px-1 text-center text-xs font-bold text-white">
-                5
-              </span>
-            </button>
-            <button
+            </Link>
+            <span
               className="hidden min-h-10 items-center gap-2 border border-[var(--line)] bg-white px-3 sm:flex"
               aria-label={`บทบาทปัจจุบัน ${contextRole}`}
             >
               <WalletCards size={18} />
               <span>{contextRole}</span>
-              <ChevronDown size={15} />
-            </button>
+            </span>
           </div>
         </header>
-        <main className="min-h-[calc(100vh-4rem)] p-4 sm:p-6 xl:p-8">{children}</main>
+        <main className="min-h-[calc(100vh-4rem)] min-w-0 p-4 sm:p-6 xl:p-8">{children}</main>
       </div>
     </div>
   );

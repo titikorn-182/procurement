@@ -8,6 +8,7 @@ import type { RequestStatus } from "../lib/mock-data";
 
 type Task = {
   id: string;
+  href?: string;
   title: string;
   requester: string;
   unit: string;
@@ -54,7 +55,7 @@ export function TasksClient({ tasks }: { tasks: Task[] }) {
         >
           เกินกำหนด {overdue}
         </button>
-        <label className="relative ml-auto min-w-64">
+        <label className="relative ml-auto min-w-0 w-full sm:w-64">
           <span className="sr-only">ค้นหางาน</span>
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-500" />
           <input
@@ -69,14 +70,14 @@ export function TasksClient({ tasks }: { tasks: Task[] }) {
         {rows.length ? (
           rows.map((task, index) => (
             <Link
-              href={`/requests/${task.id}`}
+              href={task.href ?? `/requests/${encodeURIComponent(task.id)}`}
               key={task.id}
               className={`group grid gap-3 p-4 hover:bg-orange-50/60 sm:grid-cols-[auto_1fr_auto] ${task.status === "เกินกำหนด" ? "hazard" : ""}`}
             >
               <div className="flex h-11 w-11 items-center justify-center border border-[var(--line-dark)] bg-white font-bold">
                 {index + 1}
               </div>
-              <div className="bg-[var(--paper)]/90 px-2">
+              <div className="min-w-0 break-words bg-[var(--paper)]/90 px-2">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-bold">{task.id}</span>
                   <StatusBadge status={task.status} />
