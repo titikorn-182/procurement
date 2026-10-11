@@ -38,7 +38,7 @@ JSON ของฟอร์มยังต้องตรวจด้วย Zod/�
 3. ตรวจ output แล้วนำไปแทน `lib/supabase/database.types.ts` และจัดรูปแบบด้วย Prettier
 4. ตรวจ diff เทียบ migration โดยเฉพาะ nullable, generated columns, enum, foreign keys และ RPC แล้วรันชุดตรวจทั้งหมด
 
-ขอบเขตตัวแปลงนี้คือ schema ปัจจุบัน: ยังไม่รองรับ views, custom composite types, overloaded RPC หรือชนิด PostgreSQL พิเศษ เช่น geometry หากเพิ่มสิ่งเหล่านี้ ให้ปรับตัวแปลงพร้อม tests หรือใช้ Supabase CLI ที่ยืนยันตัวตนแล้ว อย่าสร้าง type ที่กว้างขึ้นเพื่อปิดข้อผิดพลาด
+ตัวแปลงรองรับ tables และ read-only views (เพิ่มในขั้นตอน 6) แต่ยังไม่รองรับ custom composite types, overloaded RPC หรือชนิด PostgreSQL พิเศษ เช่น geometry หากเพิ่มสิ่งเหล่านี้ ให้ปรับตัวแปลงพร้อม tests หรือใช้ Supabase CLI ที่ยืนยันตัวตนแล้ว อย่าสร้าง type ที่กว้างขึ้นเพื่อปิดข้อผิดพลาด
 
 ชนิด return ของ SQL function ไม่อาจยืนยัน NOT NULL ได้จาก signature เพียงอย่างเดียว และ types ไม่ยืนยันสิทธิ์ RLS หรือความถูกต้องของ JSON จึงต้องคงการตรวจ runtime และ SQL tests ไว้ด้วย
 
@@ -186,6 +186,46 @@ POL-01 ยังใช้ปี 2569 และรหัสงบประมา�
 - ตรวจ lint, TypeScript, tests รวม 643 กรณีใน 57 ไฟล์, format และ production build; SQL workflow test ใช้ PGlite กับข้อมูลสมมติ ไม่มีการเขียนฐานข้อมูลจริง
 - การตรวจนี้ไม่ใช่ browser end-to-end หรือการตรวจภาพ PDF ใหม่ การเปลี่ยนใน UI เป็นเพียงการ import ตัวช่วยที่ให้ผลเดิม
 
-## ยังไม่เริ่ม: ขั้นตอน 6–7
+## ขั้นตอน 6: แบ่งหน้ารายการจากฐานข้อมูล
 
-ยังไม่เพิ่ม pagination หรือ CI ต้องขออนุมัติงานระยะถัดไปก่อน
+หน้า `/requests` และ `/payments` ค้นหาและกรองที่ฐานข้อมูลก่อนนับจำนวนและอ่านครั้งละ 10 แถว ไม่ส่ง 1,000 แถวเข้า browser แล้วค้นหาเฉพาะข้อมูลชุดนั้นอีกต่อไป
+
+- `features/*/server/list-queries.ts`: data access เฉพาะหน้ารายการ, exact count, เรียง `created_at DESC, id DESC` เพื่อให้แถวที่สร้างเวลาเดียวกันไม่สลับลำดับ
+- `lib/pagination.ts`: ตรวจ URL, จำกัดคำค้น 200 ตัวอักษร, จำกัดเลขหน้า และสร้างลิงก์เก็บตัวกรอง; ค้นหาแบบไม่สนใจตัวพิมพ์ ใช้ PostgREST `imatch` พร้อม escape regex ทั้งหมด เพื่อไม่ให้ `%`, `_`, `*` หรือวงเล็บในคำค้นกลายเป็นเงื่อนไขอื่น ([เอกสาร PostgREST](https://docs.postgrest.org/en/stable/references/api/tables_views.html))
+- `lib/server/read-page.ts`: อ่าน count/rows และแก้กรณีเลขหน้าเกินหน้าสุดท้ายอย่างมีขอบเขต รวมถึง PostgREST `PGRST103`; เมื่อฐานข้อมูลผิดพลาดต้องแสดง error ไม่อ้างว่าไม่มีข้อมูล
+- `app/*/*-list.tsx`: Server Components แสดงเฉพาะแถวของหน้านั้น ใช้ Next Form แบบ GET; เลือกตัวกรองแล้วกด **ค้นหา** (ต่างจากเดิมที่กรองทันทีใน browser) URL จำคำค้น/สถานะ/ประเภท/เลขหน้าและรองรับ Back/Forward; เปลี่ยนตัวกรองเริ่มหน้า 1
+- `app/components/list-*`: ปุ่มค้นหามี pending, ปุ่มแบ่งหน้ามีสถานะโหลด, ปุ่มที่ขอบเขตเป็นข้อความ disabled, footer ตัดบรรทัดบนมือถือ ตาราง POL-01 เลื่อนแนวนอนภายในกรอบตามดีไซน์เดิม
+- CSV ของ POL-01 รวบรวมทุกหน้าตามตัวกรองล่าสุด ฝั่ง server อ่าน batch ละ 500 รายการ สร้างไฟล์เมื่อครบเท่านั้น จำกัดการส่งออกครั้งละ 10,000 รายการ; เกินขีดจำกัดให้ผู้ใช้กรองเพิ่มโดยไม่สร้างไฟล์ที่ตัดข้อมูลทิ้ง ตรวจจำนวนเปลี่ยน/แถวซ้ำ/ข้อมูลขาด/เครือข่ายล้มเหลว และป้องกัน CSV formula injection ตามเดิม
+
+### ฐานข้อมูลและการเปิดใช้
+
+ต้องใช้ migration `202610110005_paginated_request_lists.sql` **ก่อน deploy โค้ดรุ่นนี้** มี read-only views สองตัวที่ใช้ `security_invoker = true` (PostgreSQL 15+) จึงใช้ RLS ของผู้เรียกกับตารางและ joins เดิม ไม่ใช้ service role ไม่เปลี่ยน policy ไม่แก้ข้อมูลหรือสถานะคำขอ ส่วน indexes ช่วยการเรียงและตรวจ overdue แต่การค้นหา substring ข้ามหลายตาราง/การนับแบบ exact ยังมีต้นทุนตามจำนวนแถว ต้องวัด query plan บนข้อมูลจริงเมื่อขยายระบบ
+
+`lib/supabase/list-database.types.ts` เป็น additive contract ที่อ้าง migration ที่ยังไม่ใช้ใน production ไม่แก้ไฟล์ types ที่ generate จาก production เดิมด้วยมือ เมื่อ apply แล้วให้อ่าน metadata ด้วย script รุ่นใหม่ (แยก Views จาก Tables) ตรวจ diff/types/nullability อีกครั้งก่อนเลิกใช้ contract นี้
+
+RLS เดิมอนุญาตให้เจ้าของที่ `active=false` อ่านคำขอของตนได้ แม้ปิดสิทธิ์ดำเนินการอื่น งานนี้รักษาพฤติกรรมเดิมและมี test เปรียบเทียบ view กับตารางต้นทาง ไม่เปลี่ยนนโยบายบัญชีโดยแฝงไปกับ pagination
+
+### ขอบเขตและข้อจำกัดที่คงไว้
+
+- ไม่แก้หน้าสร้าง/แก้ไข แบบพิมพ์ TOR สายอนุมัติ หรือข้อมูลจริง
+- `getRequests/getPayments` เดิมยังใช้ใน Dashboard, รายงาน, process, activity และ global search ซึ่งยังจำกัด 1,000 รายการ การเปลี่ยน aggregation/ขอบเขตรายงานเหล่านั้นต้องแยกออกแบบ ไม่แทนด้วยข้อมูลเพียงหน้าแรกแล้วทำให้ยอดสรุปผิด ต้องไม่อ้างว่าขั้นตอนนี้ลบข้อจำกัดทุกหน้าของระบบแล้ว
+- CSV หลาย batch ไม่ใช่ snapshot transaction เดียว ตรวจจับจำนวนเปลี่ยน/ซ้ำได้ แต่การแก้ข้อความหรือแทนข้อมูลพร้อมกันโดยจำนวนเท่าเดิมอาจไม่ถูกตรวจพบ หากต้องการหลักฐาน snapshot ณ เวลาเดียวกัน ต้องมีงาน export background/database snapshot เพิ่มเติม
+- ยังไม่ใช้ migration กับฐานจริง ไม่ push/deploy ในงานพัฒนา
+
+### การตรวจขั้นตอน 6
+
+ทดสอบ URL/ขอบเขตหน้า/ตัวกรอง/อักขระพิเศษ, คำสั่ง PostgREST จริงผ่าน mocked fetch, schema generator สำหรับ views และ CSV มากกว่า 1,000 รายการ/ไฟล์ไม่ครบ ส่วน SQL ใช้ PGlite กับข้อมูลสมมติ 1,005 รายการต่อประเภท ตรวจ RLS ของเจ้าของ/คนอื่น/admin/anonymous, read-only privileges, overdue และจำนวนแถวที่ตรงกับนโยบายเดิม คำสั่ง: `node tests/sql/paginated-lists.mjs` โดยตั้ง `PGLITE_MODULE` ตาม `tests/sql/README.md`
+
+การตรวจในเครื่องและ mock HTTP ไม่แทน staging/production preflight: ก่อน deploy ต้องยืนยัน migration, grants/RLS และทดลองค้นหา/เปลี่ยนหน้า/export ด้วยบัญชีจริงที่ได้รับอนุญาต
+
+ผลตรวจ: `npm run verify` ผ่าน lint, TypeScript, 667 tests/60 ไฟล์, format และ production build; SQL pagination และ payment workflow ผ่านใน PGlite การทดสอบ browser กับ mock HTTP ผ่านทั้งสอง route: หน้าถัดไป/Back, ค้นหาเอกสารเกิน 1,000 รายการ, ตัวกรองร่วม, reset หน้า, empty/error/retry และ CSV 1,005 แถว ตรวจ viewport 1440 และ 390px ไม่พบ document overflow อย่างไรก็ตาม mock profile ใน app shell ยังไม่แสดงบทบาทเสร็จ จึงไม่ถือว่าการตรวจภาพรวม shell/การเข้าสู่ระบบจริงสมบูรณ์ และต้องยืนยันส่วนนี้ก่อนเปิดใช้จริง
+
+## ขั้นตอน 7: ตรวจคุณภาพอัตโนมัติด้วย CI
+
+เพิ่ม GitHub Actions แยกตรวจโค้ดและ build, PostgreSQL จำลอง และตัวอ่าน Excel โดยไม่ใช้ข้อมูลหรือ credentials จริง อ่านขอบเขต คำสั่ง และข้อจำกัดก่อนเปิดใช้ใน `docs/ci.md`
+
+ปรับ `typecheck` ให้ใช้ `next typegen` ก่อน TypeScript เพื่อรองรับเครื่องใหม่ที่ยังไม่มี route types และตรึง PGlite เป็น development dependency สำหรับทดสอบ SQL ที่ทำซ้ำได้ ไม่เปลี่ยนหน้าจอหรือ logic ของคำขอ
+
+Workflow จะเริ่มบน GitHub หลัง push เท่านั้น การเพิ่มไฟล์ไม่ได้เปิด branch protection หรือเปลี่ยนระบบ deploy ของ Vercel และไม่ได้ใช้ migration กับฐานข้อมูลจริง
+
+ผลตรวจในเครื่อง: `npm ci` และ `npm run verify` ผ่านจากสำเนา source ที่ไม่มี build/route types/ค่าลับเดิม ด้วยค่า environment สมมติ (667 tests/60 ไฟล์); SQL จำลองทั้งสองชุดและ Python parser 6 กรณีผ่าน พร้อมตรวจ YAML และ action SHA แล้ว ยังไม่ใช่ผลทดสอบบน GitHub-hosted runner และมีประเด็น dependency audit เดิมที่บันทึกใน `docs/ci.md`

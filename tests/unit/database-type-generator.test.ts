@@ -13,6 +13,7 @@ const column = (column_name: string, udt_name: string, ordinal_position: number)
   identity_generation: null,
 });
 const metadata = {
+  views: [],
   columns: [
     column("id", "uuid", 1),
     { ...column("note", "text", 2), is_nullable: "YES" },
@@ -47,6 +48,17 @@ const metadata = {
 };
 
 describe("read-only schema type generation", () => {
+  it("generates read-only view contracts without Insert/Update operations", () => {
+    const output = generateDatabaseTypes({
+      ...metadata,
+      views: ["list_view"],
+      columns: [...metadata.columns, { ...column("id", "uuid", 1), table_name: "list_view" }],
+    });
+    expect(output).toContain('Views: {\n"list_view": { Row: {');
+    expect(output.split('"list_view":')[1].split("Functions:")[0]).not.toMatch(/Insert|Update/);
+    const legacy = { ...metadata, views: undefined };
+    expect(readMetadata(JSON.stringify(legacy)).views).toEqual([]);
+  });
   it("accepts JSON and the escaped single-column CSV export", () => {
     const json = JSON.stringify(metadata);
     expect(readMetadata(json)).toEqual(metadata);

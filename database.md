@@ -390,3 +390,48 @@ node scripts/test-catalog-management-db.mjs output/pdf/catalog-runtime/node_modu
 - ยืนยัน authenticated เขียน `catalog_items`/`catalog_prices` โดยตรงไม่ได้, audit เปิด RLS, image bucket เป็น private จำกัด 2 MiB/JPEG/PNG/WebP และมี policy INSERT/SELECT ตามสิทธิ์ที่กำหนด
 - จำนวนข้อมูลก่อนเผยแพร่ยังเป็น 7 items, 7 prices, 294 history, 336 source rows; ไม่มี manual prices หรือ audit revisions จากการทดสอบ ระบบไม่สร้างรายการหรือรูปทดสอบใน production
 - ใช้ Git-connected deployment จากไฟล์ที่ commit เท่านั้น ไม่อัปโหลด workspace ทั้งชุด เพื่อไม่รวมไฟล์ Excel/private import ที่ถูก gitignore ผลการเผยแพร่และการตรวจเว็บจริงต้องยืนยันแยกจากผล preflight นี้
+
+## 12. Read-only views สำหรับรายการ POL-01/POL-02 (ขั้นตอน 6)
+
+Migration ที่เตรียม: `202610110005_paginated_request_lists.sql` — ยังไม่ apply ฐานจริงในงานนี้ ต้องใช้ PostgreSQL 15+ และ apply ก่อน deploy หน้ารายการรุ่นใหม่ ไม่มีการนำเข้าหรือแก้ข้อมูลเดิม
+
+### `procurement_request_list`
+
+View เชื่อม `procurement_requests` → `departments`/`profiles` แบบ LEFT JOIN และตรวจ pending overdue จาก `workflow_tasks` ด้วย EXISTS (ไม่มีการคูณจำนวนแถวเมื่อมีหลาย task)
+
+| ฟิลด์                           | ชนิด           | ที่มา/ความหมาย                                                                            |
+| ------------------------------- | -------------- | ----------------------------------------------------------------------------------------- |
+| id                              | uuid           | ID คำขอ                                                                                   |
+| request_no, title               | text           | เลขคำขอและชื่อเรื่อง                                                                      |
+| kind                            | request_kind   | purchase/hire                                                                             |
+| estimated_amount                | numeric        | วงเงิน                                                                                    |
+| budget_year                     | integer        | ปีงบประมาณ                                                                                |
+| status                          | request_status | สถานะต้นฉบับ                                                                              |
+| current_step                    | smallint       | ขั้นตอน                                                                                   |
+| created_at                      | timestamptz    | ใช้เรียง DESC แล้ว id DESC                                                                |
+| required_date                   | date           | วันที่ต้องการ                                                                             |
+| department_name, requester_name | text           | ชื่อที่ผู้เรียกมีสิทธิ์อ่าน; ไม่พบแสดง —                                                  |
+| list_status                     | text           | overdue มีลำดับก่อนสถานะอื่น; submitted/under_review เป็น review; ที่เหลือใช้ status เดิม |
+| search_text                     | text           | ข้อความค้นหาเลขคำขอ ชื่อเรื่อง และหน่วยงาน                                                |
+
+### `payment_request_list`
+
+View เชื่อม `payment_requests` → `procurement_requests`/`profiles` แบบ LEFT JOIN รักษาคำขอไว้แม้ตารางที่ join ไม่มีแถวที่ผู้เรียกอ่านได้
+
+| ฟิลด์           | ชนิด           | ที่มา/ความหมาย                                   |
+| --------------- | -------------- | ------------------------------------------------ |
+| id              | uuid           | ID เบิกจ่าย                                      |
+| payment_no      | text           | เลขเบิกจ่าย                                      |
+| total_amount    | numeric        | ยอดเบิก                                          |
+| status          | payment_status | สถานะ                                            |
+| current_step    | smallint       | ขั้นตอน                                          |
+| created_at      | timestamptz    | เรียง DESC แล้ว id DESC                          |
+| subject         | text           | form_data.subject; ว่างใช้เลขคำขอต้นทาง          |
+| requester_name  | text           | profile; ว่างใช้ form_data.requesterName         |
+| department_name | text           | form_data.departmentName                         |
+| source_no       | text           | เลขคำขอหลักการที่ผู้เรียกมีสิทธิ์อ่าน            |
+| search_text     | text           | รวมเลขเบิกจ่าย เลขต้นทาง เรื่อง ผู้ยื่น หน่วยงาน |
+
+ทั้งสอง view ใช้ `security_invoker=true`: RLS ของตารางต้นทางยังบังคับกับข้อมูล/การค้นหา/จำนวนแถว ให้ authenticated เฉพาะ SELECT; ไม่มีสิทธิ์ anon หรือ INSERT/UPDATE/DELETE และไม่ใช้ SECURITY DEFINER เปิดข้อมูล ส่วน index ใหม่ครอบคลุม `(created_at DESC,id DESC)` ของสองตารางหลัก และ `(request_id,due_at) WHERE status='pending'` ของ workflow_tasks
+
+ไม่สร้างตารางซ้ำหรือ materialized view จึงไม่ต้อง sync ข้อมูล หน้าแสดงครั้งละ 10 แถว CSV อ่าน batch ละ 500 และปฏิเสธอย่างชัดเจนเมื่อผลเกิน 10,000 แถว ไม่มี partial export แบบเงียบ รายละเอียดข้อจำกัด/ทดสอบ/ลำดับ deploy อยู่ใน `docs/type-safety.md` ขั้นตอน 6

@@ -14,6 +14,7 @@ const column = z.object({
   ordinal_position: z.number(),
 });
 const metadataSchema = z.object({
+  views: z.array(z.string()).default([]),
   columns: z.array(column).min(1),
   enums: z.record(z.string(), z.array(z.string())).nullable(),
   relations: z
@@ -61,7 +62,9 @@ export function readMetadata(source) {
 export function generateDatabaseTypes(input) {
   const metadata = metadataSchema.parse(input);
   const enums = metadata.enums ?? {};
-  const tables = [...new Set(metadata.columns.map((c) => c.table_name))].sort();
+  const tables = [...new Set(metadata.columns.map((c) => c.table_name))]
+    .filter((name) => !metadata.views.includes(name))
+    .sort();
   const quote = JSON.stringify;
   function type(name) {
     if (name.startsWith("_")) return `Array<${type(name.slice(1))}>`;
@@ -88,6 +91,7 @@ export function generateDatabaseTypes(input) {
     if (name === "bool") return "boolean";
     if (name === "void") return "undefined";
     if (tables.includes(name)) return `Database["public"]["Tables"][${quote(name)}]["Row"]`;
+    if (metadata.views.includes(name)) return `Database["public"]["Views"][${quote(name)}]["Row"]`;
     throw new Error(`Unsupported PostgreSQL type: ${name}. Review instead of widening to any.`);
   }
   const lines = [
@@ -129,7 +133,20 @@ export function generateDatabaseTypes(input) {
     }
     lines.push("]; };");
   }
-  lines.push("}; Views: { [_ in never]: never }; Functions: {");
+  lines.push("}; Views: {");
+  if (!metadata.views.length) lines.push("[_ in never]: never");
+  for (const view of [...metadata.views].sort()) {
+    lines.push(`${quote(view)}: { Row: {`);
+    for (const c of metadata.columns
+      .filter((c) => c.table_name === view)
+      .sort((a, b) => a.ordinal_position - b.ordinal_position)) {
+      lines.push(
+        `${quote(c.column_name)}: ${type(c.udt_name)}${c.is_nullable === "YES" ? " | null" : ""};`,
+      );
+    }
+    lines.push("}; Relationships: []; };");
+  }
+  lines.push("}; Functions: {");
   const seen = new Set();
   for (const fn of metadata.functions ?? []) {
     if (seen.has(fn.name)) throw new Error(`Overloaded function ${fn.name} requires review`);

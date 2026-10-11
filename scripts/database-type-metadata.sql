@@ -1,5 +1,7 @@
 -- Read-only public-schema metadata. No application rows, function bodies or secrets.
 select jsonb_build_object(
+  'views', (select coalesce(jsonb_agg(table_name order by table_name), '[]'::jsonb)
+    from information_schema.views where table_schema='public'),
   'columns', (select jsonb_agg(to_jsonb(c) order by c.table_name,c.ordinal_position)
     from (select table_name,column_name,udt_name,is_nullable,column_default,
       is_generated,is_identity,identity_generation,ordinal_position

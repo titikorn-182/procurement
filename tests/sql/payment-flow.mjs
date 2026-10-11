@@ -1,4 +1,4 @@
-// Install the optional isolated runtime as documented in tests/sql/README.md.
+// Uses the pinned development dependency; optional override is documented in tests/sql/README.md.
 const { PGlite } = await import(process.env.PGLITE_MODULE ?? "@electric-sql/pglite");
 import { readFileSync } from "node:fs";
 import assert from "node:assert/strict";

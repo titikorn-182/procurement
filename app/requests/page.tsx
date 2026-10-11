@@ -1,16 +1,24 @@
 import Link from "next/link";
 import { AppShell } from "../components/app-shell";
 import { PageHeader } from "../components/ui";
-import { getCurrentProfile, getRequests } from "../lib/live-data";
-import { RequestsClient } from "./requests-client";
+import { getCurrentProfile } from "../lib/live-data";
+import { getRequestPage } from "@/features/requests/server/list-queries";
+import { requestListStatuses } from "@/features/requests/list-model";
+import { parseListFilters, type ListSearchParams } from "@/lib/pagination";
+import { RequestsList } from "./requests-list";
 
-export default async function RequestsPage() {
-  const [{ rows, error }, profile] = await Promise.all([getRequests(), getCurrentProfile()]);
+export default async function RequestsPage({
+  searchParams,
+}: {
+  searchParams: Promise<ListSearchParams>;
+}) {
+  const filters = parseListFilters(await searchParams, Object.keys(requestListStatuses));
+  const [result, profile] = await Promise.all([getRequestPage(filters), getCurrentProfile()]);
   return (
     <AppShell>
       <PageHeader
         title="คำขอหลักการ POL-01"
-        description="ค้นหา ติดตาม และส่งออกรายการที่คุณมีสิทธิ์เข้าถึง · ไม่เกิน 1,000 รายการล่าสุด"
+        description="ค้นหา ติดตาม และส่งออกรายการที่คุณมีสิทธิ์เข้าถึง"
         action={
           profile && ["user", "admin"].includes(profile.role) ? (
             <Link
@@ -22,16 +30,14 @@ export default async function RequestsPage() {
           ) : undefined
         }
       />
-      {error ? (
-        <p
-          role="alert"
-          className="mt-5 border border-red-300 bg-[var(--red-soft)] p-4 text-[var(--red)]"
-        >
-          {error}
-        </p>
-      ) : (
-        <RequestsClient requests={rows} />
-      )}
+      <RequestsList
+        key={JSON.stringify(filters)}
+        requests={result.rows}
+        filters={filters}
+        page={result.page}
+        total={result.total}
+        error={result.error}
+      />
     </AppShell>
   );
 }

@@ -1,12 +1,22 @@
 import Link from "next/link";
 import { AppShell } from "../components/app-shell";
 import { PageHeader } from "../components/ui";
-import { getPayments } from "./data";
-import { PaymentsClient } from "./payments-client";
+import { getPaymentPage } from "@/features/payments/server/list-queries";
+import { paymentStatusLabels } from "@/features/payments/model";
+import { parseListFilters, type ListSearchParams } from "@/lib/pagination";
+import { PaymentsList } from "./payments-list";
 import { getCurrentProfile } from "../lib/live-data";
 
-export default async function PaymentsPage() {
-  const [{ rows, error }, profile] = await Promise.all([getPayments(), getCurrentProfile()]);
+export default async function PaymentsPage({
+  searchParams,
+}: {
+  searchParams: Promise<ListSearchParams>;
+}) {
+  const filters = {
+    ...parseListFilters(await searchParams, Object.keys(paymentStatusLabels)),
+    kind: "all",
+  };
+  const [result, profile] = await Promise.all([getPaymentPage(filters), getCurrentProfile()]);
   return (
     <AppShell>
       <PageHeader
@@ -23,16 +33,14 @@ export default async function PaymentsPage() {
           ) : undefined
         }
       />
-      {error ? (
-        <p
-          role="alert"
-          className="mt-5 border border-red-300 bg-[var(--red-soft)] p-4 text-[var(--red)]"
-        >
-          {error}
-        </p>
-      ) : (
-        <PaymentsClient rows={rows} />
-      )}
+      <PaymentsList
+        key={JSON.stringify(filters)}
+        rows={result.rows}
+        filters={filters}
+        page={result.page}
+        total={result.total}
+        error={result.error}
+      />
     </AppShell>
   );
 }
