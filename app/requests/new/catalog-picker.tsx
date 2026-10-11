@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { Search, X } from "lucide-react";
 import { searchProcurementCatalog } from "./catalog-actions";
+import { CatalogImage } from "../../catalog/catalog-image";
 import {
   catalogItemSnapshot,
   catalogPriceWarning,
@@ -22,7 +23,7 @@ const dateLabel = (value: string | null) =>
     ? new Intl.DateTimeFormat("th-TH", { dateStyle: "medium", timeZone: "Asia/Bangkok" }).format(
         new Date(`${value}T00:00:00+07:00`),
       )
-    : "ไม่ระบุใน Excel";
+    : "ยังไม่ระบุ";
 
 /** Existing operational surface: search → inspect provenance → copy a snapshot.
  * Inherits DESIGN.md; no new visual identity or unverified current-price claims.
@@ -31,10 +32,16 @@ export function CatalogPicker({
   onSelect,
   onClose,
   load = searchProcurementCatalog,
+  variant = "select",
+  onEdit,
+  onCategories,
 }: {
-  onSelect: (entry: CatalogEntry) => boolean;
-  onClose: () => void;
+  onSelect?: (entry: CatalogEntry) => boolean;
+  onClose?: () => void;
   load?: (query: CatalogQuery) => Promise<CatalogResult>;
+  variant?: "select" | "browse";
+  onEdit?: (entry: CatalogEntry) => void;
+  onCategories?: (categories: { code: string; name: string }[]) => void;
 }) {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("");
@@ -47,9 +54,10 @@ export function CatalogPicker({
   const searchInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    if (variant !== "select") return;
     searchInput.current?.focus({ preventScroll: true });
     searchInput.current?.closest("section")?.scrollIntoView({ block: "start" });
-  }, []);
+  }, [variant]);
   useEffect(() => {
     let cancelled = false;
     startTransition(async () => {
@@ -57,7 +65,10 @@ export function CatalogPicker({
         const next = await load(request);
         if (!cancelled) {
           setResult(next);
-          if (next.data) setCategories(next.data.categories);
+          if (next.data) {
+            setCategories(next.data.categories);
+            onCategories?.(next.data.categories);
+          }
         }
       } catch {
         if (!cancelled)
@@ -70,10 +81,12 @@ export function CatalogPicker({
     return () => {
       cancelled = true;
     };
-  }, [request, retry, load]);
+  }, [request, retry, load, onCategories]);
 
   const loading = pending || result === null;
   const data = result?.data;
+  const SectionHeading = variant === "browse" ? "h2" : "h3";
+  const ItemHeading = variant === "browse" ? "h3" : "h4";
   function runSearch(page = 0) {
     setResult(null);
     setNotice("");
@@ -90,31 +103,36 @@ export function CatalogPicker({
       aria-labelledby="reference-price-catalog-heading"
       className="min-w-0 scroll-mt-24 border border-[var(--line-dark)] bg-stone-50"
       onKeyDown={(event) => {
-        if (event.key === "Escape") onClose();
+        if (event.key === "Escape") onClose?.();
       }}
     >
       <header className="flex items-start justify-between gap-4 border-b border-[var(--line)] px-4 py-3">
         <div className="min-w-0">
-          <h3 id="reference-price-catalog-heading" className="font-bold">
+          <SectionHeading id="reference-price-catalog-heading" className="font-bold">
             แค็ตตาล็อกราคากลาง
-          </h3>
+          </SectionHeading>
           <p className="mt-1 text-sm text-stone-600">
-            ค้นหาข้อมูล Master Data จากฐานข้อมูลพัสดุของคณะรัฐศาสตร์
+            ค้นหาข้อมูลจาก Excel และรายการที่ผู้ดูแลระบบบันทึกในฐานข้อมูลพัสดุเดียวกัน
           </p>
         </div>
-        <button
-          type="button"
-          className={`${buttonClass} shrink-0 px-3`}
-          onClick={onClose}
-          aria-label="ปิดแค็ตตาล็อกราคากลาง"
-        >
-          <X size={17} aria-hidden="true" />
-        </button>
+        {onClose && (
+          <button
+            type="button"
+            className={`${buttonClass} shrink-0 px-3`}
+            onClick={onClose}
+            aria-label="ปิดแค็ตตาล็อกราคากลาง"
+          >
+            <X size={17} aria-hidden="true" />
+          </button>
+        )}
       </header>
       <div className="space-y-4 p-4">
         <p className="max-w-3xl text-sm text-stone-700">
-          เลือกรายการเพื่อเติมชื่อ คุณลักษณะ หน่วยนับ ราคากลาง และแหล่งที่มา
-          จำนวนและราคาต่อหน่วยที่ขอซื้อยังต้องกรอกเอง ราคาอ้างอิงไม่ใช่ยอดซื้อจริง
+          {variant === "select"
+            ? "เลือกรายการเพื่อเติมชื่อ คุณลักษณะ หน่วยนับ ราคากลาง และแหล่งที่มา จำนวนและราคาต่อหน่วยที่ขอซื้อยังต้องกรอกเอง ราคาอ้างอิงไม่ใช่ยอดซื้อจริง"
+            : onEdit
+              ? "รายการที่ปิดใช้งานหรือถอนราคาจะแสดงให้ผู้ดูแลแก้ไขได้ แต่จะไม่เปิดให้เลือกในคำขอ ราคาอ้างอิงที่ยังไม่รับรองจะแสดงคำเตือนเสมอ"
+              : "ข้อมูลอ้างอิงสำหรับประกอบการจัดทำคำขอ โปรดตรวจสอบแหล่งที่มา วันที่ และสถานะราคาก่อนใช้งาน"}
         </p>
         <form
           className="grid min-w-0 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,14rem)_auto] sm:items-end"
@@ -199,31 +217,50 @@ export function CatalogPicker({
             {data.items.map((entry) => (
               <li
                 key={entry.price_id}
-                className="grid min-w-0 gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,19rem)_auto]"
+                className="grid min-w-0 gap-4 p-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,19rem)_auto]"
               >
-                <div className="min-w-0 break-words">
-                  <h4 className="font-semibold">{entry.name}</h4>
-                  <p className="mt-1 text-sm text-stone-600">
-                    {entry.item_code} · {entry.category_name} / {entry.subcategory}
-                  </p>
-                  <p className="mt-2 text-sm">{entry.specification}</p>
-                  {entry.notes && (
-                    <p className="mt-1 text-sm text-stone-600">หมายเหตุจาก Excel: {entry.notes}</p>
+                <div className="flex min-w-0 flex-col gap-4 break-words sm:flex-row">
+                  {(variant === "browse" || entry.image_path) && (
+                    <CatalogImage
+                      itemId={entry.item_id}
+                      version={entry.version}
+                      hasImage={!!entry.image_path}
+                      name={entry.name}
+                    />
                   )}
-                  <details className="mt-3 text-sm text-stone-600">
-                    <summary className="min-h-10 cursor-pointer py-2 underline underline-offset-4">
-                      ดูแหล่งข้อมูลต้นฉบับ
-                    </summary>
-                    <p className="break-words [overflow-wrap:anywhere]">
-                      {entry.file_name} · {entry.sheet_name} · แถว {entry.row_number}
+                  <div className="min-w-0">
+                    <ItemHeading className="font-semibold">{entry.name}</ItemHeading>
+                    <p className="mt-1 text-sm text-stone-600">
+                      {entry.item_code} · {entry.category_name} / {entry.subcategory}
                     </p>
-                  </details>
+                    <p className="mt-2 text-sm">{entry.specification}</p>
+                    {entry.notes && (
+                      <p className="mt-1 text-sm text-stone-600">หมายเหตุ: {entry.notes}</p>
+                    )}
+                    {!entry.active && (
+                      <p className="mt-2 font-semibold text-[var(--red)]">ปิดใช้งานในคำขอ</p>
+                    )}
+                    <details className="mt-3 text-sm text-stone-600">
+                      <summary className="min-h-10 cursor-pointer py-2 underline underline-offset-4">
+                        ดูแหล่งข้อมูลต้นฉบับ
+                      </summary>
+                      <p className="break-words [overflow-wrap:anywhere]">
+                        {entry.origin === "excel"
+                          ? `${entry.file_name} · ${entry.sheet_name} · แถว ${entry.row_number}`
+                          : "บันทึกโดยผู้ดูแลระบบ · เก็บประวัติราคาเดิมไว้ในฐานข้อมูล"}
+                      </p>
+                    </details>
+                  </div>
                 </div>
                 <div className="min-w-0 break-words text-sm">
                   <p className="text-base font-bold tabular-nums">
                     {money(entry.reference_price)} / {entry.unit}
                   </p>
-                  <p className="mt-1 text-stone-600">ราคาอ้างอิงจาก Excel</p>
+                  <p className="mt-1 text-stone-600">
+                    {entry.origin === "excel"
+                      ? "ราคาอ้างอิงจาก Excel"
+                      : "ราคาอ้างอิงที่ผู้ดูแลบันทึก"}
+                  </p>
                   <p className="mt-2">แหล่งราคา: {entry.source_name}</p>
                   <p className="mt-1">วันที่อ้างอิง: {dateLabel(entry.reference_date)}</p>
                   {entry.valid_until && (
@@ -233,27 +270,43 @@ export function CatalogPicker({
                     {catalogPriceWarning(entry)}
                   </p>
                 </div>
-                <div className="lg:self-center">
-                  <button
-                    type="button"
-                    className={`${buttonClass} w-full`}
-                    disabled={!catalogItemSnapshot(entry)}
-                    aria-label={`เลือกรายการ ${entry.item_code} ${entry.name}`}
-                    onClick={() =>
-                      setNotice(
-                        onSelect(entry)
-                          ? `เพิ่ม ${entry.item_code} ในรายการคำขอแล้ว กรุณากรอกจำนวนและราคาต่อหน่วย`
-                          : "เพิ่มไม่ได้: คำขอมีครบ 200 รายการ หรือข้อมูลยาวเกินช่องที่รองรับ",
-                      )
-                    }
-                  >
-                    เลือกรายการ
-                  </button>
-                  {!entry.expired && !catalogItemSnapshot(entry) && (
-                    <p className="mt-2 max-w-48 text-sm text-[var(--red)]">
-                      ข้อมูลยาวเกินช่องคำขอ กรุณากรอกเอง
-                    </p>
+                <div className="xl:self-center">
+                  {variant === "select" && (
+                    <button
+                      type="button"
+                      className={`${buttonClass} w-full`}
+                      disabled={!catalogItemSnapshot(entry)}
+                      aria-label={`เลือกรายการ ${entry.item_code} ${entry.name}`}
+                      onClick={() =>
+                        setNotice(
+                          onSelect?.(entry)
+                            ? `เพิ่ม ${entry.item_code} ในรายการคำขอแล้ว กรุณากรอกจำนวนและราคาต่อหน่วย`
+                            : "เพิ่มไม่ได้: คำขอมีครบ 200 รายการ หรือข้อมูลยาวเกินช่องที่รองรับ",
+                        )
+                      }
+                    >
+                      เลือกรายการ
+                    </button>
                   )}
+                  {onEdit && (
+                    <button
+                      type="button"
+                      className={`${buttonClass} w-full`}
+                      aria-label={`แก้ไขรายการ ${entry.item_code} ${entry.name}`}
+                      onClick={() => onEdit(entry)}
+                    >
+                      แก้ไขข้อมูล / รูปภาพ
+                    </button>
+                  )}
+                  {variant === "select" &&
+                    entry.active &&
+                    entry.status !== "withdrawn" &&
+                    !entry.expired &&
+                    !catalogItemSnapshot(entry) && (
+                      <p className="mt-2 max-w-48 text-sm text-[var(--red)]">
+                        ข้อมูลยาวเกินช่องคำขอ กรุณากรอกเอง
+                      </p>
+                    )}
                 </div>
               </li>
             ))}

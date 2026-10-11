@@ -7,10 +7,14 @@ export const catalogQuerySchema = z.object({
   page: z.number().int().min(0).max(10000),
 });
 
-const catalogEntrySchema = z.object({
+export const catalogEntrySchema = z.object({
   item_id: z.uuid(),
   price_id: z.uuid(),
-  import_id: z.uuid(),
+  import_id: z.uuid().nullable(),
+  origin: z.enum(["excel", "manual"]).default("excel"),
+  version: z.number().int().positive().default(1),
+  active: z.boolean().default(true),
+  image_path: z.string().nullable().default(null),
   item_code: z.string().min(1).max(100),
   category_code: z.string(),
   category_name: z.string(),
@@ -23,11 +27,11 @@ const catalogEntrySchema = z.object({
   source_name: z.string().min(1).max(300),
   reference_date: z.iso.date().nullable(),
   valid_until: z.iso.date().nullable(),
-  status: z.enum(["unverified", "verified"]),
+  status: z.enum(["unverified", "verified", "withdrawn"]),
   expired: z.boolean(),
-  sheet_name: z.string(),
-  row_number: z.number().int().positive(),
-  file_name: z.string(),
+  sheet_name: z.string().nullable(),
+  row_number: z.number().int().positive().nullable(),
+  file_name: z.string().nullable(),
 });
 
 export const catalogDataSchema = z.object({
@@ -42,6 +46,8 @@ export type CatalogData = z.infer<typeof catalogDataSchema>;
 export type CatalogResult = { data: CatalogData | null; error: string | null };
 
 export function catalogPriceWarning(entry: CatalogEntry) {
+  if (!entry.active) return "รายการนี้ปิดใช้งานแล้ว";
+  if (entry.status === "withdrawn") return "ราคาอ้างอิงนี้ถูกถอนแล้ว กรุณาบันทึกราคาใหม่ก่อนใช้งาน";
   if (entry.expired) return "ราคาอ้างอิงหมดอายุ กรุณาตรวจสอบราคาใหม่";
   if (!entry.reference_date && entry.status !== "verified") return "ยังไม่ยืนยันวันที่และการรับรอง";
   if (!entry.reference_date) return "ยังไม่ระบุวันที่อ้างอิง";
@@ -51,12 +57,14 @@ export function catalogPriceWarning(entry: CatalogEntry) {
 
 /** User-authorized workbook reference, not a quotation or a certified price. */
 export function catalogItemSnapshot(entry: CatalogEntry): Pol01ItemInput | null {
-  if (entry.expired) return null;
+  if (entry.expired || !entry.active || entry.status === "withdrawn") return null;
   const description = [entry.name, entry.specification].filter(Boolean).join(" — ");
   const priceSource = [
-    `Excel: ${entry.source_name}`,
+    `${entry.origin === "manual" ? "ผู้ดูแลระบบ" : "Excel"}: ${entry.source_name}`,
     entry.item_code,
-    `${entry.sheet_name}!H${entry.row_number}`,
+    ...(entry.origin === "excel" && entry.sheet_name && entry.row_number
+      ? [`${entry.sheet_name}!H${entry.row_number}`]
+      : []),
     entry.reference_date ? `วันที่ ${entry.reference_date}` : "ไม่ระบุวันที่ราคา",
     entry.status === "verified" ? "รับรองแล้ว" : "ยังไม่รับรอง",
     `ref:${entry.price_id}`,

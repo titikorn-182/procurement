@@ -37,7 +37,10 @@ export async function searchProcurementCatalog(input: unknown): Promise<CatalogR
         ),
       };
     const result = catalogDataSchema.safeParse(data);
-    if (!result.success)
+    if (
+      !result.success ||
+      result.data.items.some((item) => !item.active || item.status === "withdrawn")
+    )
       return {
         data: null,
         error: "ข้อมูลแค็ตตาล็อกไม่ครบตามโครงสร้าง กรุณาแจ้งผู้ดูแลระบบตรวจข้อมูลนำเข้า",

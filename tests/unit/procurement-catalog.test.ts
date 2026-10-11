@@ -27,6 +27,10 @@ const entry: CatalogEntry = {
   item_id: "11111111-1111-4111-8111-111111111111",
   price_id: "22222222-2222-4222-8222-222222222222",
   import_id: "33333333-3333-4333-8333-333333333333",
+  origin: "excel",
+  version: 1,
+  active: true,
+  image_path: null,
   item_code: "TEST-001-01",
   category_code: "TEST",
   category_name: "หมวดทดสอบ",
@@ -113,9 +117,7 @@ describe("catalog reference snapshots", () => {
         catalogDataSchema.safeParse({ ...data, items: [{ ...entry, reference_price }] }).success,
       ).toBe(false);
     }
-    expect(
-      catalogDataSchema.safeParse({ ...data, items: [{ ...entry, status: "withdrawn" }] }).success,
-    ).toBe(false);
+    expect(catalogItemSnapshot({ ...entry, status: "withdrawn" })).toBeNull();
   });
 });
 

@@ -15,6 +15,7 @@ import {
   FolderKanban,
   Gauge,
   LayoutDashboard,
+  PackageCheck,
   Menu,
   ReceiptText,
   Search,
@@ -31,6 +32,12 @@ const nav = [
     href: "/",
     label: "Dashboard บริหารงานพัสดุ",
     icon: LayoutDashboard,
+    roles: ["ผู้ดูแลระบบ", "ผู้ยื่นคำขอ", "เจ้าหน้าที่", "ผู้บริหาร"],
+  },
+  {
+    href: "/catalog",
+    label: "Procurement Data Catalog",
+    icon: PackageCheck,
     roles: ["ผู้ดูแลระบบ", "ผู้ยื่นคำขอ", "เจ้าหน้าที่", "ผู้บริหาร"],
   },
   {

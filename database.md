@@ -2,6 +2,8 @@
 
 ออกแบบจาก Excel ที่ผู้ใช้ให้และโค้ด/migrations ณ 11 ตุลาคม 2569 ก่อนแก้หน้าเว็บแค็ตตาล็อก งานนี้เป็นการเพิ่มโครงสร้าง ไม่ลบหรือสร้างฐานข้อมูลคำขอเดิมใหม่ เอกสารนี้แยกสิ่งที่มีอยู่ สิ่งที่จะเพิ่ม และข้อเสนอในอนาคตอย่างชัดเจน ไม่ใช่การรับรองระเบียบจัดซื้อหรือยืนยัน schema ของ production ที่ยังไม่ได้ตรวจโดยตรง
 
+ข้อ 1–9 บันทึกการออกแบบและการทดสอบแค็ตตาล็อกจาก Excel รุ่นแรก; ข้อ 10 บันทึกผล deploy รุ่นนั้น ส่วน **ข้อ 11 เป็นการพัฒนา Procurement Data Catalog สำหรับดูแลข้อมูลและรูปภาพครั้งถัดมา ซึ่ง migration ใหม่ยังไม่ได้ใช้กับ production** หากโครงสร้างหรือสิทธิ์ต่างกัน ให้ใช้ข้อ 11 เป็นข้อกำหนดของรุ่นใหม่ ไม่ตีความผล deploy ในข้อ 10 ว่าครอบคลุมงานใหม่นี้แล้ว
+
 ## 1. แหล่งข้อมูลและผลตรวจ Excel
 
 ต้นฉบับ: `ฐานข้อมูลราคากลางพัสดุ คณะรัฐศาสตร์ POL UBU Smart Procurement Database.xlsx`
@@ -215,7 +217,7 @@ catalog_purchase_history ─N:0..1─ catalog_items (จับคู่เมื
 
 **ไม่นำเข้าเป็นสินค้า:** แถวว่าง หัวชีต หัวหมวด และคำอธิบายรหัส; เก็บเป็น raw provenance เท่าที่มีข้อมูล ไม่ลบจาก Excel. ช่องรูปภาพเป็น optional ไม่จำเป็นต้องตัดคอลัมน์ต้นฉบับ
 
-**ข้อเสนอระบบนอกขอบเขตรอบนี้:** admin review/import UI, price-review audit events, catalog_price_id แบบ FK ใน request_items, multi-department catalog, budget ledger พร้อมข้อจำกัดจริง, report pagination/aggregation, verified integrations. ต้องมี requirement และสิทธิ์ใหม่ก่อนดำเนินการ ไม่ประกาศว่ามีแล้ว
+**ข้อเสนอระบบนอกขอบเขตรุ่นแรก:** admin review/import UI, price-review audit events, catalog_price_id แบบ FK ใน request_items, multi-department catalog, budget ledger พร้อมข้อจำกัดจริง, report pagination/aggregation, verified integrations. งานดูแลรายการ/ราคา/รูปภาพและ audit การแก้ข้อมูลได้รับคำขอเพิ่มเติมและพัฒนาในข้อ 11 แล้ว แต่ยังไม่รวม UI นำเข้า Excel หรือกระบวนการรับรองราคาอย่างเป็นทางการ และไม่ประกาศว่า integration อื่นมีแล้ว
 
 ## 8. แผนดำเนินการและการยืนยัน
 
@@ -274,3 +276,117 @@ Impeccable finish review: **ship**; ไม่มี material fixes ค้าง 
 - รัน private import SQL ใน transaction สำเร็จ หลัง commit ตรวจได้ 1 import, 7 items, 7 prices, 294 history และ 336 source rows; ราคาทั้ง 7 ยังเป็น unverified และไม่มี reference_date ตาม Excel จริง
 - ตรวจผ่านเว็บ production ด้วยบัญชีที่เข้าสู่ระบบ: โหลดครบ 7 รายการ, ค้นหา A4 ได้ 2 รายการ, เลือกกระดาษ A4 แล้วเติมชื่อ/คุณลักษณะ/หน่วย/ราคากลาง 119 บาท/แหล่งอ้างอิง พร้อมคำเตือนยังไม่รับรอง โดยจำนวนและราคาต่อหน่วยซื้อจริงยังว่าง ไม่ได้ส่งหรือบันทึกคำขอทดสอบ
 - ไม่แก้ข้อมูลคำขอเดิม ไม่เผยแพร่ Excel/private import SQL ใน Git และไม่ได้เปลี่ยนสิทธิ์ฐานข้อมูลระหว่าง deploy นี้ การทดสอบ user/inactive role เชิงลึกยังอ้างผล isolated SQL integration; การตรวจเว็บ production ครั้งนี้ใช้บัญชีผู้ดูแลระบบจริง
+
+## 11. Procurement Data Catalog — การดูแลข้อมูลและรูปภาพโดยผู้ดูแลระบบ
+
+**สถานะงานใหม่นี้:** ฟีเจอร์ใช้ migration `supabase/migrations/202610110002_catalog_management.sql` ผลตรวจฐานข้อมูลก่อนเผยแพร่ล่าสุดอยู่ในข้อ 11.7 ส่วนผล production ในข้อ 10 เป็นของรุ่นนำเข้า Excel เท่านั้น
+
+เมนู `Procurement Data Catalog` อยู่ถัดจาก `Dashboard บริหารงานพัสดุ` และเปิด `/catalog` โดยใช้ `catalog_items`, `catalog_prices`, `catalog_categories` และฐานนำเข้าเดิมร่วมกับแค็ตตาล็อกใน `/requests/new` ไม่สร้างสำเนาฐานข้อมูล ไม่เพิ่มข้อมูลจำลอง ผู้ใช้ที่เปิดใช้งานและมีสิทธิ์อ่านเห็นรายการที่เปิดให้ใช้; เฉพาะผู้ดูแลระบบที่เปิดใช้งานเท่านั้นเพิ่ม/แก้ไขรายการ ราคาอ้างอิง และภาพหลักได้
+
+### 11.1 ฟิลด์ที่เพิ่ม/เปลี่ยนจาก migration รุ่นแรก
+
+ฟิลด์และ FK เดิมคงอยู่ รวมถึง `catalog_items.image_reference` และประวัติ Excel ทั้งหมด เพิ่ม/เปลี่ยนเฉพาะรายการต่อไปนี้:
+
+| ตาราง/ฟิลด์               | ชนิดและข้อกำหนด                                 | ความหมาย                                                                                   |
+| ------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| catalog_items.version     | integer NOT NULL default 1; CHECK >0            | รุ่นข้อมูลสำหรับป้องกันการบันทึกทับงานจากอีกหน้าต่าง                                       |
+| catalog_items.updated_at  | timestamptz NOT NULL default now()              | เวลาปรับปรุง; RPC บันทึกเวลาใหม่ด้วย clock_timestamp()                                     |
+| catalog_items.updated_by  | uuid? FK profiles(id)                           | ผู้ดูแลที่แก้ไขล่าสุด; รายการนำเข้าเดิมเป็น null จนมีการแก้ไข                              |
+| catalog_items.image_path  | text?                                           | รูปหลักที่ใช้อยู่ใน private bucket `catalog-images`; null หมายถึงไม่มีรูปที่เผยให้เลือกใช้ |
+| catalog_prices.origin     | text NOT NULL default excel; CHECK excel/manual | แยกราคาจากไฟล์กับราคาที่ผู้ดูแลบันทึกผ่านเว็บ                                              |
+| catalog_prices.created_by | uuid? FK profiles(id)                           | ผู้บันทึกราคาด้วยตนเอง; manual ต้องไม่เป็น null แต่ราคา Excel เดิมไม่ปลอมข้อมูลผู้บันทึก   |
+| catalog_prices.import_id  | uuid? ส่วนหนึ่งของ composite FK เดิม            | เปลี่ยนจาก NOT NULL เป็น nullable ภายใต้เงื่อนไข origin                                    |
+| catalog_prices.sheet_name | text? ส่วนหนึ่งของ composite FK เดิม            | เปลี่ยนจาก NOT NULL เป็น nullable ภายใต้เงื่อนไข origin                                    |
+| catalog_prices.row_number | integer? ส่วนหนึ่งของ composite FK เดิม         | เปลี่ยนจาก NOT NULL เป็น nullable ภายใต้เงื่อนไข origin                                    |
+
+Constraint `catalog_price_origin_source` บังคับว่า `origin='excel'` ต้องมี import_id/sheet_name/row_number ครบทั้งสามค่า ส่วน `origin='manual'` ต้องเป็น null ทั้งสามค่าและมี created_by เสมอ ยังคง composite FK ไป `catalog_source_rows` และ unique(import_id,sheet_name,row_number); ราคา manual หลายรุ่นมี provenance ทั้งสามเป็น null ได้ โดยไม่สร้างไฟล์หรือแถว Excel ปลอม
+
+`image_reference` ยังคงเป็น locator ของภาพฝังใน Excel/ข้อมูลเซลล์ต้นฉบับ **ไม่ใช่** URL รูปที่ให้เว็บเปิด ส่วน `image_path` เป็นเส้นทางรูปที่ผู้ดูแลอัปโหลดและเลือกใช้งานจริง การเพิ่ม/เปลี่ยนรูปไม่แก้ image_reference และไม่เผยแพร่ภาพฝังเดิมอัตโนมัติ
+
+### 11.2 ตารางใหม่ catalog_item_revisions
+
+| ฟิลด์        | ชนิดและข้อกำหนด                    | หน้าที่                                                                     |
+| ------------ | ---------------------------------- | --------------------------------------------------------------------------- |
+| id           | uuid PK default gen_random_uuid()  | รหัสรายการตรวจสอบการแก้ไข                                                   |
+| item_id      | uuid NOT NULL FK catalog_items(id) | รายการที่ถูกเพิ่มหรือแก้ไข                                                  |
+| version      | integer NOT NULL CHECK >0          | รุ่นรายการหลังบันทึก; unique(item_id,version)                               |
+| actor_id     | uuid NOT NULL FK profiles(id)      | ผู้ดำเนินการจาก auth.uid() ไม่รับ identity จากฟอร์ม                         |
+| created_at   | timestamptz NOT NULL default now() | เวลาบันทึก audit                                                            |
+| before_state | jsonb?; ต้องเป็น object เมื่อมีค่า | snapshot แถว catalog_items ก่อนแก้ไข; null เมื่อสร้างรายการใหม่             |
+| after_state  | jsonb NOT NULL; ต้องเป็น object    | snapshot แถว catalog_items หลังบันทึก รวม version และตำแหน่งรูป             |
+| price_id     | uuid? FK catalog_prices(id)        | ราคาที่เพิ่มพร้อมการบันทึกครั้งนี้; null เมื่อแก้เฉพาะข้อมูลโดยไม่เพิ่มราคา |
+
+ความสัมพันธ์เพิ่มเติมคือ `catalog_items 1:N catalog_item_revisions`, `profiles 1:N catalog_item_revisions` ผ่าน actor_id และ `catalog_item_revisions N:0..1 catalog_prices` ผ่าน price_id ตาราง revisions เปิด RLS และให้ authenticated SELECT ได้เฉพาะ active admin ผ่าน `private.has_permission('system.manage')`; ไม่มีสิทธิ์ insert/update/delete โดยตรงจาก client
+
+ประวัติราคากับ audit นี้ไม่ใช่ประวัติการซื้อ: `catalog_purchase_history` ยังคงเป็น 294 แถวจาก Excel โดยไม่สร้างราคาซื้อหรือคัดลอกเป็นคำขอ และ `catalog_source_rows` 336 แถวยังคงเป็นหลักฐานต้นฉบับ ไม่มีการ backfill ประวัติการแก้ไขที่ไม่เคยเกิดขึ้นจริงให้รายการเดิม 7 รายการ
+
+### 11.3 การบันทึกแบบ atomic และการชนกันของข้อมูล
+
+RPC `save_procurement_catalog_item(payload jsonb) returns jsonb` รับ item_id, expected_version, item_code, category_code, subcategory, name, specification, unit, notes, active, image_path และ price ซึ่งเป็น null หรือ object ของ reference_price/source_name/reference_date/valid_until แล้วคืน `{item_id,version}`
+
+- ตรวจ `auth.uid()` และ `private.has_permission('system.manage')` ภายในฐานข้อมูลอีกครั้ง ฟังก์ชันใช้ security definer และ search_path ว่าง; PUBLIC/anon ไม่มีสิทธิ์ execute
+- รายการใหม่ใช้ UUID ที่เตรียมไว้และ expected_version=null พร้อมราคาหนึ่งรุ่น; รายการเดิมต้องส่ง version ล่าสุด ล็อกแถวด้วย `FOR UPDATE` ก่อนเทียบรุ่น หากไม่ตรงส่ง SQLSTATE `40001` โดยไม่บันทึกทับ งานสำเร็จเพิ่ม version ทีละ 1
+- ตรวจ payload/ชนิดข้อมูล/ความยาว/หมวด รหัสรายการต้องเป็นตัวอักษรอังกฤษหรือตัวเลขและใช้ `. _ / -` ได้ ราคาไม่ติดลบและไม่เกิน 2 ตำแหน่งทศนิยม; ราคา 0 ไม่ถูกแปลงเป็นค่าว่าง วันที่ต้องเป็นวันจริง ถ้ากำหนด valid_until ต้องมี reference_date และวันหมดอายุต้องไม่ก่อนวันที่อ้างอิง
+- แก้ชื่อ คุณลักษณะ หรือหน่วยนับ ต้องให้ผู้ดูแลระบุราคาอ้างอิงรุ่นใหม่ด้วย ป้องกันการนำราคาเก่าไปแสดงคู่กับความหมายหรือหน่วยใหม่โดยไม่ตรวจสอบ
+- ราคาใหม่ใช้ `origin='manual'`, created_by จากผู้เข้าสู่ระบบ และ `status='unverified'` เสมอ ฟอร์มนี้ไม่รับ status/verified_by/verified_at และไม่รับรองราคาทันทีเพียงเพราะผู้ดูแลกดบันทึก
+- เพิ่มราคาเป็นแถวใหม่พร้อมเวลาเรียงรุ่นที่ใหม่กว่ารุ่นก่อน ไม่ UPDATE ราคาเดิม แก้เฉพาะหมายเหตุ/รหัส/หมวด/สถานะใช้งาน/ภาพโดย price=null ไม่เพิ่มราคา และไม่ทำให้ราคาที่ถอนกลับมาใช้งานเอง
+- การแก้ metadata เพิ่มราคา และเพิ่ม audit อยู่ใน transaction เดียวกัน หากขั้นใดผิดพลาดทั้งหมดถูก rollback รหัส item_code ซ้ำถูกปฏิเสธด้วย unique constraint (`23505`); การกดซ้ำด้วย item_id/version เดิมไม่เพิ่มรุ่นหรือราคาเงียบ ๆ
+- ถอนสิทธิ์ authenticated INSERT/UPDATE/DELETE ของ catalog_items/catalog_prices และลบ policy เขียนเดิม แม้ผู้ดูแลก็ต้องผ่าน RPC ที่ตรวจรุ่นและเก็บ audit ส่วน SQL operator ที่ได้รับอนุญาตยังใช้ตัวนำเข้าเดิมได้
+
+หลังแก้รายการที่มาจาก Excel การนำเข้าไฟล์เดิมซ้ำอาจหยุดด้วย metadata conflict ตามการป้องกันของ importer; นี่คือการป้องกันข้อมูลที่ผู้ดูแลแก้ ไม่ควรแก้ private import SQL เพื่อบังคับทับข้อมูลใหม่ ต้องตรวจความต่างและเลือกการปรับปรุงที่มีหลักฐานก่อน
+
+### 11.4 RPC อ่านข้อมูลและผลต่อแบบคำขอ
+
+| ฟังก์ชัน                                                                                                        | สิทธิ์/ข้อมูลที่คืน                                                                                                                                  |
+| --------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| search_procurement_catalog(catalog_query text='', category_filter text='', page_number integer=0) → jsonb       | request.create ของบัญชี active; เฉพาะ active items และราคาล่าสุดที่ไม่ withdrawn ใช้ร่วมกันระหว่าง `/catalog` แบบอ่านและ `/requests/new`             |
+| search_procurement_catalog_admin(catalog_query text='', category_filter text='', page_number integer=0) → jsonb | system.manage ของบัญชี active; รวมรายการที่ปิดใช้งานและราคาล่าสุดที่ withdrawn เพื่อให้ผู้ดูแลตรวจ/แก้ไขได้                                          |
+| catalog_image_path(item_uuid uuid) → text?                                                                      | active admin อ่านตำแหน่งรูปปัจจุบันของรายการได้; requester อ่านได้เฉพาะรายการที่ active และราคาล่าสุดไม่ withdrawn; ไม่พบ/ไม่มีรูปที่เห็นได้คืน null |
+| private.procurement_catalog_data(text,text,integer,boolean) → jsonb                                             | ตัวอ่านข้อมูลร่วมภายใน ไม่มีสิทธิ์ execute สำหรับ PUBLIC/anon/authenticated โดยตรง                                                                   |
+| private.can_read_catalog_image(object_path text) → boolean                                                      | ตรวจสิทธิ์รูปให้ Storage policy; admin หรือผู้มี request.create ที่เห็นรูปปัจจุบันของรายการได้เท่านั้น                                               |
+
+RPC ค้นหาทั้งสองแบบจำกัด query 120 ตัวอักษร, category 30 ตัวอักษร, page 0–10000 และหน้าละ 20 รายการ ใช้เงื่อนไขค้นหาแบบข้อความ ไม่ประกอบ SQL จากค่าที่ส่งมา เลือกราคาล่าสุดก่อนตรวจ withdrawn เหมือนเดิม จึงไม่ย้อนกลับไปใช้ราคาเก่าเมื่อล่าสุดถูกถอน
+
+DTO ยังคง items/total/categories และฟิลด์สินค้า/ราคาเดิม เพิ่ม origin/version/active/image_path; import_id/sheet_name/row_number/file_name เป็น null สำหรับ manual โดยเปลี่ยนการเชื่อม catalog_imports เป็น LEFT JOIN ไม่ส่ง raw workbook หรือประวัติซื้อทั้งชุดไปหน้าเว็บ UI แสดงแหล่งที่มา Excel หรือข้อมูลที่ผู้ดูแลบันทึกให้ตรงกับ origin และยังเตือนกรณีไม่มีวันที่/ไม่รับรอง/หมดอายุ
+
+การเลือกเข้าคำขอยังคง copy snapshot ใน request_items เดิมและอ้างรหัสรุ่นราคา ไม่เติมจำนวนหรือราคาต่อหน่วยซื้อจริง ไม่เปลี่ยนคำขอที่บันทึกไปแล้วตามข้อมูลสด และไม่เพิ่ม FK ย้อนหลังโดยเดา mapping
+
+### 11.5 รูปภาพ private: หนึ่งรูปหลักต่อรายการ
+
+- Bucket `catalog-images` เป็น private (`public=false`); อนุญาต `image/jpeg`, `image/png`, `image/webp` และขนาด 1–2,097,152 bytes (2 MiB) ไม่อนุญาต SVG/เอกสารอื่น
+- Server action ตรวจชนิดจากลายเซ็น/โครงสร้างไฟล์และมิติในข้อมูลภาพ เทียบ MIME ที่ส่งมา จำกัดไม่เกิน 6,000 พิกเซลต่อด้านและ 16,000,000 พิกเซลรวม รองรับภาพนิ่ง ไม่รับ PNG/WebP แบบภาพเคลื่อนไหว ข้อจำกัดมิติอยู่ใน upload server action ส่วน bucket บังคับขนาด/MIME และ SQL ตรวจ object metadata อีกชั้น ไม่อ้างว่าเป็นระบบตรวจมัลแวร์หรือถอดรหัสพิกเซลเพื่อตรวจความสมบูรณ์ทั้งหมด
+- รูปใหม่ใช้ `items/<item UUID>/<auth.uid() ของผู้อัปโหลด>/<random UUID>.(jpg|png|webp)` ไม่ใช้ชื่อไฟล์ที่ผู้ใช้เลือกสร้าง path อัปโหลดด้วย upsert=false และแต่ละครั้งได้ path ใหม่
+- Storage INSERT อนุญาตเฉพาะ active admin และ owner_id/ส่วนเจ้าของใน path ต้องตรงผู้เข้าสู่ระบบ ก่อนเปลี่ยน image_path RPC ตรวจว่าเป็นไฟล์ของรายการนี้ อัปโหลดโดยผู้บันทึกจริง และ object ใน bucket มี MIME ตามนามสกุล/ขนาดถูกต้อง หากไม่ได้เปลี่ยน path เดิม ผู้ดูแลอีกคนคงรูปเดิมไว้ได้
+- Storage SELECT อนุญาต admin รวมรูปที่อัปโหลดเตรียมไว้; requester อ่านได้เฉพาะ path ที่อ้างเป็นรูปปัจจุบันของ active item ซึ่งราคาล่าสุดไม่ withdrawn จึงไม่เห็นรูปที่ยกเลิก/แทนที่หรือไฟล์ staged ที่ยังไม่มีรายการอ้างอิง
+- Endpoint `/api/catalog-images/[id]` ตรวจ session → `catalog_image_path` → private Storage download แล้วคืนภาพขนาด/ชนิดที่รองรับ พร้อม `Cache-Control: private, no-store, max-age=0`, `Vary: Cookie`, `X-Content-Type-Options: nosniff` ไม่ใช้ public URL หรือส่งข้อมูล Storage ทุกไฟล์ให้ client
+- หนึ่งรายการมี image_path ได้หนึ่งค่า การเปลี่ยนรูป/เอารูปออกจากรายการคือเปลี่ยน reference หรือกำหนด null **ไม่ลบไฟล์เดิม** และไม่เขียนทับ object ไม่มี Storage UPDATE/DELETE policy สำหรับ bucket นี้ ภาพเก่ายังอยู่ในพื้นที่ private เพื่อสอบย้อนร่วมกับ before_state/after_state
+- การอัปโหลดกับ transaction บันทึกข้อมูลเป็นคนละขั้น: ถ้าบันทึกรายการล้มเหลว/ชน version/ยกเลิกฟอร์ม รูป staged อาจคงอยู่ใน bucket และ admin ยังอ่านได้ แต่ requester ไม่เห็น ฟอร์มเก็บ path ไว้สำหรับลองบันทึกใหม่ ไม่ต้องอัปโหลดซ้ำ ไม่มีงานล้าง orphan files อัตโนมัติในขอบเขตนี้ หากจะล้างต้องตรวจ reference/audit และกำหนดนโยบายเก็บหลักฐานก่อน
+
+### 11.6 ไฟล์ การทดสอบ และ dependency ก่อนเปิดใช้งาน
+
+หลักฐานโค้ด: `app/catalog/page.tsx`, `catalog-workspace.tsx`, `schema.ts`, `actions.ts`, `image-validation.ts`, `app/api/catalog-images/[id]/route.ts`, `app/components/app-shell.tsx` และไฟล์ catalog เดิมใต้ `app/requests/new/` ร่วมกับ migration ใหม่ การตรวจฐานข้อมูลใช้ `scripts/test-catalog-management-db.mjs`
+
+```powershell
+node scripts/test-catalog-management-db.mjs output/pdf/catalog-runtime/node_modules/@electric-sql/pglite supabase/private/catalog/import.sql
+```
+
+ผล isolated PostgreSQL/WASM integration ผ่าน: migration ใหม่ต่อจากรุ่นแรก; import เดิมรันซ้ำคง 1 import/7 items/7 prices/294 history/336 source rows; user/admin/inactive/anon และ helper permissions; manual provenance; payload ที่ไม่ถูกต้อง; unique/version conflict; atomic rollback; price append และ audit; เปลี่ยนหน่วย/ชื่อ/สเปกต้องให้ราคาใหม่; image ownership/MIME/size; รูปเก่าไม่ถูกลบ; requester ไม่เห็นรายการ inactive/withdrawn หรือรูป staged; metadata-only save ไม่ทำให้ราคาที่ถอนกลับมา; แก้รายการ Excel ได้โดยคงราคา/image_reference ต้นฉบับและ re-import ที่ conflict rollback ได้ ผลนี้ใช้ Storage/auth fixture ที่จำเป็น ไม่ใช่การยืนยัน Storage HTTP/session ของ Supabase production
+
+ก่อนใช้งานจริงต้องทดสอบและใช้ **migration `202610110002_catalog_management.sql`** บนฐานที่มี migration/import เดิมแล้ว จากนั้นตรวจสิทธิ์ RPC/RLS/bucket ด้วยบทบาทจริงและทดสอบอัปโหลด/แก้ไข/ค้นหาใน `/requests/new` บน environment เป้าหมาย ไม่มีการนำเข้า 7 ราคา/294 ประวัติซ้ำเพื่อเปิดฟีเจอร์นี้ และไม่ต้องแก้ข้อมูลคำขอเดิม
+
+หากยังไม่ได้ migration ใหม่ หน้าอ่าน Excel เดิมอาจยังใช้งานได้ แต่ admin RPC และพื้นที่เก็บรูปของรุ่นใหม่นี้ยังไม่พร้อม ต้องแสดงข้อผิดพลาดตามจริง ไม่ fallback mock ไม่ถือว่า deploy UI อย่างเดียวทำให้ระบบจัดการข้อมูลพร้อมใช้งาน การ rollback ต้องใช้ UI รุ่นที่เข้าใจ nullable provenance/manual prices หากมีการบันทึกราคา manual แล้ว ไม่ย้อนกลับไปใช้ parser รุ่น Excel-only และไม่ลบ schema/history/image เพื่อย้อนหน้าจอ
+
+#### 11.6.1 หลักฐานหน้าจอและการตรวจรับส่วนขยายแค็ตตาล็อก
+
+- `/catalog` เป็นส่วนขยายทะเบียนเดิม: ชื่อหน้าและปุ่มเพิ่มนำเข้าสู่การค้นหา → ตรวจแหล่งที่มา/ราคา → แก้ไขโดยผู้ดูแล ใช้ `CatalogPicker` ร่วมกับ `/requests/new` และคง snapshot ของ POL-01 พื้นกระดาษอุ่น ขอบเหลี่ยมแบ่งแถวร่วมกัน Sarabun ลำดับหัวข้อ/เนื้อหา/ป้ายกำกับ ตัวเลขราคาแบบ tabular และกรอบนำทาง graphite/ปุ่มหลักสีส้มสืบทอดระบบเดิม จึงคง `DESIGN.md` และ `.impeccable/design.json` ไม่เขียนกฎใหม่สำหรับทั้งระบบ
+- ตรวจ UI ที่ความกว้าง 320/390/768/844/1600 px ผ่าน รวมเพิ่ม/แก้ไขรายการ พรีวิว/เอารูปออก บันทึกล้มเหลวแล้วคงข้อมูลและใช้ไฟล์ที่อัปโหลดไว้ซ้ำ ยืนยันก่อนทิ้งการแก้ไข ซ่อนปุ่มจัดการจากผู้ใช้แบบอ่าน และการเลือก snapshot ใน POL-01 ผล finish review: `ship`, ไม่มีข้อแก้ไขสาระสำคัญ, `TYPE`/`MATERIAL` ตรงแนวทางเดิม; detector หนึ่งรอบคืน `[]`
+- ผลทดสอบ 412 tests ใน 40 files, SQL integration, typecheck และ lint ผ่าน หลักฐาน UI ใช้ synthetic local-only harness ไม่ใช่ข้อมูล production และไม่ยืนยัน Storage HTTP/session จริง ไม่มีการแก้ไฟล์ Excel หรือ private import ต้นฉบับ ผลตรวจนี้ไม่ใช่หลักฐานการ deploy; ยังต้องดำเนินการและตรวจ environment เป้าหมายตามข้อกำหนดด้านบน
+- Production build และ Prettier ผ่านแล้ว ตรวจ build manifest ว่า `/catalog` เป็น dynamic/request-time ไม่มีใน prerender routes, มี image endpoint และไม่มี QA route ชั่วคราว หน้าเรียก `connection()` ก่อนตรวจสิทธิ์เพื่อไม่ให้ขั้น prerender ถูกดักเป็นข้อผิดพลาดการเข้าถึง ค่า SHA-256 ของ Excel ต้นฉบับยังตรงกับก่อนทำงาน
+
+### 11.7 ตรวจ Supabase ก่อน push/deploy — 11 ตุลาคม 2569
+
+- ตรวจโครงการ `jwklnuzrewkrdtebvaid` ผ่าน SQL Editor พบ schema ใหม่ ตาราง `catalog_item_revisions` และ bucket `catalog-images` อยู่แล้ว จึงไม่รัน migration ซ้ำ ไม่ได้นำเข้าหรือแก้ข้อมูลรายการจริง
+- เปรียบเทียบ MD5 ของ function body ทั้ง 6 ฟังก์ชัน (ปรับ CRLF เป็น LF) ตรงกับ migration ใน repository ทุกตัว ทั้งหมดใช้ security definer และ search_path ว่าง; public RPC 4 ตัวให้ authenticated execute แต่ไม่ให้ anon, private data helper ไม่ให้ client execute
+- ยืนยัน authenticated เขียน `catalog_items`/`catalog_prices` โดยตรงไม่ได้, audit เปิด RLS, image bucket เป็น private จำกัด 2 MiB/JPEG/PNG/WebP และมี policy INSERT/SELECT ตามสิทธิ์ที่กำหนด
+- จำนวนข้อมูลก่อนเผยแพร่ยังเป็น 7 items, 7 prices, 294 history, 336 source rows; ไม่มี manual prices หรือ audit revisions จากการทดสอบ ระบบไม่สร้างรายการหรือรูปทดสอบใน production
+- ใช้ Git-connected deployment จากไฟล์ที่ commit เท่านั้น ไม่อัปโหลด workspace ทั้งชุด เพื่อไม่รวมไฟล์ Excel/private import ที่ถูก gitignore ผลการเผยแพร่และการตรวจเว็บจริงต้องยืนยันแยกจากผล preflight นี้
