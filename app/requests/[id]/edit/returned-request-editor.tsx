@@ -12,7 +12,13 @@ import { uploadRequestAttachments } from "../../../lib/request-attachments.clien
 import { Pol01ApprovalDetailsFields } from "../../new/pol01-approval-details";
 import { VendorPicker, type VendorChoice } from "../../new/vendor-picker";
 import { resubmitReturnedRequest, updateReturnedRequest } from "./actions";
-import type { ReturnedStandardRequestEditData, ReturnedRequestItem } from "./types";
+import type { ReturnedStandardRequestEditData } from "./types";
+import {
+  emptyPol01Item,
+  pol01ItemAmount,
+  pol01ItemsPayload,
+  type Pol01ItemInput,
+} from "../../new/item-input";
 import { Pol01ChecklistFields } from "../../components/pol01-checklist-fields";
 import { reconcilePol01Checklist } from "../../pol01-checklist";
 
@@ -79,7 +85,13 @@ export function ReturnedRequestEditor({ initial }: { initial: ReturnedStandardRe
   const [activityCode, setActivityCode] = useState(initial.activityCode);
   const [approvalDetails, setApprovalDetails] = useState(initial.approvalDetails);
   const [documentChecklist, setDocumentChecklist] = useState(initial.documentChecklist);
-  const [items, setItems] = useState<ReturnedRequestItem[]>(initial.items);
+  const [items, setItems] = useState<Pol01ItemInput[]>(() =>
+    initial.items.map((item) => ({
+      ...item,
+      marketPrice: item.marketPrice ?? null,
+      priceSource: item.priceSource ?? "",
+    })),
+  );
   const [newAttachments, setNewAttachments] = useState<SelectedAttachment[]>([]);
   const [vendorSelection, setVendorSelection] = useState<VendorChoice>(
     initial.vendor.kind === "registered"
@@ -100,7 +112,7 @@ export function ReturnedRequestEditor({ initial }: { initial: ReturnedStandardRe
   const [isPending, startTransition] = useTransition();
 
   const total = useMemo(
-    () => items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0),
+    () => items.reduce((sum, item) => sum + (pol01ItemAmount(item) ?? 0), 0),
     [items],
   );
   const requiredAttachmentCount = Number(vendorSelection.kind === "new");
@@ -110,7 +122,7 @@ export function ReturnedRequestEditor({ initial }: { initial: ReturnedStandardRe
     borrowing: loanRequirement === "borrow_before_purchase",
   };
 
-  function updateItem(index: number, patch: Partial<ReturnedRequestItem>) {
+  function updateItem(index: number, patch: Partial<Pol01ItemInput>) {
     setItems((current) =>
       current.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item)),
     );
@@ -123,14 +135,8 @@ export function ReturnedRequestEditor({ initial }: { initial: ReturnedStandardRe
     if (requiredDate < new Date().toISOString().slice(0, 10)) {
       return "วันที่ต้องการใช้ต้องเป็นวันนี้หรือวันถัดไป";
     }
-    if (
-      !items.length ||
-      items.some(
-        (item) =>
-          !item.description.trim() || !item.unit.trim() || item.quantity <= 0 || item.unitPrice < 0,
-      )
-    ) {
-      return "กรุณาตรวจสอบรายการ จำนวน หน่วย และราคาให้ครบถ้วน";
+    if (!pol01ItemsPayload(items)) {
+      return "กรุณาตรวจสอบรายการ จำนวน หน่วยนับ และราคาต่อหน่วยให้ครบ ลบแถวที่ไม่ใช้ และตรวจสอบว่าราคาไม่ติดลบ";
     }
     if (!sourceCode.trim() || !departmentCode.trim() || !fundCode.trim() || !activityCode.trim()) {
       return "กรุณากรอกรหัสแหล่งเงิน รหัสหน่วยงาน รหัสกองทุน และรหัสกิจกรรมให้ครบถ้วน";
@@ -202,13 +208,7 @@ export function ReturnedRequestEditor({ initial }: { initial: ReturnedStandardRe
             activityCode: activityCode.trim(),
           },
         },
-        items: items.map((item, index) => ({
-          line_no: index + 1,
-          description: item.description,
-          quantity: item.quantity,
-          unit: item.unit,
-          unit_price: item.unitPrice,
-        })),
+        items: pol01ItemsPayload(items)!,
       });
       if (updateResult.error) {
         setError(updateResult.error);
@@ -328,14 +328,17 @@ export function ReturnedRequestEditor({ initial }: { initial: ReturnedStandardRe
           title="รายการพัสดุหรือบริการ"
           description="แก้ไขรายการ จำนวน หน่วย และราคา ระบบจะคำนวณยอดรวมใหม่อัตโนมัติ"
         >
-          <div className="max-w-full overflow-x-auto border border-[var(--line)]">
-            <table className="w-full min-w-[760px] text-sm">
+          {/* Contain the absolutely positioned screen-reader header within the scroller. */}
+          <div className="relative max-w-full overflow-x-auto border border-[var(--line)]">
+            <table className="w-full min-w-[1160px] text-sm">
               <thead className="bg-stone-100 text-left text-stone-700">
                 <tr>
-                  <th className="p-3">รายการ</th>
-                  <th className="w-24 p-3">จำนวน</th>
-                  <th className="w-28 p-3">หน่วย</th>
+                  <th className="min-w-64 p-3">รายการ</th>
+                  <th className="w-28 p-3">จำนวน</th>
+                  <th className="w-28 p-3">หน่วยนับ</th>
                   <th className="w-36 p-3">ราคาต่อหน่วย</th>
+                  <th className="w-36 p-3">ราคากลาง</th>
+                  <th className="w-52 p-3">แหล่งที่มาของราคา</th>
                   <th className="w-32 p-3 text-right">รวม</th>
                   <th className="w-14 p-3">
                     <span className="sr-only">ลบ</span>
@@ -350,6 +353,8 @@ export function ReturnedRequestEditor({ initial }: { initial: ReturnedStandardRe
                         aria-label={`ชื่อรายการที่ ${index + 1}`}
                         className={fieldClass}
                         value={item.description}
+                        maxLength={500}
+                        placeholder="เช่น กระดาษถ่ายเอกสาร A4 80 แกรม"
                         onChange={(event) => updateItem(index, { description: event.target.value })}
                       />
                     </td>
@@ -360,9 +365,12 @@ export function ReturnedRequestEditor({ initial }: { initial: ReturnedStandardRe
                         min="0.01"
                         step="0.01"
                         className={fieldClass}
-                        value={item.quantity}
+                        value={item.quantity ?? ""}
+                        placeholder="เช่น 10"
                         onChange={(event) =>
-                          updateItem(index, { quantity: Number(event.target.value) })
+                          updateItem(index, {
+                            quantity: event.target.value === "" ? null : event.target.valueAsNumber,
+                          })
                         }
                       />
                     </td>
@@ -371,6 +379,8 @@ export function ReturnedRequestEditor({ initial }: { initial: ReturnedStandardRe
                         aria-label={`หน่วยรายการที่ ${index + 1}`}
                         className={fieldClass}
                         value={item.unit}
+                        maxLength={100}
+                        placeholder="เช่น รีม"
                         onChange={(event) => updateItem(index, { unit: event.target.value })}
                       />
                     </td>
@@ -381,14 +391,45 @@ export function ReturnedRequestEditor({ initial }: { initial: ReturnedStandardRe
                         min="0"
                         step="0.01"
                         className={fieldClass}
-                        value={item.unitPrice}
+                        value={item.unitPrice ?? ""}
+                        placeholder="เช่น 120"
                         onChange={(event) =>
-                          updateItem(index, { unitPrice: Number(event.target.value) })
+                          updateItem(index, {
+                            unitPrice:
+                              event.target.value === "" ? null : event.target.valueAsNumber,
+                          })
                         }
                       />
                     </td>
+                    <td className="p-2">
+                      <input
+                        aria-label={`ราคากลางรายการที่ ${index + 1}`}
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        className={fieldClass}
+                        value={item.marketPrice ?? ""}
+                        placeholder="เช่น 120"
+                        onChange={(event) =>
+                          updateItem(index, {
+                            marketPrice:
+                              event.target.value === "" ? null : event.target.valueAsNumber,
+                          })
+                        }
+                      />
+                    </td>
+                    <td className="p-2">
+                      <input
+                        aria-label={`แหล่งที่มาของราคารายการที่ ${index + 1}`}
+                        maxLength={500}
+                        className={fieldClass}
+                        value={item.priceSource}
+                        placeholder="เช่น ใบเสนอราคา"
+                        onChange={(event) => updateItem(index, { priceSource: event.target.value })}
+                      />
+                    </td>
                     <td className="p-3 text-right font-semibold tabular-nums">
-                      {currency(item.quantity * item.unitPrice)}
+                      {pol01ItemAmount(item) == null ? "—" : currency(pol01ItemAmount(item)!)}
                     </td>
                     <td className="p-2">
                       <button
@@ -409,7 +450,7 @@ export function ReturnedRequestEditor({ initial }: { initial: ReturnedStandardRe
               </tbody>
               <tfoot className="bg-orange-50">
                 <tr>
-                  <td colSpan={4} className="p-4 text-right font-semibold">
+                  <td colSpan={6} className="p-4 text-right font-semibold">
                     ยอดรวม
                   </td>
                   <td className="p-4 text-right text-lg font-bold text-orange-700 tabular-nums">
@@ -424,12 +465,7 @@ export function ReturnedRequestEditor({ initial }: { initial: ReturnedStandardRe
             type="button"
             variant="secondary"
             className="mt-4"
-            onClick={() =>
-              setItems((current) => [
-                ...current,
-                { description: "", quantity: 1, unit: "ชิ้น", unitPrice: 0 },
-              ])
-            }
+            onClick={() => setItems((current) => [...current, emptyPol01Item()])}
           >
             <Plus size={17} aria-hidden="true" /> เพิ่มรายการ
           </Button>

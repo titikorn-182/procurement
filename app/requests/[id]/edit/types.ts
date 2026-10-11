@@ -44,7 +44,7 @@ export type ReturnedStandardRequestEditData = ReturnedRequestBase & {
   activityCode: string;
   approvalDetails: Pol01ApprovalDetails;
   documentChecklist: Pol01Checklist;
-  items: ReturnedRequestItem[];
+  items: (ReturnedRequestItem & { marketPrice?: number | null; priceSource?: string })[];
 };
 
 export type ReturnedW119RequestEditData = ReturnedRequestBase & {

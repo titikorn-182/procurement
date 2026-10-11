@@ -61,6 +61,9 @@ export default async function RequestDetailPage({ params }: PageProps<"/requests
   const department = data.departments as { name_th?: string } | null;
   const requester = data.profiles as { full_name?: string; position_title?: string } | null;
   const items = (data.request_items ?? []) as Array<Record<string, unknown>>;
+  const hasReferencePrices = items.some(
+    (item) => item.market_price != null || String(item.price_source ?? "").trim(),
+  );
   const attachments = (data.request_attachments ?? []) as Array<Record<string, unknown>>;
   const actions = (data.workflow_actions ?? []) as Array<Record<string, unknown>>;
   const decisionContext = await getRequestDecisionContext(
@@ -188,16 +191,22 @@ export default async function RequestDetailPage({ params }: PageProps<"/requests
                 <table className="w-full min-w-[640px] border-collapse">
                   <thead className="bg-stone-100">
                     <tr>
-                      {["ลำดับ", "รายการ", "จำนวน", "หน่วย", "ราคาต่อหน่วย", "จำนวนเงิน"].map(
-                        (heading) => (
-                          <th
-                            key={heading}
-                            className="border border-[var(--line)] p-2 text-left text-xs"
-                          >
-                            {heading}
-                          </th>
-                        ),
-                      )}
+                      {[
+                        "ลำดับ",
+                        "รายการ",
+                        "จำนวน",
+                        "หน่วย",
+                        "ราคาต่อหน่วย",
+                        ...(hasReferencePrices ? ["ราคากลาง", "แหล่งที่มาของราคา"] : []),
+                        "จำนวนเงิน",
+                      ].map((heading) => (
+                        <th
+                          key={heading}
+                          className="border border-[var(--line)] p-2 text-left text-xs"
+                        >
+                          {heading}
+                        </th>
+                      ))}
                     </tr>
                   </thead>
                   <tbody>
@@ -220,6 +229,20 @@ export default async function RequestDetailPage({ params }: PageProps<"/requests
                               minimumFractionDigits: 2,
                             })}
                           </td>
+                          {hasReferencePrices && (
+                            <>
+                              <td className="border border-[var(--line)] p-2 text-right">
+                                {item.market_price == null
+                                  ? "—"
+                                  : Number(item.market_price).toLocaleString("th-TH", {
+                                      minimumFractionDigits: 2,
+                                    })}
+                              </td>
+                              <td className="max-w-64 whitespace-pre-wrap break-words border border-[var(--line)] p-2">
+                                {String(item.price_source ?? "").trim() || "—"}
+                              </td>
+                            </>
+                          )}
                           <td className="border border-[var(--line)] p-2 text-right">
                             {Number(item.total_amount).toLocaleString("th-TH", {
                               minimumFractionDigits: 2,

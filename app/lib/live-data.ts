@@ -124,7 +124,7 @@ export async function getRequestDetail(requestNo: string) {
   const { data, error } = await supabase
     .from("procurement_requests")
     .select(
-      "id, request_no, requester_id, kind, title, rationale, required_date, budget_year, fund_source, plan_name, expense_category, form_data, estimated_amount, status, current_step, created_at, departments(name_th), profiles!procurement_requests_requester_id_fkey(full_name, position_title), request_items(line_no, description, quantity, unit, unit_price, total_amount), request_attachments(id, file_name, size_bytes, mime_type, created_at), workflow_actions(id, action, comment, created_at, profiles!workflow_actions_actor_id_fkey(full_name))",
+      "id, request_no, requester_id, kind, title, rationale, required_date, budget_year, fund_source, plan_name, expense_category, form_data, estimated_amount, status, current_step, created_at, departments(name_th), profiles!procurement_requests_requester_id_fkey(full_name, position_title), request_items(line_no, description, quantity, unit, unit_price, market_price, price_source, total_amount), request_attachments(id, file_name, size_bytes, mime_type, created_at), workflow_actions(id, action, comment, created_at, profiles!workflow_actions_actor_id_fkey(full_name))",
     )
     .eq("request_no", requestNo)
     .order("created_at", { referencedTable: "request_attachments", ascending: true })
@@ -222,6 +222,8 @@ export async function getReturnedRequestForEdit(requestNo: string): Promise<{
     quantity: Number(item.quantity),
     unit: String(item.unit),
     unitPrice: Number(item.unit_price),
+    marketPrice: item.market_price == null ? null : Number(item.market_price),
+    priceSource: String(item.price_source ?? ""),
   }));
   const actions = [...(data.workflow_actions ?? [])].sort(
     (left, right) => Date.parse(String(right.created_at)) - Date.parse(String(left.created_at)),
@@ -278,11 +280,7 @@ export async function getReturnedRequestForEdit(requestNo: string): Promise<{
             activityCode: String(budgetCodes.activityCode ?? ""),
           },
         },
-        items: sortedItems.map((item, index) => ({
-          ...items[index],
-          marketPrice: item.market_price == null ? null : Number(item.market_price),
-          priceSource: String(item.price_source ?? ""),
-        })),
+        items,
       },
       error: null,
     };

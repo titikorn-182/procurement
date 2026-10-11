@@ -16,13 +16,13 @@ import { createDefaultPol01ApprovalDetails } from "../pol01";
 import { Pol01ChecklistFields } from "../components/pol01-checklist-fields";
 import { Pol01ChecklistSummary } from "../components/pol01-checklist-summary";
 import { createPol01Checklist, reconcilePol01Checklist } from "../pol01-checklist";
-
-type RequestItem = {
-  description: string;
-  quantity: number;
-  unit: string;
-  unitPrice: number;
-};
+import {
+  emptyPol01Item,
+  pol01ItemAmount,
+  pol01ItemsPayload,
+  pol01ItemExamples,
+  type Pol01ItemInput,
+} from "./item-input";
 
 type LoanRequirement =
   "borrow_before_purchase" | "reimburse_after_purchase" | "faculty_direct_pay_credit_vendor";
@@ -44,12 +44,6 @@ const loanRequirementOptions: Array<{ value: LoanRequirement; label: string }> =
 ];
 
 const steps = ["ข้อมูลคำขอ", "รายการพัสดุ", "งบประมาณ", "เอกสารแนบ", "ตรวจสอบและส่ง"];
-
-const initialItems: RequestItem[] = [
-  { description: "กระดาษถ่ายเอกสาร A4 80 แกรม", quantity: 10, unit: "รีม", unitPrice: 120 },
-  { description: "แฟ้มสันกว้าง 3 นิ้ว", quantity: 20, unit: "เล่ม", unitPrice: 75 },
-  { description: "ปากกาลูกลื่นสีน้ำเงิน", quantity: 50, unit: "ด้าม", unitPrice: 8 },
-];
 
 const inputClass =
   "min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-400 focus:ring-4 focus:ring-orange-100";
@@ -85,7 +79,7 @@ export default function NewRequestPage() {
   const [title, setTitle] = useState("");
   const [rationale, setRationale] = useState("");
   const [requiredDate, setRequiredDate] = useState("");
-  const [items, setItems] = useState<RequestItem[]>(initialItems);
+  const [items, setItems] = useState<Pol01ItemInput[]>(() => pol01ItemExamples.map(emptyPol01Item));
   const [catalogOpen, setCatalogOpen] = useState(false);
   const [fiscalYear, setFiscalYear] = useState("2569");
   const [fundSource, setFundSource] = useState("เงินงบประมาณแผ่นดิน");
@@ -108,7 +102,7 @@ export default function NewRequestPage() {
   const [isPending, startTransition] = useTransition();
 
   const total = useMemo(
-    () => items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0),
+    () => items.reduce((sum, item) => sum + (pol01ItemAmount(item) ?? 0), 0),
     [items],
   );
   const selectedLoanLabel =
@@ -139,7 +133,7 @@ export default function NewRequestPage() {
     borrowing: loanRequirement === "borrow_before_purchase",
   };
 
-  function updateItem(index: number, patch: Partial<RequestItem>) {
+  function updateItem(index: number, patch: Partial<Pol01ItemInput>) {
     setItems((current) =>
       current.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item)),
     );
@@ -149,18 +143,8 @@ export default function NewRequestPage() {
     if (step === 0 && (!title.trim() || !rationale.trim() || !requiredDate)) {
       return "กรุณากรอกชื่อคำขอ เหตุผลความจำเป็น และวันที่ต้องการใช้";
     }
-    if (
-      step === 1 &&
-      (items.length === 0 ||
-        items.some(
-          (item) =>
-            !item.description.trim() ||
-            !item.unit.trim() ||
-            item.quantity <= 0 ||
-            item.unitPrice < 0,
-        ))
-    ) {
-      return "กรุณากรอกรายการพัสดุให้ครบถ้วนอย่างน้อย 1 รายการ";
+    if (step === 1 && !pol01ItemsPayload(items)) {
+      return "กรุณากรอกรายการ จำนวน หน่วยนับ และราคาต่อหน่วยให้ครบอย่างน้อย 1 รายการ ลบแถวที่ไม่ใช้ และตรวจสอบว่าราคาไม่ติดลบ";
     }
     if (step === 2 && (!fiscalYear || !fundSource || !planName.trim() || !expenseCategory)) {
       return "กรุณาระบุข้อมูลงบประมาณให้ครบถ้วน";
@@ -204,6 +188,12 @@ export default function NewRequestPage() {
   }
 
   function handleSubmit() {
+    const submittedItems = pol01ItemsPayload(items);
+    if (!submittedItems) {
+      setError("กรุณาตรวจสอบข้อมูลรายการพัสดุและลบแถวที่ไม่ใช้ก่อนส่งคำขอ");
+      setStep(1);
+      return;
+    }
     setError("");
     setSubmissionMessage("กำลังจัดเตรียมฉบับร่าง...");
     startTransition(async () => {
@@ -239,13 +229,7 @@ export default function NewRequestPage() {
               activityCode: activityCode.trim(),
             },
           },
-          items: items.map((item, index) => ({
-            line_no: index + 1,
-            description: item.description,
-            quantity: item.quantity,
-            unit: item.unit,
-            unit_price: item.unitPrice,
-          })),
+          items: submittedItems,
         });
 
         if (result.error || !result.requestId || !result.requestNo) {
@@ -410,14 +394,24 @@ export default function NewRequestPage() {
 
         {step === 1 && (
           <div className="space-y-4">
-            <div className="overflow-x-auto rounded-xl border border-slate-200">
-              <table className="w-full min-w-[760px] text-sm">
+            <p id="pol01-items-hint" className="text-sm leading-6 text-stone-600">
+              ข้อความสีเทาเป็นตัวอย่างการกรอก กรุณากรอกข้อมูลจริงและลบแถวที่ไม่ใช้
+              ราคากลางเป็นราคาต่อหน่วยสำหรับอ้างอิง ยอดรวมคำนวณจากจำนวน × ราคาต่อหน่วย
+            </p>
+            {/* Contain the absolutely positioned screen-reader header within the scroller. */}
+            <div className="relative overflow-x-auto rounded-xl border border-slate-200">
+              <table
+                aria-describedby="pol01-items-hint"
+                className="w-full min-w-[1160px] text-sm [&_input]:text-base [&_input]:placeholder:font-normal [&_input]:placeholder:text-stone-500 sm:[&_input]:text-sm"
+              >
                 <thead className="bg-slate-50 text-left text-slate-600">
                   <tr>
-                    <th className="p-3">รายการ</th>
-                    <th className="w-24 p-3">จำนวน</th>
-                    <th className="w-28 p-3">หน่วย</th>
+                    <th className="min-w-64 p-3">รายการ</th>
+                    <th className="w-28 p-3">จำนวน</th>
+                    <th className="w-28 p-3">หน่วยนับ</th>
                     <th className="w-36 p-3">ราคาต่อหน่วย</th>
+                    <th className="w-36 p-3">ราคากลาง</th>
+                    <th className="w-52 p-3">แหล่งที่มาของราคา</th>
                     <th className="w-32 p-3 text-right">รวม</th>
                     <th className="w-14 p-3">
                       <span className="sr-only">ลบ</span>
@@ -432,6 +426,8 @@ export default function NewRequestPage() {
                           aria-label={`ชื่อรายการที่ ${index + 1}`}
                           className={inputClass}
                           value={item.description}
+                          maxLength={500}
+                          placeholder={`เช่น ${(pol01ItemExamples[index] ?? pol01ItemExamples[0]).description}`}
                           onChange={(event) =>
                             updateItem(index, { description: event.target.value })
                           }
@@ -444,9 +440,13 @@ export default function NewRequestPage() {
                           min="0.01"
                           step="0.01"
                           className={inputClass}
-                          value={item.quantity}
+                          value={item.quantity ?? ""}
+                          placeholder={`เช่น ${(pol01ItemExamples[index] ?? pol01ItemExamples[0]).quantity}`}
                           onChange={(event) =>
-                            updateItem(index, { quantity: Number(event.target.value) })
+                            updateItem(index, {
+                              quantity:
+                                event.target.value === "" ? null : event.target.valueAsNumber,
+                            })
                           }
                         />
                       </td>
@@ -455,6 +455,8 @@ export default function NewRequestPage() {
                           aria-label={`หน่วยรายการที่ ${index + 1}`}
                           className={inputClass}
                           value={item.unit}
+                          maxLength={100}
+                          placeholder={`เช่น ${(pol01ItemExamples[index] ?? pol01ItemExamples[0]).unit}`}
                           onChange={(event) => updateItem(index, { unit: event.target.value })}
                         />
                       </td>
@@ -465,14 +467,51 @@ export default function NewRequestPage() {
                           min="0"
                           step="0.01"
                           className={inputClass}
-                          value={item.unitPrice}
+                          value={item.unitPrice ?? ""}
+                          placeholder={`เช่น ${(pol01ItemExamples[index] ?? pol01ItemExamples[0]).price}`}
                           onChange={(event) =>
-                            updateItem(index, { unitPrice: Number(event.target.value) })
+                            updateItem(index, {
+                              unitPrice:
+                                event.target.value === "" ? null : event.target.valueAsNumber,
+                            })
+                          }
+                        />
+                      </td>
+                      <td className="p-2">
+                        <input
+                          aria-label={`ราคากลางรายการที่ ${index + 1}`}
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          className={inputClass}
+                          value={item.marketPrice ?? ""}
+                          placeholder={`เช่น ${(pol01ItemExamples[index] ?? pol01ItemExamples[0]).price}`}
+                          onChange={(event) =>
+                            updateItem(index, {
+                              marketPrice:
+                                event.target.value === "" ? null : event.target.valueAsNumber,
+                            })
+                          }
+                        />
+                      </td>
+                      <td className="p-2">
+                        <input
+                          aria-label={`แหล่งที่มาของราคารายการที่ ${index + 1}`}
+                          className={inputClass}
+                          maxLength={500}
+                          value={item.priceSource}
+                          placeholder={`เช่น ${(pol01ItemExamples[index] ?? pol01ItemExamples[0]).source}`}
+                          onChange={(event) =>
+                            updateItem(index, { priceSource: event.target.value })
                           }
                         />
                       </td>
                       <td className="p-3 text-right font-semibold text-slate-800">
-                        {money(item.quantity * item.unitPrice)}
+                        {pol01ItemAmount(item) == null ? (
+                          <span className="font-normal text-stone-500">—</span>
+                        ) : (
+                          money(pol01ItemAmount(item)!)
+                        )}
                       </td>
                       <td className="p-2">
                         <button
@@ -493,7 +532,7 @@ export default function NewRequestPage() {
                 </tbody>
                 <tfoot className="bg-orange-50">
                   <tr>
-                    <td colSpan={4} className="p-4 text-right font-semibold text-slate-700">
+                    <td colSpan={6} className="p-4 text-right font-semibold text-slate-700">
                       ยอดรวมทั้งสิ้น
                     </td>
                     <td className="p-4 text-right text-lg font-bold text-orange-700">
@@ -508,12 +547,7 @@ export default function NewRequestPage() {
               <Button
                 type="button"
                 variant="secondary"
-                onClick={() =>
-                  setItems((current) => [
-                    ...current,
-                    { description: "", quantity: 1, unit: "ชิ้น", unitPrice: 0 },
-                  ])
-                }
+                onClick={() => setItems((current) => [...current, emptyPol01Item()])}
               >
                 <Plus size={17} /> เพิ่มรายการ
               </Button>
