@@ -9,7 +9,7 @@ function files(path: string): string[] {
 }
 describe("data access architecture boundaries", () => {
   it("keeps direct Supabase clients out of UI modules", () => {
-    const violations = files("app")
+    const violations = [...files("app"), ...files("features")]
       .filter((p) => p.endsWith(".tsx"))
       .filter((p) =>
         /from\s+["'][^"']*(?:supabase\/(?:server|client)|@supabase\/)/.test(
@@ -28,7 +28,7 @@ describe("data access architecture boundaries", () => {
   });
   it("keeps pure models, schemas and shared types independent of server clients and UI modules", () => {
     const violations = files("features")
-      .filter((p) => !/[/\\]server[/\\]|\.client\.ts$/.test(p))
+      .filter((p) => !/[/\\]server[/\\]|[/\\]forms[/\\]|\.client\.ts$/.test(p))
       .filter((p) =>
         /from\s+["'][^"']*(?:supabase\/(?:server|client)|\/components\/|\/page|\/requests-client)/.test(
           readFileSync(p, "utf8"),
@@ -40,5 +40,23 @@ describe("data access architecture boundaries", () => {
     expect(readFileSync("features/catalog/admin-schema.ts", "utf8")).not.toContain(
       "requests/new/catalog-schema",
     );
+  });
+  it("keeps form controllers on the client side of the data-access boundary", () => {
+    const violations = files("features/requests/forms").filter((p) =>
+      /from\s+["'][^"']*(?:supabase\/(?:server|client)|\/server\/|@supabase\/)/.test(
+        readFileSync(p, "utf8"),
+      ),
+    );
+    expect(violations).toEqual([]);
+  });
+  it("keeps submission and state ownership in hooks instead of the extracted screens", () => {
+    const violations = files("features/requests/forms")
+      .filter((p) => p.endsWith(".tsx"))
+      .filter((p) =>
+        /\b(?:useState|useTransition|createRequestDraft|updateReturnedRequest|uploadRequestAttachments)\b/.test(
+          readFileSync(p, "utf8"),
+        ),
+      );
+    expect(violations).toEqual([]);
   });
 });

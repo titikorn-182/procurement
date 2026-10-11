@@ -1,0 +1,35 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`request form extraction: original rendered markup > preserves POL01 step 0 1`] = `"d8a037f34205a44c949526358fbf9d9ca3f87328ca60de75345a3ab55c55472c"`;
+
+exports[`request form extraction: original rendered markup > preserves POL01 step 1 1`] = `"448454b1521f505465fbcf2d73c04a06ebc6992a0644a3e4e7cb8858be679478"`;
+
+exports[`request form extraction: original rendered markup > preserves POL01 step 2 1`] = `"a94499bf86ae21b66f07e258a271316acd4fcee87d74c4acc72fe93d77db0f67"`;
+
+exports[`request form extraction: original rendered markup > preserves POL01 step 3 1`] = `"f8f487a87344af6c92d396151a530fd71d79acd47eb537d71479d4c0b6642da6"`;
+
+exports[`request form extraction: original rendered markup > preserves POL01 step 4 1`] = `"ad437e92e3d0098b4da70a480a7abda49c9d1f42d9cd1df4059d7a971d6faf83"`;
+
+exports[`request form extraction: original rendered markup > preserves new W119 step 0 1`] = `"1ee7db228825ae714dc70fe78b3bb1178f16ccae34172fe7b384d4d7fbe843a0"`;
+
+exports[`request form extraction: original rendered markup > preserves new W119 step 1 1`] = `"2b712403620f680869b7c2c1d9cc118f9441a49fd50e0400c07c9b7b17288e84"`;
+
+exports[`request form extraction: original rendered markup > preserves new W119 step 2 1`] = `"fb25b845adda091d6dab8184c84ea745933cab4866b26691c5aab1206bc0aa60"`;
+
+exports[`request form extraction: original rendered markup > preserves new W119 step 3 1`] = `"120366b76ddab30394016af1595dc532a8df3c5222c22614f83281b8d1bda674"`;
+
+exports[`request form extraction: original rendered markup > preserves new W119 step 4 1`] = `"3fb45387a38143923663db81ae486bdbb95f114a172c8320d4d667f0098cbeb8"`;
+
+exports[`request form extraction: original rendered markup > preserves returned W119 with loan and original attachment, step 0 1`] = `"32b768eb6d4491d3105cfe1b290f5e94bdecd2a3b08cc963f920d10225900c43"`;
+
+exports[`request form extraction: original rendered markup > preserves returned W119 with loan and original attachment, step 1 1`] = `"22095cc4152d683a48cb59d116daab044efbb5570de995c4a8b0affd0c2c3af6"`;
+
+exports[`request form extraction: original rendered markup > preserves returned W119 with loan and original attachment, step 2 1`] = `"09238101c4f076b9a128d82f9489106dbeb1f8b12d4edfe58f229819c154416f"`;
+
+exports[`request form extraction: original rendered markup > preserves returned W119 with loan and original attachment, step 3 1`] = `"485aa0ba6d3ce98db7d0a63838eae8c4e1472892da83121c4536b8c1b16ad788"`;
+
+exports[`request form extraction: original rendered markup > preserves returned W119 with loan and original attachment, step 4 1`] = `"2746197f47ebfa107f890516d13a43b9126913979e3beb48f814099577c89c7c"`;
+
+exports[`request form extraction: original rendered markup > preserves the POL01 draft editor 1`] = `"c6c13f9738b6e405932d1e7b3b11d97ed3a504f2b95085ff6bde4e0554a6f71a"`;
+
+exports[`request form extraction: original rendered markup > preserves the POL01 returned editor 1`] = `"bfdd6f9fc889a2c117d5c731013e8be19b2f30fd2fd357ba21f9786b467ad673"`;
