@@ -242,7 +242,7 @@ npm run verify
 
 ตรวจ `audit.json` ก่อนใช้: items=7, history=294, raw_rows=336, embedded_images=7, ราคาที่ไม่รับรองและขาดวันที่=7. ไฟล์ต้นฉบับ SHA-256 ต้องตรงข้อ 1 และยังไม่ถูกแก้ไข
 
-ขั้นนำเข้าของผู้ดูแล (ยังไม่ทำกับ production):
+ขั้นนำเข้าของผู้ดูแล (แนวทางสำหรับการนำเข้าครั้งต่อไป):
 
 1. สำรองฐานข้อมูล ทดสอบใน staging ที่มี migrations เดิมครบ
 2. ใช้ migration ใหม่ผ่านระบบ migration ของโครงการ
@@ -264,4 +264,13 @@ Impeccable finish review: **ship**; ไม่มี material fixes ค้าง 
 
 ข้อจำกัดที่คงไว้โดยตั้งใจ: ภาพฝังเก็บ locator/hash ยังไม่ publish; history ยังไม่ map เข้าสินค้าอัตโนมัติ; source ใน request_items เป็นข้อความ snapshot ที่ผู้ใช้แก้ได้ ไม่ใช่หลักฐานรับรองอัตโนมัติ; ยังต้องพัฒนา audit/admin review UI หากจะให้เจ้าหน้าที่เปลี่ยนการรับรองผ่านเว็บ
 
-**ผลตรวจส่งมอบ:** `npm run verify` ผ่าน lint, typecheck, 387 tests/39 files, Prettier และ production build; Python parser tests ผ่าน 6 ข้อ; SQL integration และ UI checks ข้างต้นผ่านทั้งหมด. ไม่มี QA routes ใน production build. SHA-256 ของ Excel ต้นฉบับหลังทำงานตรงกับก่อนทำงาน ยังไม่ได้ push/deploy หรือ apply migration/import บน production
+**ผลตรวจก่อน deploy:** `npm run verify` ผ่าน lint, typecheck, 387 tests/39 files, Prettier และ production build; Python parser tests ผ่าน 6 ข้อ; SQL integration และ UI checks ข้างต้นผ่านทั้งหมด. ไม่มี QA routes ใน production build. SHA-256 ของ Excel ต้นฉบับหลังทำงานตรงกับก่อนทำงาน
+
+## 10. ผล deploy และตรวจ production — 11 ตุลาคม 2569
+
+- Push โค้ด `fa41eef` ขึ้น `main`; Vercel ยืนยัน Production deployment สำเร็จ และตรวจที่ `https://procurement-six-gamma.vercel.app/requests/new`
+- ตรวจ Supabase โครงการ `jwklnuzrewkrdtebvaid` แล้วพบ schema/RPC อยู่ก่อนนำเข้า จึงไม่รัน migration ซ้ำ ตรวจ source ของ RPC ตรงกับ migration ใน repository, security definer ใช้ search_path ว่าง, anon ไม่มีสิทธิ์ execute, authenticated มีสิทธิ์ผ่านการตรวจ permission ภายใน
+- ตรวจพบ RLS เปิดครบ 6 ตาราง และ admin policies 18 รายการที่ตรวจ `system.manage` ก่อนนำเข้า โดยข้อมูลทั้ง 5 ชุดตรวจนับเริ่มต้นเป็นศูนย์
+- รัน private import SQL ใน transaction สำเร็จ หลัง commit ตรวจได้ 1 import, 7 items, 7 prices, 294 history และ 336 source rows; ราคาทั้ง 7 ยังเป็น unverified และไม่มี reference_date ตาม Excel จริง
+- ตรวจผ่านเว็บ production ด้วยบัญชีที่เข้าสู่ระบบ: โหลดครบ 7 รายการ, ค้นหา A4 ได้ 2 รายการ, เลือกกระดาษ A4 แล้วเติมชื่อ/คุณลักษณะ/หน่วย/ราคากลาง 119 บาท/แหล่งอ้างอิง พร้อมคำเตือนยังไม่รับรอง โดยจำนวนและราคาต่อหน่วยซื้อจริงยังว่าง ไม่ได้ส่งหรือบันทึกคำขอทดสอบ
+- ไม่แก้ข้อมูลคำขอเดิม ไม่เผยแพร่ Excel/private import SQL ใน Git และไม่ได้เปลี่ยนสิทธิ์ฐานข้อมูลระหว่าง deploy นี้ การทดสอบ user/inactive role เชิงลึกยังอ้างผล isolated SQL integration; การตรวจเว็บ production ครั้งนี้ใช้บัญชีผู้ดูแลระบบจริง
