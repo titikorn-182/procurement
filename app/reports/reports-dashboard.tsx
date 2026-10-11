@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Download, FileText } from "lucide-react";
-import type { RequestRow } from "../requests/requests-client";
+import type { RequestRow } from "@/features/requests/types";
 import { csvCell } from "../lib/csv";
 
 function downloadCsv(name: string, rows: RequestRow[]) {

@@ -1,21 +1,11 @@
 import { AppShell } from "@/app/components/app-shell";
 import { PageHeader } from "@/app/components/ui";
 import { sarabunPsk } from "@/app/components/print/fonts";
-import { createClient } from "@/lib/supabase/server";
+import { canPrepareProcurementDocuments } from "@/features/auth/server/queries";
 import { ExternalForm } from "./form";
 
 export default async function ExternalPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
-  const { data: profile, error: profileError } =
-    user && !error
-      ? await supabase.from("profiles").select("role, active").eq("id", user.id).maybeSingle()
-      : { data: null, error: null };
-  const allowed =
-    !error && !profileError && profile?.active === true && ["admin", "user"].includes(profile.role);
+  const allowed = await canPrepareProcurementDocuments();
   const today = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Bangkok",
     year: "numeric",

@@ -2,7 +2,7 @@ import Image from "next/image";
 import { redirect } from "next/navigation";
 import { ShieldCheck } from "../components/icons";
 import { inputClass } from "../components/ui";
-import { createClient } from "@/lib/supabase/server";
+import { isSignedIn } from "@/features/auth/server/queries";
 import { login } from "./actions";
 
 const systemNameLineOne = "ระบบการบริหารจัดการคำขอการจัดซื้อจัดจ้าง";
@@ -63,11 +63,7 @@ function BrandLockup({ compact = false }: { compact?: boolean }) {
 
 export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   const params = await searchParams;
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (user) redirect("/");
+  if (await isSignedIn()) redirect("/");
   const error = typeof params.error === "string" ? params.error : null;
   const next = typeof params.next === "string" ? params.next : "/";
 

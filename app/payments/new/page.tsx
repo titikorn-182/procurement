@@ -1,75 +1,10 @@
 import { AppShell } from "../../components/app-shell";
 import { PageHeader } from "../../components/ui";
-import { createClient } from "@/lib/supabase/server";
-import { toSafeActionError } from "@/lib/server/action-errors";
 import { PaymentForm } from "./payment-form";
-import type { SourceRequest } from "./types";
 import { sarabunPsk } from "@/app/components/print/fonts";
-import { readPol01Checklist } from "../../requests/pol01-checklist-schema";
-
-function record(value: unknown): Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : {};
-}
-
-function text(value: unknown) {
-  return typeof value === "string" ? value : "";
-}
-
+import { getPayableSources } from "@/features/payments/server/form-queries";
 export default async function NewPaymentPage() {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("procurement_requests")
-    .select(
-      "id, request_no, title, rationale, budget_year, fund_source, plan_name, expense_category, estimated_amount, status, completed_at, form_data, departments(name_th), profiles!procurement_requests_requester_id_fkey(full_name), request_items(line_no,description,quantity,unit_price), payment_requests(total_amount,status)",
-    )
-    .in("status", ["approved", "ordered", "completed"])
-    .order("created_at", { ascending: false });
-  const requests: SourceRequest[] = (data ?? []).map((row) => {
-    const paid = (row.payment_requests ?? [])
-      .filter((p) => !["cancelled", "draft"].includes(p.status))
-      .reduce((sum, p) => sum + Number(p.total_amount), 0);
-    const formData = record(row.form_data);
-    const vendor = record(formData.vendor);
-    const budgetCodes = record(formData.budgetCodes);
-    const department = row.departments;
-    const requester = row.profiles;
-    return {
-      id: row.id,
-      requestNo: row.request_no,
-      title: row.title,
-      rationale: row.rationale,
-      requesterName: requester && "full_name" in requester ? requester.full_name || "—" : "—",
-      departmentName: department && "name_th" in department ? department.name_th || "—" : "—",
-      budgetYear: Number(row.budget_year),
-      fundSource: row.fund_source,
-      planName: row.plan_name ?? "",
-      expenseCategory: row.expense_category ?? "",
-      approvedDate: "",
-      approved: Number(row.estimated_amount),
-      paid,
-      vendorName: text(vendor.name),
-      departmentCode: text(budgetCodes.departmentCode),
-      fundCode: text(budgetCodes.fundCode),
-      activityCode: text(budgetCodes.activityCode),
-      checklistCategories: readPol01Checklist(formData.documentChecklist, {
-        newVendor: vendor.type === "new",
-        borrowing: false,
-      }).categories,
-      isNewVendor: vendor.type === "new",
-      items: (row.request_items ?? [])
-        .sort((a, b) => a.line_no - b.line_no)
-        .map((item) => ({
-          description: item.description,
-          quantity: Number(item.quantity),
-          unitPrice: Number(item.unit_price),
-        })),
-    };
-  });
-  const safeError = error
-    ? toSafeActionError("get-payable-requests", error, "ไม่สามารถโหลดคำขอที่เบิกจ่ายได้")
-    : null;
+  const { requests, error: safeError } = await getPayableSources();
   return (
     <AppShell>
       <PageHeader

@@ -1,20 +1,11 @@
 import { AppShell } from "../components/app-shell";
 import { PageHeader } from "../components/ui";
-import { createClient } from "@/lib/supabase/server";
+import { getSettingsWorkspace } from "@/features/settings/server/queries";
 import { SettingsWorkspace } from "./settings-workspace";
 
 export default async function SettingsPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-  const { data: profile, error: profileError } =
-    user && !authError
-      ? await supabase.from("profiles").select("role, active").eq("id", user.id).maybeSingle()
-      : { data: null, error: null };
-
-  if (authError || profileError || profile?.role !== "admin" || profile.active !== true) {
+  const workspace = await getSettingsWorkspace();
+  if (!workspace.allowed) {
     return (
       <AppShell>
         <PageHeader title="ตั้งค่าระบบ" description="พื้นที่สำหรับผู้ดูแลระบบ" />
@@ -31,16 +22,6 @@ export default async function SettingsPage() {
     );
   }
 
-  const [
-    { data: profiles, error: profilesError },
-    { data: departments },
-    { data: settings, error: settingsError },
-  ] = await Promise.all([
-    supabase.rpc("admin_list_user_profiles"),
-    supabase.from("departments").select("id, code, name_th, active").order("code"),
-    supabase.from("system_settings").select("key, value, updated_at"),
-  ]);
-
   return (
     <AppShell>
       <PageHeader
@@ -48,15 +29,11 @@ export default async function SettingsPage() {
         description="จัดการสิทธิ์ ข้อมูลหลัก และนโยบายการทำงานจากจุดเดียว"
       />
       <SettingsWorkspace
-        profiles={profiles ?? []}
-        profilesError={
-          profilesError
-            ? "ไม่สามารถโหลดชื่อ E-mail และตำแหน่งของผู้ใช้ได้ กรุณาตรวจสอบ migration แล้วโหลดหน้าอีกครั้ง"
-            : null
-        }
-        departments={departments ?? []}
-        settings={settings ?? []}
-        databaseReady={!settingsError}
+        profiles={workspace.profiles}
+        profilesError={workspace.profilesError}
+        departments={workspace.departments}
+        settings={workspace.settings}
+        databaseReady={workspace.databaseReady}
       />
     </AppShell>
   );

@@ -4,21 +4,10 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Download, Search } from "lucide-react";
 import { StatusBadge } from "../components/ui";
-import type { RequestStatus } from "./status.types";
+import type { RequestRow } from "@/features/requests/types";
+export type { RequestRow } from "@/features/requests/types";
 import { csvCell } from "../lib/csv";
 
-export type RequestRow = {
-  id: string;
-  type: string;
-  title: string;
-  unit: string;
-  date: string;
-  amount: number;
-  status: RequestStatus;
-  step: string;
-  budgetYear?: number;
-  rawStatus?: string;
-};
 const pageSize = 10;
 
 export function RequestsClient({ requests }: { requests: RequestRow[] }) {

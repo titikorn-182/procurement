@@ -23,7 +23,7 @@ import {
   WalletCards,
   X,
 } from "./icons";
-import { createClient } from "@/lib/supabase/client";
+import { getShellProfile } from "@/features/auth/profile.client";
 import { logout } from "../login/actions";
 
 const nav = [
@@ -112,34 +112,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return () => media.removeEventListener("change", update);
   }, []);
   useEffect(() => {
-    const supabase = createClient();
-    supabase.auth.getUser().then(async ({ data }) => {
-      if (!data.user) return;
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("full_name, role")
-        .eq("id", data.user.id)
-        .maybeSingle();
-      const role = profile?.role as string | undefined;
-      const executiveRoles = [
-        "head_procurement",
-        "deputy_secretary",
-        "deputy_finance",
-        "dean",
-        "head_office",
-      ];
-      setContextRole(
-        role === "admin"
-          ? "ผู้ดูแลระบบ"
-          : role === "user"
-            ? "ผู้ยื่นคำขอ"
-            : executiveRoles.includes(role ?? "")
-              ? "ผู้บริหาร"
-              : role === "procurement_staff" || role === "finance_staff"
-                ? "เจ้าหน้าที่"
-                : "ไม่พบสิทธิ์ใช้งาน",
-      );
-      setProfileName(profile?.full_name || data.user.email || "ผู้ใช้งาน");
+    getShellProfile().then((profile) => {
+      if (!profile) return;
+      setContextRole(profile.roleLabel);
+      setProfileName(profile.name);
     });
   }, []);
   useEffect(() => {

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { FileText, Search } from "lucide-react";
-import type { RequestRow } from "../requests/requests-client";
+import type { RequestRow } from "@/features/requests/types";
 
 const columns = [
   {

@@ -2,7 +2,7 @@ import { connection } from "next/server";
 import { AppShell } from "@/app/components/app-shell";
 import { PageHeader } from "@/app/components/ui";
 import { sarabunPsk } from "@/app/components/print/fonts";
-import { createClient } from "@/lib/supabase/server";
+import { canPrepareProcurementDocuments } from "@/features/auth/server/queries";
 import { SECTION79_TITLE } from "./model";
 import { Section79Workspace } from "./workspace";
 
@@ -11,20 +11,7 @@ export default async function Section79Page() {
   await connection();
   let allowed = false;
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error,
-    } = await supabase.auth.getUser();
-    if (user && !error) {
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("role, active")
-        .eq("id", user.id)
-        .maybeSingle();
-      allowed =
-        !profileError && profile?.active === true && ["admin", "user"].includes(profile.role);
-    }
+    allowed = await canPrepareProcurementDocuments();
   } catch {
     allowed = false;
   }
