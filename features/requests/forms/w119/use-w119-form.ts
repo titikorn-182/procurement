@@ -16,7 +16,8 @@ import { validateW119Submission } from "@/app/requests/w119/validation";
 import { toW119PrintData, type W119PrintData } from "@/app/requests/w119/w119-print-data";
 import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState, useTransition } from "react";
-import { fundSources, itemExamples, steps } from "./constants";
+import { itemExamples, steps } from "./constants";
+import { w119Defaults } from "./defaults";
 
 export function useW119Form(initial?: ReturnedW119RequestEditData) {
   const router = useRouter();
@@ -34,23 +35,27 @@ export function useW119Form(initial?: ReturnedW119RequestEditData) {
   const [previewData, setPreviewData] = useState<W119PrintData | null>(null);
   const [step, setStep] = useState(0);
   const [requestType, setRequestType] = useState<"purchase" | "hire">(initial?.kind ?? "purchase");
-  const [documentNo, setDocumentNo] = useState(form?.documentNo ?? "อว 0604.19/");
+  const [documentNo, setDocumentNo] = useState(form?.documentNo ?? w119Defaults.documentNo);
   const [memoDate, setMemoDate] = useState(form?.memoDate ?? "");
   const [departmentName, setDepartmentName] = useState(
-    form?.departmentName ?? "สำนักงานเลขานุการ คณะรัฐศาสตร์ มหาวิทยาลัยอุบลราชธานี",
+    form?.departmentName ?? w119Defaults.departmentName,
   );
-  const [phone, setPhone] = useState(form?.phone ?? "3944");
-  const [addressee, setAddressee] = useState(form?.addressee ?? "อธิการบดีมหาวิทยาลัยอุบลราชธานี");
+  const [phone, setPhone] = useState(form?.phone ?? w119Defaults.phone);
+  const [addressee, setAddressee] = useState(form?.addressee ?? w119Defaults.addressee);
   const [title, setTitle] = useState(initial?.title ?? "");
   const [rationale, setRationale] = useState(initial?.rationale ?? "");
   const [requiredDate, setRequiredDate] = useState(initial?.requiredDate ?? "");
   const [items, setItems] = useState<RequestItem[]>(
     () => initial?.items ?? itemExamples.map(() => emptyW119Item()),
   );
-  const [fiscalYear, setFiscalYear] = useState(String(initial?.budgetYear ?? "2570"));
-  const [fundSource, setFundSource] = useState(initial?.fundSource ?? fundSources[0]);
+  const [fiscalYear, setFiscalYear] = useState(
+    String(initial?.budgetYear ?? w119Defaults.fiscalYear),
+  );
+  const [fundSource, setFundSource] = useState(initial?.fundSource ?? w119Defaults.fundSource);
   const [planName, setPlanName] = useState(initial?.planName ?? "");
-  const [expenseCategory, setExpenseCategory] = useState(initial?.expenseCategory ?? "ค่าวัสดุ");
+  const [expenseCategory, setExpenseCategory] = useState(
+    initial?.expenseCategory ?? w119Defaults.expenseCategory,
+  );
   const [sourceCode, setSourceCode] = useState(form?.budgetCodes.sourceCode ?? "");
   const [departmentCode, setDepartmentCode] = useState(form?.budgetCodes.departmentCode ?? "");
   const [fundCode, setFundCode] = useState(form?.budgetCodes.fundCode ?? "");

@@ -2,6 +2,7 @@ import { Plus, ReceiptText, Trash2 } from "lucide-react";
 import { Button, inputClass } from "../../components/ui";
 import { attachmentTypeOptions, paymentLineAmount, toThaiBahtText } from "./pol02";
 import type { PaymentLine } from "./types";
+import { formatThaiAmount as money } from "@/lib/format/money";
 
 type Props = {
   lines: PaymentLine[];
@@ -10,10 +11,6 @@ type Props = {
   onLinesChange: (lines: PaymentLine[]) => void;
   onVatChange: (vat: string) => void;
 };
-
-function money(value: number) {
-  return value.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
 
 export function PaymentItemsSection({ lines, vat, disabled, onLinesChange, onVatChange }: Props) {
   const subtotal = lines.reduce((sum, line) => sum + paymentLineAmount(line), 0);

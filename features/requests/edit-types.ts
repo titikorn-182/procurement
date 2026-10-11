@@ -1,3 +1,5 @@
+import type { AdvanceFundingOption } from "./funding";
+
 export type ReturnedRequestItem = {
   description: string;
   quantity: number;
@@ -36,8 +38,7 @@ type ReturnedRequestBase = {
 export type ReturnedStandardRequestEditData = ReturnedRequestBase & {
   formType: "standard";
   externalPol01?: import("@/app/requests/pol-external/schema").ExternalPol01;
-  advanceFundingOption:
-    "borrow_before_purchase" | "reimburse_after_purchase" | "faculty_direct_pay_credit_vendor";
+  advanceFundingOption: AdvanceFundingOption;
   vendor: ReturnedRequestVendor;
   sourceCode: string;
   departmentCode: string;

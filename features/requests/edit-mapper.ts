@@ -5,6 +5,7 @@ import { readExternalPol01 } from "@/app/requests/pol-external/schema";
 import { readTorDocuments } from "@/app/requests/tor/model";
 import type { ReturnedRequestEditData, ReturnedRequestVendor } from "./edit-types";
 import type { Tables } from "@/lib/supabase/database.types";
+import { readRecord as editRecord } from "@/lib/data/record";
 export type EditableRequestRecord = Pick<
   Tables<"procurement_requests">,
   | "id"
@@ -39,12 +40,6 @@ export type EditableRequestRecord = Pick<
   >;
   workflow_actions: Array<Pick<Tables<"workflow_actions">, "action" | "comment" | "created_at">>;
 };
-function editRecord(value: unknown): Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : {};
-}
-
 export function toRequestEditData(data: EditableRequestRecord): {
   data: ReturnedRequestEditData | null;
   error: string | null;

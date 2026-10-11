@@ -1,3 +1,5 @@
+import { readRecord as record } from "@/lib/data/record";
+
 export type Pol01Person = {
   name: string;
   position: string;
@@ -34,12 +36,6 @@ const DEFAULT_DETAILS: Pol01ApprovalDetails = {
     position: "คณบดีคณะรัฐศาสตร์ ปฏิบัติราชการแทนอธิการบดี",
   },
 };
-
-function record(value: unknown): Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : {};
-}
 
 function text(value: unknown, fallback = "") {
   return typeof value === "string" ? value.trim() : fallback;

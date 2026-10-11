@@ -192,6 +192,19 @@ describe("POL01 form controller", () => {
 });
 
 describe("W119 form controller", () => {
+  it("restores historical saved values instead of replacing them with new-form defaults", () => {
+    const initial = {
+      ...w119EditFixture(),
+      budgetYear: 2568,
+      fundSource: "แหล่งเงินเดิม",
+      expenseCategory: "ค่าครุภัณฑ์",
+    };
+    const form = renderHook(useW119Form, initial);
+    expect(form.fiscalYear).toBe("2568");
+    expect(form.fundSource).toBe("แหล่งเงินเดิม");
+    expect(form.expenseCategory).toBe("ค่าครุภัณฑ์");
+    expect(form.sourceCode).toBe("02");
+  });
   it("preserves saved data and original files when opening and closing preview", () => {
     const initial = w119EditFixture();
     const form = renderHook(useW119Form, initial);

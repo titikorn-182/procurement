@@ -1,10 +1,7 @@
 import { CircleAlert, ReceiptText } from "lucide-react";
 import { toThaiBahtText } from "./pol02";
 import type { SourceRequest } from "./types";
-
-function money(value: number) {
-  return value.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
+import { formatThaiAmount as money } from "@/lib/format/money";
 
 export function PaymentSummary({ request, total }: { request: SourceRequest; total: number }) {
   const remaining = request.approved - request.paid;

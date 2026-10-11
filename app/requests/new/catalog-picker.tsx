@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
+import { formatThaiBaht as money } from "@/lib/format/money";
 import { Search, X } from "lucide-react";
 import { searchProcurementCatalog } from "./catalog-actions";
 import { CatalogImage } from "../../catalog/catalog-image";
@@ -16,8 +17,6 @@ const fieldClass =
   "min-h-11 min-w-0 w-full border border-[var(--line-dark)] bg-white px-3 text-sm placeholder:text-stone-600 focus:outline-2 focus:outline-offset-2 focus:outline-[var(--blue)]";
 const buttonClass =
   "inline-flex min-h-11 items-center justify-center gap-2 border border-[var(--line-dark)] bg-white px-4 text-sm font-semibold hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-50";
-const money = (value: number) =>
-  new Intl.NumberFormat("th-TH", { style: "currency", currency: "THB" }).format(value);
 const dateLabel = (value: string | null) =>
   value
     ? new Intl.DateTimeFormat("th-TH", { dateStyle: "medium", timeZone: "Asia/Bangkok" }).format(

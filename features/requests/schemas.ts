@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { advanceFundingValues } from "./funding";
+import { requestItemLimits } from "./item-limits";
 import { pol01ChecklistSchema } from "@/app/requests/pol01-checklist-schema";
 import { reconcilePol01Checklist } from "@/app/requests/pol01-checklist";
 import { loanAgreementSchema } from "@/app/requests/w119/loan-agreement";
@@ -18,13 +20,13 @@ const shortRequiredText = (maximum: number) => z.string().trim().min(1).max(maxi
 
 export const requestItemSchema = z
   .object({
-    line_no: z.number().int().positive().max(1_000),
-    description: shortRequiredText(500),
-    quantity: z.number().finite().positive().max(999_999_999),
-    unit: shortRequiredText(100),
-    unit_price: z.number().finite().nonnegative().max(999_999_999_999.99),
-    market_price: z.number().finite().nonnegative().max(999_999_999_999.99).optional(),
-    price_source: z.string().trim().max(500).optional(),
+    line_no: z.number().int().positive().max(requestItemLimits.lineNumber),
+    description: shortRequiredText(requestItemLimits.descriptionLength),
+    quantity: z.number().finite().positive().max(requestItemLimits.quantity),
+    unit: shortRequiredText(requestItemLimits.unitLength),
+    unit_price: z.number().finite().nonnegative().max(requestItemLimits.price),
+    market_price: z.number().finite().nonnegative().max(requestItemLimits.price).optional(),
+    price_source: z.string().trim().max(requestItemLimits.priceSourceLength).optional(),
   })
   .strict();
 
@@ -39,7 +41,7 @@ export const newRequestInputSchema = z
     planName: z.string().trim().max(300),
     expenseCategory: z.string().trim().max(200),
     formData: z.unknown(),
-    items: z.array(requestItemSchema).min(1).max(200),
+    items: z.array(requestItemSchema).min(1).max(requestItemLimits.count),
   })
   .strict()
   .superRefine((input, context) => {
@@ -110,11 +112,7 @@ const newVendorSchema = z
 export const standardRequestFormSchema = z
   .object({
     externalPol01: externalPol01Schema.optional(),
-    advanceFundingOption: z.enum([
-      "borrow_before_purchase",
-      "reimburse_after_purchase",
-      "faculty_direct_pay_credit_vendor",
-    ]),
+    advanceFundingOption: z.enum(advanceFundingValues),
     requiresLoanAgreement: z.boolean().optional(),
     vendor: z.union([registeredVendorSchema, newVendorSchema]).nullable(),
     requiresVendorDocuments: z.boolean().optional(),

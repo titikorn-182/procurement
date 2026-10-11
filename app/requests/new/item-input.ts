@@ -1,14 +1,14 @@
 import type { NewRequestInput } from "./schemas";
-
-/** Blank inputs are not sample data, and a blank price is distinct from zero. */
-export type Pol01ItemInput = {
-  description: string;
-  quantity: number | null;
-  unit: string;
-  unitPrice: number | null;
-  marketPrice: number | null;
-  priceSource: string;
-};
+import {
+  requestItemAmount as pol01ItemAmount,
+  type RequestItemInput as Pol01ItemInput,
+} from "@/features/requests/item-input";
+import { requestItemLimits } from "@/features/requests/item-limits";
+export {
+  emptyRequestItem as emptyPol01Item,
+  requestItemAmount as pol01ItemAmount,
+} from "@/features/requests/item-input";
+export type { RequestItemInput as Pol01ItemInput } from "@/features/requests/item-input";
 
 export const pol01ItemExamples = [
   {
@@ -34,51 +34,27 @@ export const pol01ItemExamples = [
   },
 ];
 
-export function emptyPol01Item(): Pol01ItemInput {
-  return {
-    description: "",
-    quantity: null,
-    unit: "",
-    unitPrice: null,
-    marketPrice: null,
-    priceSource: "",
-  };
-}
-
-export function pol01ItemAmount(item: Pol01ItemInput): number | null {
-  if (
-    item.quantity == null ||
-    !Number.isFinite(item.quantity) ||
-    item.quantity <= 0 ||
-    item.unitPrice == null ||
-    !Number.isFinite(item.unitPrice) ||
-    item.unitPrice < 0
-  )
-    return null;
-  const amount = item.quantity * item.unitPrice;
-  return Number.isFinite(amount) ? amount : null;
-}
-
 export function isCompletePol01Item(
   item: Pol01ItemInput,
 ): item is Pol01ItemInput & { quantity: number; unitPrice: number } {
   return (
     Boolean(item.description.trim() && item.unit.trim()) &&
-    item.description.trim().length <= 500 &&
-    item.unit.trim().length <= 100 &&
+    item.description.trim().length <= requestItemLimits.descriptionLength &&
+    item.unit.trim().length <= requestItemLimits.unitLength &&
     pol01ItemAmount(item) !== null &&
-    item.quantity! <= 999_999_999 &&
-    item.unitPrice! <= 999_999_999_999.99 &&
+    item.quantity! <= requestItemLimits.quantity &&
+    item.unitPrice! <= requestItemLimits.price &&
     (item.marketPrice == null ||
       (Number.isFinite(item.marketPrice) &&
         item.marketPrice >= 0 &&
-        item.marketPrice <= 999_999_999_999.99)) &&
-    item.priceSource.trim().length <= 500
+        item.marketPrice <= requestItemLimits.price)) &&
+    item.priceSource.trim().length <= requestItemLimits.priceSourceLength
   );
 }
 
 export function pol01ItemsPayload(items: Pol01ItemInput[]): NewRequestInput["items"] | null {
-  if (!items.length || items.length > 200 || !items.every(isCompletePol01Item)) return null;
+  if (!items.length || items.length > requestItemLimits.count || !items.every(isCompletePol01Item))
+    return null;
   return items.map((item, index) => ({
     line_no: index + 1,
     description: item.description.trim(),

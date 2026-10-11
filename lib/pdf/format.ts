@@ -8,6 +8,4 @@ export function formatThaiDocumentDate(value: unknown): string {
       );
 }
 
-export function formatDocumentMoney(value: number): string {
-  return value.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
+export { formatThaiAmount as formatDocumentMoney } from "../format/money";

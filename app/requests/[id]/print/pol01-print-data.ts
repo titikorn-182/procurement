@@ -1,5 +1,6 @@
 import { normalizePol01ApprovalDetails, type Pol01ApprovalDetails } from "../../pol01";
 import { formatThaiDocumentDate as printDate } from "@/lib/pdf/format";
+import { readRecord as record } from "@/lib/data/record";
 
 export { printDate };
 
@@ -33,12 +34,6 @@ export type Pol01PrintData = {
   approval: Pol01ApprovalDetails;
   attachments: string[];
 };
-
-function record(value: unknown): Record<string, unknown> {
-  return value !== null && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : {};
-}
 
 function text(value: unknown): string {
   return typeof value === "string" ? value.trim() : typeof value === "number" ? String(value) : "";

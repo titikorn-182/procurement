@@ -1,4 +1,5 @@
 import { formatThaiDocumentDate } from "@/lib/pdf/format";
+import { readRecord as record } from "@/lib/data/record";
 import { readLoanAgreement, type LoanAgreement } from "./loan-agreement";
 
 export type W119PrintItem = {
@@ -35,10 +36,6 @@ export type W119PrintData = {
   };
 };
 
-const record = (value: unknown): Record<string, unknown> =>
-  typeof value === "object" && value !== null && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : {};
 const text = (value: unknown) =>
   typeof value === "string"
     ? value.trim()

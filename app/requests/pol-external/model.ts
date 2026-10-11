@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { advanceFundingValues } from "@/features/requests/funding";
 import { newRequestInputSchema, parseRequestFormData, type NewRequestInput } from "../new/schemas";
 import type { ReturnedStandardRequestEditData } from "../[id]/edit/types";
 import {
@@ -21,12 +22,7 @@ export const externalDraftSchema = z
     fundSource: short(200),
     planName: short(300),
     expenseCategory: z.enum(["ค่าใช้สอย", "ค่าวัสดุ"]),
-    advanceFundingOption: z.enum([
-      "",
-      "borrow_before_purchase",
-      "reimburse_after_purchase",
-      "faculty_direct_pay_credit_vendor",
-    ]),
+    advanceFundingOption: z.enum(["", ...advanceFundingValues]),
     vendor: z.discriminatedUnion("kind", [
       z.object({ kind: z.literal("none") }).strict(),
       z.object({ kind: z.literal("new"), vendorName: short(200) }).strict(),

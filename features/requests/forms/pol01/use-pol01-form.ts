@@ -17,6 +17,7 @@ import { createTorAttachments } from "@/app/requests/tor/pdf";
 import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState, useTransition } from "react";
 import { LoanRequirement, loanRequirementOptions, steps } from "./constants";
+import { pol01Defaults } from "./defaults";
 
 export function usePol01Form() {
   const router = useRouter();
@@ -28,18 +29,18 @@ export function usePol01Form() {
   const [items, setItems] = useState<Pol01ItemInput[]>(() => pol01ItemExamples.map(emptyPol01Item));
   const [catalogOpen, setCatalogOpen] = useState(false);
   const catalogToggle = useRef<HTMLButtonElement>(null);
-  const [fiscalYear, setFiscalYear] = useState("2569");
-  const [fundSource, setFundSource] = useState("เงินงบประมาณแผ่นดิน");
-  const [planName, setPlanName] = useState("แผนงานบริหารทั่วไป");
-  const [expenseCategory, setExpenseCategory] = useState("ค่าวัสดุ");
+  const [fiscalYear, setFiscalYear] = useState(pol01Defaults.fiscalYear);
+  const [fundSource, setFundSource] = useState(pol01Defaults.fundSource);
+  const [planName, setPlanName] = useState(pol01Defaults.planName);
+  const [expenseCategory, setExpenseCategory] = useState(pol01Defaults.expenseCategory);
   const [loanRequirement, setLoanRequirement] = useState<LoanRequirement | "">("");
   const [vendorSelection, setVendorSelection] = useState<VendorChoice>({ kind: "none" });
   const [newVendorName, setNewVendorName] = useState("");
   const [budgetDetailsOpen, setBudgetDetailsOpen] = useState(true);
-  const [sourceCode, setSourceCode] = useState("2");
-  const [departmentCode, setDepartmentCode] = useState("2301");
-  const [fundCode, setFundCode] = useState("2");
-  const [activityCode, setActivityCode] = useState("100210230004");
+  const [sourceCode, setSourceCode] = useState(pol01Defaults.sourceCode);
+  const [departmentCode, setDepartmentCode] = useState(pol01Defaults.departmentCode);
+  const [fundCode, setFundCode] = useState(pol01Defaults.fundCode);
+  const [activityCode, setActivityCode] = useState(pol01Defaults.activityCode);
   const [approvalDetails, setApprovalDetails] = useState(createDefaultPol01ApprovalDetails);
   const [attachments, setAttachments] = useState<SelectedAttachment[]>([]);
   const [documentChecklist, setDocumentChecklist] = useState(createPol01Checklist);
