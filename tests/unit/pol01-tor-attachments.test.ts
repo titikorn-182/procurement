@@ -44,6 +44,28 @@ beforeEach(() => {
     fn.mockResolvedValue({ error: null });
 });
 describe("TOR PDF synchronization", () => {
+  it("blocks uploads when retained file size is unknown without deleting originals", async () => {
+    mocks.read.mockResolvedValue({
+      data: [
+        { storage_path: "manual.pdf", file_name: "manual.pdf", size_bytes: null, mime_type: null },
+      ],
+      error: null,
+    });
+    expect((await syncTorAttachments(requestId, [file])).error).toContain("ขนาดไฟล์แนบเดิม");
+    expect(mocks.upload).not.toHaveBeenCalled();
+    expect(mocks.remove).not.toHaveBeenCalled();
+    expect(mocks.deleted).not.toHaveBeenCalled();
+  });
+  it("infers a missing MIME from the retained filename without changing its metadata", async () => {
+    mocks.read.mockResolvedValue({
+      data: [
+        { storage_path: "manual.pdf", file_name: "manual.pdf", size_bytes: 20, mime_type: null },
+      ],
+      error: null,
+    });
+    expect(await syncTorAttachments(requestId, [file])).toEqual({ error: null });
+    expect(mocks.remove).not.toHaveBeenCalled();
+  });
   it("requires authentication", async () => {
     mocks.user.mockResolvedValue({ data: { user: null } });
     expect((await syncTorAttachments(requestId, [file])).error).toBeTruthy();

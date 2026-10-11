@@ -40,27 +40,27 @@ export async function createPaymentDraft(
       paymentId: null,
       paymentNo: null,
     };
-  const { data, error } = await supabase.rpc(
-    revision ? "save_payment_request_revision" : "create_payment_request_draft",
-    {
-      ...(parsedRevision.success
-        ? {
-            target_payment_id: parsedRevision.data.id,
-            expected_updated_at: parsedRevision.data.updatedAt,
-            removed_attachment_ids: parsedRevision.data.removedAttachmentIds,
-          }
-        : {}),
-      source_request_id: payment.requestId,
-      payment_idempotency_key: payment.idempotencyKey,
-      payment_invoice_no: payment.invoiceNo,
-      payment_invoice_date: payment.invoiceDate,
-      payment_subtotal: payment.subtotal,
-      payment_vat_amount: payment.vat,
-      payment_delivery_detail: payment.delivery,
-      payment_form_data: payment.formData,
-      payment_items: payment.items,
-    },
-  );
+  const parameters = {
+    source_request_id: payment.requestId,
+    payment_idempotency_key: payment.idempotencyKey,
+    payment_invoice_no: payment.invoiceNo,
+    payment_invoice_date: payment.invoiceDate,
+    payment_subtotal: payment.subtotal,
+    payment_vat_amount: payment.vat,
+    payment_delivery_detail: payment.delivery,
+    payment_form_data: payment.formData,
+    payment_items: payment.items,
+  };
+  // Keep each RPC literal paired with its required parameters so TypeScript
+  // cannot accept revision arguments through the more permissive create union.
+  const { data, error } = parsedRevision.success
+    ? await supabase.rpc("save_payment_request_revision", {
+        ...parameters,
+        target_payment_id: parsedRevision.data.id,
+        expected_updated_at: parsedRevision.data.updatedAt,
+        removed_attachment_ids: parsedRevision.data.removedAttachmentIds,
+      })
+    : await supabase.rpc("create_payment_request_draft", parameters);
   if (error) {
     return {
       error: error.message.includes("revision conflict")
@@ -82,9 +82,12 @@ export async function createPaymentDraft(
   if (row?.payment_no) revalidatePath(`/payments/${encodeURIComponent(row.payment_no)}`);
   return {
     error: null,
-    paymentId: row?.id as string | undefined,
-    paymentNo: row?.payment_no as string | undefined,
-    updatedAt: (row?.updated_at ?? saved?.updated_at) as string | undefined,
+    paymentId: row?.id,
+    paymentNo: row?.payment_no,
+    updatedAt:
+      row && "updated_at" in row && typeof row.updated_at === "string"
+        ? row.updated_at
+        : saved?.updated_at,
   };
 }
 
@@ -117,5 +120,5 @@ export async function submitPaymentDraft(paymentId: string) {
   const row = Array.isArray(data) ? data[0] : data;
   for (const path of ["/", "/payments", "/tasks", "/activity"]) revalidatePath(path);
   if (row?.payment_no) revalidatePath(`/payments/${encodeURIComponent(row.payment_no)}`);
-  return { error: null, paymentNo: row?.payment_no as string | undefined };
+  return { error: null, paymentNo: row?.payment_no };
 }

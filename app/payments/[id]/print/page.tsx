@@ -40,8 +40,8 @@ export default async function PaymentPrintPage({ params }: { params: Promise<{ i
           attachments={payment.payment_attachments.map((file) => ({
             id: file.id,
             name: file.file_name,
-            mimeType: file.mime_type,
-            sizeBytes: file.size_bytes,
+            mimeType: file.mime_type ?? "",
+            sizeBytes: file.size_bytes ?? 0,
             scope: "payment" as const,
           }))}
         />

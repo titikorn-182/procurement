@@ -112,11 +112,14 @@ export function PaymentForm({
     }
     if (!saveOnly && files.length + retained.length === 0)
       return "กรุณาแนบเอกสารประกอบอย่างน้อย 1 ไฟล์";
+    if (retained.some((file) => file.size_bytes === null)) {
+      return "ข้อมูลขนาดไฟล์แนบเดิมไม่ครบถ้วน กรุณาแจ้งผู้ดูแลระบบตรวจสอบ";
+    }
     const attachmentError = validateAttachmentCandidates([
       ...retained.map((file) => ({
         name: file.file_name,
-        size: file.size_bytes,
-        type: file.mime_type,
+        size: file.size_bytes ?? 0,
+        type: file.mime_type ?? "",
       })),
       ...files.map(({ file }) => file),
     ]);
@@ -261,8 +264,8 @@ export function PaymentForm({
         savedAttachments={retained.map((file) => ({
           id: file.id,
           name: file.file_name,
-          mimeType: file.mime_type,
-          sizeBytes: file.size_bytes,
+          mimeType: file.mime_type ?? "",
+          sizeBytes: file.size_bytes ?? 0,
           scope: "payment",
         }))}
         onClose={() => {

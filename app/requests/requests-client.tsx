@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Download, Search } from "lucide-react";
 import { StatusBadge } from "../components/ui";
-import type { RequestStatus } from "../lib/mock-data";
+import type { RequestStatus } from "./status.types";
 import { csvCell } from "../lib/csv";
 
 export type RequestRow = {

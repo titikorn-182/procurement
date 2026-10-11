@@ -97,6 +97,15 @@ describe("POL02 saved and returned flow", () => {
       }),
     );
   });
+  it("keeps the RPC revision timestamp if a later read observes a newer version", async () => {
+    mock.single.mockResolvedValue({
+      data: { updated_at: "2026-10-02T00:00:00.000Z" },
+      error: null,
+    });
+    expect(
+      (await createPaymentDraft(input, { id, updatedAt, removedAttachmentIds: [] })).updatedAt,
+    ).toBe(updatedAt);
+  });
   it("rejects malformed revision identifiers without a write", async () => {
     expect(
       (await createPaymentDraft(input, { id: "bad", updatedAt, removedAttachmentIds: [] })).error,

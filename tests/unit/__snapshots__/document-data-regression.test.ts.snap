@@ -1,0 +1,181 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`pre-refactor document data baseline > preserves POL02 amounts, dates, signatures and attachment ordering 1`] = `
+{
+  "attachments": [
+    "ใบแจ้งหนี้ตัวอย่าง.pdf",
+    "ใบตรวจรับตัวอย่าง.pdf",
+  ],
+  "contractAmount": 9000,
+  "details": {
+    "approvalDate": "2026-10-01",
+    "contractAmount": "9000",
+    "contractDate": "2026-10-02",
+    "contractNo": "PO-TEST-001",
+    "delivery": "ส่งมอบวัสดุครบถ้วนตามรายการ และตรวจรับเรียบร้อยเมื่อวันที่ 6 ตุลาคม 2569 (ข้อมูลตัวอย่าง)",
+    "egpProjectNo": "EGP-TEST",
+    "installmentCount": "3",
+    "installmentNumber": "2",
+    "invoiceDate": "2026-10-06",
+    "invoiceNo": "INV-TEST-001",
+    "procurementMethod": "วิธีเฉพาะเจาะจง",
+    "projectActivity": "แผนงานบริหารทั่วไป",
+    "subject": "ขอเบิกค่าวัสดุสำนักงาน (ข้อมูลตัวอย่าง)",
+    "vat": "189",
+    "vendorName": "บริษัท ผู้ประกอบการตัวอย่าง จำกัด",
+    "vendorTaxId": "0000000000000",
+  },
+  "documentDate": "7 ตุลาคม 2569",
+  "documents": [
+    "ใบส่งของหรือใบส่งมอบงาน พร้อมใบแจ้งหนี้หรือใบกำกับภาษี",
+    "รายงานหรือใบตรวจรับ พร้อมหลักฐานการแต่งตั้งผู้ตรวจรับ",
+  ],
+  "items": [
+    {
+      "attachmentType": "ใบส่งของ/ใบแจ้งหนี้",
+      "description": "กระดาษถ่ายเอกสาร A4 ขนาด 80 แกรม",
+      "documentNo": "INV-TEST-001",
+      "lineNo": 1,
+      "quantity": 10,
+      "total": 1200,
+      "unitPrice": 120,
+    },
+    {
+      "attachmentType": "ใบส่งของ/ใบแจ้งหนี้",
+      "description": "แฟ้มเอกสารสันกว้าง",
+      "documentNo": "INV-TEST-002",
+      "lineNo": 2,
+      "quantity": 20,
+      "total": 1500,
+      "unitPrice": 75,
+    },
+  ],
+  "source": {
+    "activityCode": "100210230004",
+    "approved": 10000,
+    "budgetYear": 2570,
+    "departmentCode": "2301",
+    "departmentName": "สำนักงานเลขานุการ",
+    "expenseCategory": "ค่าวัสดุ",
+    "fundCode": "8",
+    "fundSource": "เงินรายได้",
+    "paid": 1000,
+    "planName": "แผนงานบริหารทั่วไป",
+    "requestNo": "POL01-TEST",
+    "requesterName": "ผู้ขอเบิกตัวอย่าง",
+  },
+  "subtotal": 2700,
+  "total": 2889,
+  "vat": 189,
+}
+`;
+
+exports[`pre-refactor document data baseline > preserves saved POL01 fields and leading-zero budget codes 1`] = `
+{
+  "addressee": "คณบดีคณะรัฐศาสตร์",
+  "approval": {
+    "approver": {
+      "name": "นางสาวศิริพร จันทนสกุลวงศ์",
+      "position": "คณบดีคณะรัฐศาสตร์ ปฏิบัติราชการแทนอธิการบดี",
+    },
+    "committee": [
+      {
+        "name": "นายฐิติกรณ์รัศมิ์ ภัททสิริภูวดล",
+        "role": "ประธาน",
+      },
+      {
+        "name": "",
+        "role": "กรรมการ",
+      },
+      {
+        "name": "",
+        "role": "กรรมการ",
+      },
+    ],
+    "endorser": {
+      "name": "นายวุฒิ อิงคภาวรวงศ์",
+      "position": "รองคณบดีฝ่ายบริหารและพัฒนาองค์การ",
+    },
+    "requester": {
+      "name": "นายฐิติกรณ์รัศมิ์ ภัททสิริภูวดล",
+      "position": "รก.หัวหน้าสำนักงานเลขานุการ",
+    },
+  },
+  "attachments": [],
+  "budgetCodes": {
+    "activity": "001234",
+    "department": "002301",
+    "fund": "08",
+    "source": "02",
+  },
+  "budgetYear": "",
+  "createdDate": "2 ตุลาคม 2569",
+  "department": "",
+  "documentNo": "",
+  "expenseCategory": "",
+  "fundSource": "",
+  "items": [
+    {
+      "description": "วัสดุทดสอบ",
+      "lineNo": 1,
+      "quantity": 2,
+      "total": 120.5,
+      "unit": "ชุด",
+      "unitPrice": 60.25,
+    },
+  ],
+  "phone": "",
+  "planName": "",
+  "rationale": "เพื่อทดสอบเท่านั้น",
+  "requestNo": "POL01-SYNTHETIC",
+  "requiredDate": "19 ตุลาคม 2569",
+  "title": "รายการทดสอบ",
+  "total": 120.5,
+  "vendor": "",
+}
+`;
+
+exports[`pre-refactor document data baseline > preserves the W119 document contract 1`] = `
+{
+  "addressee": "อธิการบดี",
+  "advanceRequired": true,
+  "budgetCodes": {
+    "activity": "510252000001",
+    "department": "2301",
+    "fund": "1",
+    "plan": "5102",
+    "source": "2",
+    "subproject": "51025200",
+  },
+  "department": "สำนักงานเลขานุการคณะรัฐศาสตร์ มหาวิทยาลัยอุบลราชธานี",
+  "documentNo": "อว 0604.19/ทดสอบ",
+  "items": [
+    {
+      "description": "วัสดุประกอบกิจกรรม - ชุดที่ 1",
+      "lineNo": 1,
+      "quantity": 3,
+      "total": 3870,
+      "unit": "ชุด",
+      "unitPrice": 1290,
+    },
+    {
+      "description": "วัสดุประกอบกิจกรรม - ชุดที่ 2",
+      "lineNo": 2,
+      "quantity": 3,
+      "total": 2400,
+      "unit": "ชุด",
+      "unitPrice": 800,
+    },
+  ],
+  "loanAgreement": undefined,
+  "memoDate": "8 ตุลาคม 2569",
+  "phone": "3944",
+  "rationale": "ใช้ในการจัดกิจกรรมของคณะรัฐศาสตร์ มหาวิทยาลัยอุบลราชธานี (ข้อมูลจำลองสำหรับทดสอบ)",
+  "requestNo": "W119-TEST",
+  "requesterName": "ผู้ขอซื้อทดสอบ",
+  "requesterPosition": "เจ้าหน้าที่บริหารงานทั่วไป",
+  "requiredDate": "19 ตุลาคม 2569",
+  "title": "ขอซื้อวัสดุสำหรับกิจกรรม (ข้อมูลจำลอง)",
+  "total": 6270,
+}
+`;

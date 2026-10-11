@@ -12,11 +12,6 @@ import {
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-type VendorRpcRow = {
-  id: string;
-  display_name: string;
-};
-
 export async function updateReturnedRequest(requestId: string, input: NewRequestInput) {
   if (!uuidPattern.test(requestId)) return { error: "ไม่พบคำขอที่ต้องการแก้ไข" };
 
@@ -92,18 +87,16 @@ export async function updateReturnedRequest(requestId: string, input: NewRequest
     return { error: "ข้อมูลแบบฟอร์มมีขนาดใหญ่เกินไป" };
   }
 
-  let submittedFormData: Record<string, unknown> = parsedFormData.data;
+  let submittedFormData: typeof parsedFormData.data = parsedFormData.data;
   const vendor = parsedFormData.data.formType === "standard" ? parsedFormData.data.vendor : null;
-  if (vendor?.type === "registered") {
+  if (parsedFormData.data.formType === "standard" && vendor?.type === "registered") {
     if (!uuidPattern.test(vendor.id)) {
       return { error: "ไม่พบผู้ประกอบการที่เลือก กรุณาค้นหาและเลือกใหม่" };
     }
     const { data: vendorData, error: vendorError } = await supabase.rpc("resolve_vendor", {
       vendor_id: vendor.id,
     });
-    const resolvedVendor = (
-      Array.isArray(vendorData) ? vendorData[0] : vendorData
-    ) as VendorRpcRow | null;
+    const resolvedVendor = Array.isArray(vendorData) ? vendorData[0] : vendorData;
     if (vendorError || !resolvedVendor) {
       return { error: "ไม่พบผู้ประกอบการที่เลือกในฐานรายชื่อ กรุณาค้นหาและเลือกใหม่" };
     }

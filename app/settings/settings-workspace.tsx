@@ -17,6 +17,7 @@ import {
 import { Button } from "../components/ui";
 import { createDepartment, saveSystemSetting, updateUserSettings } from "./actions";
 import { VendorDirectoryManager } from "../components/vendors/vendor-directory-manager";
+import type { Tables } from "@/lib/supabase/database.types";
 
 type Profile = {
   id: string;
@@ -28,7 +29,7 @@ type Profile = {
   active: boolean;
 };
 type Department = { id: string; code: string; name_th: string; active: boolean };
-type Setting = { key: string; value: Record<string, unknown>; updated_at: string };
+type Setting = Pick<Tables<"system_settings">, "key" | "value" | "updated_at">;
 type SectionKey =
   | "users"
   | "departments"
@@ -98,7 +99,15 @@ export function SettingsWorkspace({
   const [notice, setNotice] = useState<{ tone: "success" | "error"; text: string } | null>(null);
   const [pending, startTransition] = useTransition();
   const settingsMap = useMemo(
-    () => Object.fromEntries(settings.map((item) => [item.key, item.value])),
+    () =>
+      Object.fromEntries(
+        settings.map((item) => [
+          item.key,
+          item.value && typeof item.value === "object" && !Array.isArray(item.value)
+            ? item.value
+            : {},
+        ]),
+      ),
     [settings],
   );
 

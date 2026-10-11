@@ -61,7 +61,7 @@ export async function getPayment(paymentNo: string) {
     .order("created_at", { referencedTable: "payment_workflow_actions", ascending: false })
     .maybeSingle();
   return {
-    data: data as unknown as PaymentRecord | null,
+    data: data satisfies PaymentRecord | null,
     error: error
       ? toSafeActionError("get-payment", error, "โหลดคำขอเบิกจ่ายไม่สำเร็จ กรุณาลองใหม่")
       : null,

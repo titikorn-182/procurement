@@ -1,6 +1,7 @@
 import { createPol02PrintData } from "./new/pol02-print-data";
 import type { PaymentDetails, PaymentLine, SourceRequest } from "./new/types";
 import { pol02SupportingChecklistSchema } from "./new/pol02-checklist-schema";
+import type { Tables } from "@/lib/supabase/database.types";
 
 export const paymentStatusLabels: Record<string, string> = {
   draft: "ฉบับร่าง",
@@ -26,62 +27,33 @@ export const dateText = (value: string | null) =>
     : "—";
 export const money = (value: number) =>
   value.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-export type PaymentAttachment = {
-  id: string;
-  file_name: string;
-  mime_type: string;
-  size_bytes: number;
-  created_at: string;
-};
-export type PaymentRecord = {
-  id: string;
-  payment_no: string;
-  requester_id: string;
-  procurement_request_id: string;
-  status: string;
-  current_step: number;
-  created_at: string;
-  updated_at: string;
-  submitted_at: string | null;
-  invoice_no: string;
-  invoice_date: string;
-  subtotal: number;
-  vat_amount: number;
-  total_amount: number;
-  delivery_detail: string;
-  form_data: unknown;
-  idempotency_key: string | null;
-  payment_items: Array<{
-    line_no: number;
-    description: string;
-    attachment_type: string;
-    document_no: string;
-    quantity: number;
-    unit_price: number;
-  }>;
+export type PaymentAttachment = Pick<
+  Tables<"payment_attachments">,
+  "id" | "file_name" | "mime_type" | "size_bytes" | "created_at"
+>;
+export type PaymentRecord = Tables<"payment_requests"> & {
+  payment_items: Array<
+    Pick<
+      Tables<"payment_items">,
+      "line_no" | "description" | "attachment_type" | "document_no" | "quantity" | "unit_price"
+    >
+  >;
   payment_attachments: PaymentAttachment[];
-  payment_workflow_tasks: Array<{
-    id: string;
-    step_no: number;
-    step_name: string;
-    required_role: string;
-    assignee_id: string | null;
-    status: string;
-    due_at: string | null;
-  }>;
-  payment_workflow_actions: Array<{
-    id: string;
-    action: string;
-    comment: string | null;
-    created_at: string;
-    profiles: { full_name: string } | null;
-  }>;
-  procurement_requests: {
-    request_no: string;
-    title: string;
-    estimated_amount: number;
-    plan_name: string | null;
-  } | null;
+  payment_workflow_tasks: Array<
+    Pick<
+      Tables<"payment_workflow_tasks">,
+      "id" | "step_no" | "step_name" | "required_role" | "assignee_id" | "status" | "due_at"
+    >
+  >;
+  payment_workflow_actions: Array<
+    Pick<Tables<"payment_workflow_actions">, "id" | "action" | "comment" | "created_at"> & {
+      profiles: Pick<Tables<"profiles">, "full_name"> | null;
+    }
+  >;
+  procurement_requests: Pick<
+    Tables<"procurement_requests">,
+    "request_no" | "title" | "estimated_amount" | "plan_name"
+  > | null;
 };
 
 export function restorePayment(payment: PaymentRecord) {
@@ -142,9 +114,9 @@ export function savedPaymentPrintData(payment: PaymentRecord) {
   const form = record(payment.form_data);
   const balance = record(form.balanceAtSubmission);
   const balanceRecorded = typeof balance.approved === "number" && typeof balance.paid === "number";
-  if (balanceRecorded) {
-    source.approved = balance.approved as number;
-    source.paid = balance.paid as number;
+  if (typeof balance.approved === "number" && typeof balance.paid === "number") {
+    source.approved = balance.approved;
+    source.paid = balance.paid;
   }
   return {
     ...createPol02PrintData({

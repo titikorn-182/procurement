@@ -6,7 +6,7 @@ import { normalizePol01ApprovalDetails } from "../requests/pol01";
 import { readLoanAgreement } from "../requests/w119/loan-agreement";
 import { readExternalPol01 } from "../requests/pol-external/schema";
 import { readTorDocuments } from "../requests/tor/model";
-import type { RequestStatus } from "./mock-data";
+import type { RequestStatus } from "../requests/status.types";
 
 const statusMap: Record<string, RequestStatus> = {
   draft: "ร่าง",
@@ -43,11 +43,10 @@ export async function getRequests() {
       error: toSafeActionError("get-requests", error, "ไม่สามารถโหลดรายการคำขอได้"),
     };
   }
-  const rows = (data ?? []).map((raw) => {
-    const row = raw as unknown as Record<string, unknown>;
-    const department = row.departments as { name_th?: string } | null;
-    const profile = row.profiles as { full_name?: string } | null;
-    const tasks = (row.workflow_tasks ?? []) as { status: string; due_at: string | null }[];
+  const rows = (data ?? []).map((row) => {
+    const department = row.departments;
+    const profile = row.profiles;
+    const tasks = row.workflow_tasks ?? [];
     const overdue = tasks.some(
       (task) => task.status === "pending" && task.due_at && new Date(task.due_at) < new Date(),
     );
@@ -83,7 +82,7 @@ export async function getCurrentProfile() {
     .select("full_name, role")
     .eq("id", user.id)
     .maybeSingle();
-  return data as { full_name: string; role: string } | null;
+  return data;
 }
 
 export async function getMyTasks() {
@@ -102,11 +101,10 @@ export async function getMyTasks() {
       error: toSafeActionError("get-my-tasks", error, "ไม่สามารถโหลดงานรอตรวจสอบได้"),
     };
   }
-  const rows = (data ?? []).map((raw) => {
-    const task = raw as unknown as Record<string, unknown>;
-    const request = task.procurement_requests as Record<string, unknown>;
-    const department = request.departments as { name_th?: string } | null;
-    const profile = request.profiles as { full_name?: string } | null;
+  const rows = (data ?? []).map((task) => {
+    const request = task.procurement_requests;
+    const department = request.departments;
+    const profile = request.profiles;
     const due = task.due_at ? new Date(String(task.due_at)) : null;
     return {
       uuid: String(request.id),
@@ -140,7 +138,7 @@ export async function getRequestDetail(requestNo: string) {
     .order("id", { referencedTable: "request_attachments", ascending: true })
     .maybeSingle();
   return {
-    data: data as unknown as Record<string, unknown> | null,
+    data,
     error: error
       ? toSafeActionError("get-request-detail", error, "ไม่สามารถโหลดรายละเอียดคำขอได้")
       : null,

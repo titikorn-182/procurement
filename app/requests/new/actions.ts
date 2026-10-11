@@ -25,12 +25,6 @@ export type VendorSearchResult = {
   error: string | null;
 };
 
-type VendorRpcRow = {
-  id: string;
-  display_name: string;
-  total_count: number | string;
-};
-
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export async function searchVendors(rawQuery: string): Promise<VendorSearchResult> {
@@ -62,7 +56,7 @@ export async function searchVendors(rawQuery: string): Promise<VendorSearchResul
   });
 
   if (!error) {
-    const vendors = (data ?? []) as unknown as VendorRpcRow[];
+    const vendors = data ?? [];
     return {
       vendors: vendors.map((vendor) => ({
         id: String(vendor.id),
@@ -137,7 +131,7 @@ export async function createRequestDraft(input: NewRequestInput) {
     };
   }
 
-  let submittedFormData: Record<string, unknown> = parsedFormData.data;
+  let submittedFormData: typeof parsedFormData.data = parsedFormData.data;
   if (parsedFormData.data.formType === "standard") {
     if (
       parsedFormData.data.externalPol01 &&
@@ -217,8 +211,8 @@ export async function createRequestDraft(input: NewRequestInput) {
   const row = Array.isArray(data) ? data[0] : data;
   return {
     error: null,
-    requestId: row?.id as string | undefined,
-    requestNo: row?.request_no as string | undefined,
+    requestId: row?.id,
+    requestNo: row?.request_no,
   };
 }
 
@@ -248,5 +242,5 @@ export async function submitRequestDraft(requestId: string) {
   }
 
   const row = Array.isArray(data) ? data[0] : data;
-  return { error: null, requestNo: row?.request_no as string | undefined };
+  return { error: null, requestNo: row?.request_no };
 }

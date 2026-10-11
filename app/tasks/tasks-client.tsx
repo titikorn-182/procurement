@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { ChevronRight, Search } from "lucide-react";
 import { StatusBadge } from "../components/ui";
-import type { RequestStatus } from "../lib/mock-data";
+import type { RequestStatus } from "../requests/status.types";
 
 type Task = {
   id: string;

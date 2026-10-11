@@ -1,16 +1,4 @@
-export type RequestStatus =
-  | "รอตรวจสอบ"
-  | "รอเห็นชอบ"
-  | "คุมยอด"
-  | "เกินกำหนด"
-  | "เสร็จสิ้น"
-  | "ร่าง"
-  | "ส่งกลับแก้ไข"
-  | "ไม่เห็นชอบ"
-  | "อนุมัติแล้ว"
-  | "สืบราคา"
-  | "สั่งซื้อ/จ้างแล้ว"
-  | "ยกเลิก";
+import type { RequestStatus } from "../requests/status.types";
 
 export const requests = [
   {

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { AlertTriangle, CheckCircle2, Clock3, FileClock } from "./icons";
-import type { RequestStatus } from "../lib/mock-data";
+import type { RequestStatus } from "../requests/status.types";
 
 export function Button({
   children,

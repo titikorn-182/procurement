@@ -4,6 +4,7 @@ import {
   attachmentBucket,
   requestAttachmentPath,
   validateAttachmentCandidates,
+  type AttachmentCandidate,
   type SelectedAttachment,
 } from "@/app/lib/request-attachments";
 
@@ -38,10 +39,18 @@ async function syncFiles(requestId: string, files: SelectedAttachment[], previou
   const retained = (existing ?? []).filter(
     (a) => !paths.includes(a.storage_path) && !oldPaths.includes(a.storage_path),
   );
-  const validation = validateAttachmentCandidates([
-    ...retained.map((a) => ({ name: a.file_name, size: a.size_bytes, type: a.mime_type })),
-    ...files.map((f) => f.file),
-  ]);
+  const retainedFiles: AttachmentCandidate[] = [];
+  for (const attachment of retained) {
+    if (attachment.size_bytes === null) {
+      return { error: "ข้อมูลขนาดไฟล์แนบเดิมไม่ครบถ้วน กรุณาแจ้งผู้ดูแลระบบตรวจสอบก่อนแนบ TOR" };
+    }
+    retainedFiles.push({
+      name: attachment.file_name,
+      size: attachment.size_bytes,
+      type: attachment.mime_type ?? "",
+    });
+  }
+  const validation = validateAttachmentCandidates([...retainedFiles, ...files.map((f) => f.file)]);
   if (validation) return { error: validation };
   for (const [index, selection] of files.entries()) {
     const storagePath = paths[index];

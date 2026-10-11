@@ -141,7 +141,9 @@ export default async function PaymentDetailPage({ params }: { params: Promise<{ 
                     {file.file_name}
                   </a>
                   <span className="ml-2 text-xs text-stone-600">
-                    {Math.ceil(file.size_bytes / 1024)} KB
+                    {file.size_bytes === null
+                      ? "ไม่ระบุขนาด"
+                      : `${Math.ceil(file.size_bytes / 1024)} KB`}
                   </span>
                 </li>
               ))}

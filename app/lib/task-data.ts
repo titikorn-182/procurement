@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { toSafeActionError } from "@/lib/server/action-errors";
 import { dateText, record, text } from "../payments/payment-model";
-import type { RequestStatus } from "./mock-data";
+import type { RequestStatus } from "../requests/status.types";
 
 export type WorkTask = {
   uuid: string;

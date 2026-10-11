@@ -7,34 +7,6 @@ import type { SourceRequest } from "./types";
 import { sarabunPsk } from "@/app/components/print/fonts";
 import { readPol01Checklist } from "../../requests/pol01-checklist-schema";
 
-type RelatedName = { name_th?: string } | { full_name?: string };
-type PayableRequestRow = {
-  id: string;
-  request_no: string;
-  title: string;
-  rationale: string;
-  budget_year: number;
-  fund_source: string;
-  plan_name: string | null;
-  expense_category: string | null;
-  estimated_amount: number | string;
-  completed_at: string | null;
-  form_data: unknown;
-  departments: RelatedName | RelatedName[] | null;
-  profiles: RelatedName | RelatedName[] | null;
-  request_items: Array<{
-    line_no: number;
-    description: string;
-    quantity: number | string;
-    unit_price: number | string;
-  }> | null;
-  payment_requests: Array<{ total_amount: number | string; status: string }> | null;
-};
-
-function firstRelation(value: RelatedName | RelatedName[] | null) {
-  return Array.isArray(value) ? value[0] : value;
-}
-
 function record(value: unknown): Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -54,15 +26,15 @@ export default async function NewPaymentPage() {
     )
     .in("status", ["approved", "ordered", "completed"])
     .order("created_at", { ascending: false });
-  const requests: SourceRequest[] = ((data ?? []) as unknown as PayableRequestRow[]).map((row) => {
+  const requests: SourceRequest[] = (data ?? []).map((row) => {
     const paid = (row.payment_requests ?? [])
       .filter((p) => !["cancelled", "draft"].includes(p.status))
       .reduce((sum, p) => sum + Number(p.total_amount), 0);
     const formData = record(row.form_data);
     const vendor = record(formData.vendor);
     const budgetCodes = record(formData.budgetCodes);
-    const department = firstRelation(row.departments);
-    const requester = firstRelation(row.profiles);
+    const department = row.departments;
+    const requester = row.profiles;
     return {
       id: row.id,
       requestNo: row.request_no,
