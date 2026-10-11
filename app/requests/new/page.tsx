@@ -82,10 +82,8 @@ export default function NewRequestPage() {
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [requestType, setRequestType] = useState<"purchase" | "hire">("purchase");
-  const [title, setTitle] = useState("จัดซื้อวัสดุสำนักงานประจำปีงบประมาณ 2569");
-  const [rationale, setRationale] = useState(
-    "เพื่อสนับสนุนการปฏิบัติงานของหน่วยงานให้เป็นไปอย่างต่อเนื่อง",
-  );
+  const [title, setTitle] = useState("");
+  const [rationale, setRationale] = useState("");
   const [requiredDate, setRequiredDate] = useState("");
   const [items, setItems] = useState<RequestItem[]>(initialItems);
   const [catalogOpen, setCatalogOpen] = useState(false);
