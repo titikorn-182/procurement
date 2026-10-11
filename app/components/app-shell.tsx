@@ -65,6 +65,12 @@ const nav = [
     roles: ["ผู้ดูแลระบบ", "ผู้ยื่นคำขอ"],
   },
   {
+    href: "/requests/section79",
+    label: "คำขอซื้อ/จ้าง ข้อ 79 วรรค 2",
+    icon: FilePlus2,
+    roles: ["ผู้ดูแลระบบ", "ผู้ยื่นคำขอ"],
+  },
+  {
     href: "/requests/pol-external",
     label: "คำขอหลักการ POL- ภายนอก",
     icon: FilePlus2,

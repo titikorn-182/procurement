@@ -1,0 +1,218 @@
+.page.page {
+  /* A fixed A4 body lets the shared paginator split prose and whole opinion rows. */
+  display: block;
+  padding: 12mm 16mm;
+  font-size: 16pt;
+  line-height: 1.22;
+}
+
+.page.page > [data-page-body] {
+  height: 263mm;
+}
+
+.page.page > footer {
+  display: block;
+  height: 8mm;
+  padding-top: 3mm;
+  font-size: 10pt;
+}
+
+.page.page > footer > span:last-child {
+  float: right;
+}
+
+.runningHeader {
+  height: 0;
+}
+
+.memoHeading {
+  padding-bottom: 5mm;
+}
+
+.memoHeading table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.memoHeading td {
+  vertical-align: bottom;
+}
+
+.emblemCell {
+  width: 16mm;
+}
+
+.memoHeading img {
+  width: 13mm;
+  height: 19mm;
+  object-fit: contain;
+}
+
+.memoHeading h1 {
+  margin: 0;
+  padding-bottom: 1mm;
+  font-size: 28pt;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.memoHeading .scopeCell {
+  width: 60mm;
+  vertical-align: top;
+  padding-left: 3mm;
+}
+
+.scope {
+  border: 0.25mm solid #000;
+  padding: 2mm 1.5mm;
+  font-size: 11pt;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.memoIdentifiers {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 8mm;
+  padding-block: 0.75mm;
+  overflow-wrap: anywhere;
+}
+
+.prose {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  padding-block: 1mm;
+}
+
+.indent,
+.conclusion {
+  text-indent: 20mm;
+}
+
+.addressee {
+  padding-block: 5mm 6mm;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.conclusion {
+  padding-top: 5mm;
+}
+
+.requesterSignature {
+  width: 70%;
+  margin-left: auto;
+  padding-top: 13mm;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.requesterSignature p {
+  padding-block: 0.75mm;
+}
+
+.requesterSignLine {
+  display: flex;
+  align-items: baseline;
+  gap: 1mm;
+}
+
+.requesterSignLine span {
+  flex: 1;
+  min-width: 15mm;
+  border-bottom: 0.2mm dotted #000;
+}
+
+.opinions {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 15pt;
+  line-height: 1.2;
+}
+
+.opinions td {
+  height: 70mm;
+  border: 0.25mm solid #000;
+  padding: 2mm;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.opinionTitle {
+  margin: 0 0 2mm;
+  min-height: 11mm;
+  font-size: 15pt;
+  line-height: 1.2;
+  font-weight: 700;
+}
+
+.opinionSpace {
+  min-height: 29mm;
+}
+
+.choice {
+  display: flex;
+  align-items: baseline;
+  column-gap: 1.5mm;
+  padding-bottom: 1mm;
+}
+
+.checkbox {
+  display: inline-block;
+  flex: none;
+  width: 3.5mm;
+  height: 3.5mm;
+  border: 0.25mm solid #000;
+}
+
+.writingLine {
+  min-height: 7mm;
+  border-bottom: 0.2mm dotted #000;
+}
+
+.opinionSignature {
+  padding-top: 2mm;
+  text-align: center;
+}
+
+.opinionSignature p {
+  padding-block: 0.5mm;
+}
+
+.opinionSignature .signatureLine {
+  text-align: left;
+  border-bottom: 0.2mm dotted #000;
+  min-height: 5mm;
+  margin-bottom: 1mm;
+}
+
+.budgetCodes {
+  width: 100%;
+  margin-top: 8mm;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 14pt;
+}
+
+.budgetCodes th,
+.budgetCodes td {
+  border: 0.2mm solid #000;
+  padding: 1mm 2mm;
+  text-align: left;
+  overflow-wrap: anywhere;
+  font-weight: 400;
+}
+
+.budgetCodes td {
+  font-variant-numeric: tabular-nums;
+}
+
+@media print {
+  /* The shell hides headers globally; isolated print pages must retain this memo masthead. */
+  .page .memoHeading {
+    display: block !important;
+  }
+}

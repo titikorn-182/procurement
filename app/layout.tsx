@@ -37,6 +37,12 @@ STORY: ผู้ใช้เห็นงานที่ต้องทำ เห
 FIRST VIEWPORT: A นำ dashboard ด้วยสายอนุมัติ, B จัดโต๊ะตรวจสามส่วน, C แสดง process wall; ปุ่มหลักอยู่ขวาบนของบริบทงาน.
 FORM: Document Control Center, mixed A+B+C, challenger chosen; seed c8707b00.
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md
+SURFACE /requests/section79:
+THESIS: เตรียมรายงานเหตุจำเป็นเร่งด่วนตามเอกสารต้นแบบ โดยไม่สร้างผลอนุมัติ.
+OWN-WORLD: สืบทอด graphite/paper/orange, Sarabun และกรอบเหลี่ยมเดิม.
+STORY: เหตุจำเป็นและหลักฐาน -> ค่าใช้จ่ายและงบประมาณ -> ผู้ลงนามและเอกสาร -> พิมพ์.
+FIRST VIEWPORT: ชื่อหน้า บันทึก/เปิดแบบร่าง คำเตือนเก็บในเครื่อง แถบสามขั้นตอน และข้อมูลสองคอลัมน์.
+FORM: user-approved A, seed 7a7231f5; no automatic approval workflow.
 -->`;
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

@@ -1,0 +1,33 @@
+/* Option A keeps the incident and the start of its evidence in the desktop
+   working viewport. Mobile retains stacked labels and the shared 44px controls. */
+@media (min-width: 1280px) {
+  .incident > section {
+    padding-block: 12px;
+  }
+
+  .incident > section > div {
+    margin-top: 8px;
+  }
+
+  .incident label {
+    display: grid;
+    grid-template-columns: 9rem minmax(0, 1fr);
+    align-items: center;
+    gap: 12px;
+  }
+
+  .incident label > span:first-child {
+    margin-bottom: 0;
+    padding-block: 0;
+  }
+
+  .incident .compactPair label {
+    grid-template-columns: 5rem minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .incident textarea {
+    min-height: 88px;
+    padding-block: 10px;
+  }
+}
