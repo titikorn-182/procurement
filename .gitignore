@@ -42,6 +42,10 @@ yarn-error.log*
 /app/lib/vendor-directory.ts
 /supabase/private/
 /supabase/.temp/
+/*POL UBU Smart Procurement Database.xlsx
+
+# Python parser/test bytecode
+__pycache__/
 
 # env files (can opt-in for committing if needed)
 .env*

@@ -1,10 +1,12 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AppShell } from "../../components/app-shell";
-import { AlertCircle, ArrowLeft, ArrowRight, BookOpen, Check, Plus, Trash2, X } from "lucide-react";
+import { AlertCircle, ArrowLeft, ArrowRight, BookOpen, Check, Plus, Trash2 } from "lucide-react";
+import { CatalogPicker } from "./catalog-picker";
+import { addCatalogItem } from "./catalog-schema";
 import { AttachmentPicker } from "../../components/attachment-picker";
 import { Button, PageHeader } from "../../components/ui";
 import { uploadRequestAttachments } from "../../lib/request-attachments.client";
@@ -81,6 +83,7 @@ export default function NewRequestPage() {
   const [requiredDate, setRequiredDate] = useState("");
   const [items, setItems] = useState<Pol01ItemInput[]>(() => pol01ItemExamples.map(emptyPol01Item));
   const [catalogOpen, setCatalogOpen] = useState(false);
+  const catalogToggle = useRef<HTMLButtonElement>(null);
   const [fiscalYear, setFiscalYear] = useState("2569");
   const [fundSource, setFundSource] = useState("เงินงบประมาณแผ่นดิน");
   const [planName, setPlanName] = useState("แผนงานบริหารทั่วไป");
@@ -551,50 +554,30 @@ export default function NewRequestPage() {
               >
                 <Plus size={17} /> เพิ่มรายการ
               </Button>
-              <Button
+              <button
                 type="button"
-                variant="secondary"
+                ref={catalogToggle}
+                className="inline-flex min-h-10 items-center justify-center gap-2 border border-[var(--line-dark)] bg-white px-4 font-semibold text-[var(--ink)] hover:bg-[var(--paper-warm)]"
                 aria-expanded={catalogOpen}
                 aria-controls="reference-price-catalog"
                 onClick={() => setCatalogOpen((current) => !current)}
               >
                 <BookOpen size={17} /> แค็ตตาล็อกราคากลาง
-              </Button>
+              </button>
             </div>
             {catalogOpen && (
-              <section
-                id="reference-price-catalog"
-                className="border border-[var(--line-dark)] bg-stone-50"
-                aria-labelledby="reference-price-catalog-heading"
-              >
-                <header className="flex items-start justify-between gap-4 border-b border-[var(--line)] px-4 py-3">
-                  <div>
-                    <h3 id="reference-price-catalog-heading" className="font-bold">
-                      แค็ตตาล็อกราคากลาง
-                    </h3>
-                    <p className="mt-1 text-sm text-stone-600">
-                      ค้นหาและเลือกรายการจากฐานข้อมูลราคากลางของหน่วยงาน
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setCatalogOpen(false)}
-                    className="grid min-h-10 min-w-10 place-items-center border border-[var(--line)] bg-white hover:bg-stone-100"
-                    aria-label="ปิดแค็ตตาล็อกราคากลาง"
-                  >
-                    <X size={17} />
-                  </button>
-                </header>
-                <div className="p-6 text-center">
-                  <BookOpen className="mx-auto text-stone-400" size={30} aria-hidden="true" />
-                  <p className="mt-3 font-semibold">ยังไม่มีข้อมูลราคากลางในระบบ</p>
-                  <p className="mx-auto mt-1 max-w-2xl text-sm text-stone-600">
-                    ต้องเชื่อมข้อมูลรายการ ราคา หน่วยนับ วันที่อ้างอิง
-                    และแหล่งที่มาที่ได้รับการรับรองก่อนเปิดให้เลือกใช้
-                    เพื่อไม่ให้ระบบแสดงราคาที่ไม่เป็นปัจจุบัน
-                  </p>
-                </div>
-              </section>
+              <CatalogPicker
+                onClose={() => {
+                  setCatalogOpen(false);
+                  catalogToggle.current?.focus();
+                }}
+                onSelect={(entry) => {
+                  const next = addCatalogItem(items, entry);
+                  if (!next) return false;
+                  setItems(next);
+                  return true;
+                }}
+              />
             )}
           </div>
         )}

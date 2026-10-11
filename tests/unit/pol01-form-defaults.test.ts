@@ -10,6 +10,9 @@ vi.mock("../../app/requests/new/actions", () => ({
   createRequestDraft: vi.fn(),
   submitRequestDraft: vi.fn(),
 }));
+vi.mock("../../app/requests/new/catalog-actions", () => ({
+  searchProcurementCatalog: vi.fn(),
+}));
 vi.mock("../../app/lib/request-attachments.client", () => ({
   uploadRequestAttachments: vi.fn(),
 }));
