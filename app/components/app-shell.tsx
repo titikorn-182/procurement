@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Suspense, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { W804Navigation } from "./w804-navigation";
 import {
   AlertTriangle,
@@ -234,15 +234,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       if ((event.target as HTMLElement).closest("a")) setOpen(false);
                     }}
                   >
-                    <Suspense
-                      fallback={
-                        <Link href={href} className="block border border-white/25 px-4 py-3">
-                          {label}
-                        </Link>
-                      }
-                    >
-                      <W804Navigation active={path === href} />
-                    </Suspense>
+                    <W804Navigation active={path === href} />
                   </div>
                 );
               }
