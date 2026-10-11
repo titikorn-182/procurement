@@ -5,6 +5,7 @@ import { readPol01Checklist } from "../requests/pol01-checklist-schema";
 import { normalizePol01ApprovalDetails } from "../requests/pol01";
 import { readLoanAgreement } from "../requests/w119/loan-agreement";
 import { readExternalPol01 } from "../requests/pol-external/schema";
+import { readTorDocuments } from "../requests/tor/model";
 import type { RequestStatus } from "./mock-data";
 
 const statusMap: Record<string, RequestStatus> = {
@@ -298,6 +299,12 @@ export async function getReturnedRequestForEdit(requestNo: string): Promise<{
       fundCode: String(budgetCodes.fundCode ?? ""),
       activityCode: String(budgetCodes.activityCode ?? ""),
       approvalDetails: normalizePol01ApprovalDetails(formData.approvalDetails),
+      torDocuments: readTorDocuments(formData.torDocuments),
+      removedTorAttachmentIds: Array.isArray(formData.removedTorAttachmentIds)
+        ? formData.removedTorAttachmentIds.filter(
+            (id): id is string => typeof id === "string" && /^[0-9a-f-]{36}$/i.test(id),
+          )
+        : [],
       documentChecklist: readPol01Checklist(formData.documentChecklist, {
         newVendor: vendor.kind === "new",
         borrowing: advanceFundingOption === "borrow_before_purchase",

@@ -43,6 +43,13 @@ OWN-WORLD: สืบทอด graphite/paper/orange, Sarabun และกรอ�
 STORY: เหตุจำเป็นและหลักฐาน -> ค่าใช้จ่ายและงบประมาณ -> ผู้ลงนามและเอกสาร -> พิมพ์.
 FIRST VIEWPORT: ชื่อหน้า บันทึก/เปิดแบบร่าง คำเตือนเก็บในเครื่อง แถบสามขั้นตอน และข้อมูลสองคอลัมน์.
 FORM: user-approved A, seed 7a7231f5; no automatic approval workflow.
+SURFACE POL01-TOR-A:
+THESIS: TOR แยกตามประเภทอยู่ในขั้นเอกสารแนบ ไม่ใช่เมนูหรือสายอนุมัติใหม่.
+OWN-WORLD: สืบทอดกระดาษ/graphite/orange, Sarabun, กรอบเหลี่ยม; PDF ใช้ TH SarabunPSK.
+STORY: เลือกประเภท เปิดฟอร์ม ตรวจทาน 12 หัวข้อ แล้วสร้างไฟล์แนบจากข้อมูลล่าสุดเมื่อส่ง.
+FIRST VIEWPORT: เช็คลิสต์เดิมอยู่บน TOR accordion; สองคอลัมน์เป็นหนึ่งบนมือถือ; เอกสารอื่นอยู่ล่าง.
+FORM: user-approved A accordion, local extension under new-work section 3, no concept roll required.
+FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md
 -->`;
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

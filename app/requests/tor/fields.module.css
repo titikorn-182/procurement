@@ -1,0 +1,15 @@
+.category {
+  container-type: inline-size;
+  position: relative;
+}
+@container (min-width: 760px) {
+  .summary {
+    padding-right: 390px;
+    min-height: 64px;
+  }
+  .toolbar {
+    position: absolute;
+    top: 12px;
+    right: 20px;
+  }
+}

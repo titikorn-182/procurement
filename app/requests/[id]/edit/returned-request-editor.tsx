@@ -1,4 +1,8 @@
 "use client";
+import { TorFields } from "../../tor/fields";
+import { validateTorDocuments } from "../../tor/model";
+import { createTorAttachments } from "../../tor/pdf";
+import { syncTorAttachments } from "../../tor/attachments";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -85,6 +89,7 @@ export function ReturnedRequestEditor({ initial }: { initial: ReturnedStandardRe
   const [activityCode, setActivityCode] = useState(initial.activityCode);
   const [approvalDetails, setApprovalDetails] = useState(initial.approvalDetails);
   const [documentChecklist, setDocumentChecklist] = useState(initial.documentChecklist);
+  const [torDocuments, setTorDocuments] = useState(initial.torDocuments ?? []);
   const [items, setItems] = useState<Pol01ItemInput[]>(() =>
     initial.items.map((item) => ({
       ...item,
@@ -129,6 +134,8 @@ export function ReturnedRequestEditor({ initial }: { initial: ReturnedStandardRe
   }
 
   function validate() {
+    const torError = validateTorDocuments(torDocuments, documentChecklist.categories);
+    if (torError) return torError;
     if (!title.trim() || !rationale.trim() || !requiredDate) {
       return "กรุณากรอกชื่อคำขอ เหตุผลความจำเป็น และวันที่ต้องการใช้ให้ครบ";
     }
@@ -176,6 +183,14 @@ export function ReturnedRequestEditor({ initial }: { initial: ReturnedStandardRe
     setError("");
     setProgressMessage("กำลังบันทึกการแก้ไข...");
     startTransition(async () => {
+      let generated: SelectedAttachment[];
+      try {
+        generated = await createTorAttachments(torDocuments);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "สร้าง TOR ไม่สำเร็จ");
+        setProgressMessage("");
+        return;
+      }
       const updateResult = await updateReturnedRequest(initial.id, {
         kind,
         title,
@@ -201,6 +216,13 @@ export function ReturnedRequestEditor({ initial }: { initial: ReturnedStandardRe
           requiresVendorDocuments: vendorSelection.kind === "new",
           approvalDetails,
           documentChecklist: reconcilePol01Checklist(documentChecklist, checklistContext),
+          torDocuments,
+          removedTorAttachmentIds: [
+            ...new Set([
+              ...(initial.removedTorAttachmentIds ?? []),
+              ...(initial.torDocuments ?? []).map((d) => d.attachmentId),
+            ]),
+          ].filter((id) => !torDocuments.some((d) => d.attachmentId === id)),
           budgetCodes: {
             sourceCode: sourceCode.trim(),
             departmentCode: departmentCode.trim(),
@@ -234,6 +256,17 @@ export function ReturnedRequestEditor({ initial }: { initial: ReturnedStandardRe
         return;
       }
 
+      const torResult = await syncTorAttachments(initial.id, generated, [
+        ...new Set([
+          ...(initial.removedTorAttachmentIds ?? []),
+          ...(initial.torDocuments ?? []).map((d) => d.attachmentId),
+        ]),
+      ]);
+      if (torResult.error) {
+        setError(torResult.error);
+        setProgressMessage("");
+        return;
+      }
       setProgressMessage("กำลังส่งคำขอกลับเข้าสู่สายอนุมัติ...");
       const resubmitResult = await resubmitReturnedRequest(initial.id);
       if (resubmitResult.error || !resubmitResult.requestNo) {
@@ -638,6 +671,14 @@ export function ReturnedRequestEditor({ initial }: { initial: ReturnedStandardRe
               ))}
             </ul>
           )}
+          <TorFields
+            value={torDocuments}
+            onChange={setTorDocuments}
+            categories={documentChecklist.categories}
+            subject={title}
+            background={rationale}
+            disabled={isPending}
+          />
           <AttachmentPicker
             files={newAttachments}
             onChange={setNewAttachments}

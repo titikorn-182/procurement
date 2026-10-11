@@ -3,6 +3,7 @@ import { pol01ChecklistSchema } from "../pol01-checklist-schema";
 import { reconcilePol01Checklist } from "../pol01-checklist";
 import { loanAgreementSchema } from "../w119/loan-agreement";
 import { externalPol01Schema } from "../pol-external/schema";
+import { torDocumentsSchema, validateTorDocuments } from "../tor/model";
 
 const isoDateSchema = z
   .string()
@@ -119,6 +120,8 @@ export const standardRequestFormSchema = z
     requiresVendorDocuments: z.boolean().optional(),
     approvalDetails: pol01ApprovalDetailsSchema.optional(),
     documentChecklist: pol01ChecklistSchema.optional(),
+    torDocuments: torDocumentsSchema.optional(),
+    removedTorAttachmentIds: z.array(z.uuid()).max(10).optional(),
     budgetCodes: z
       .object({
         sourceCode: budgetCodeSchema.optional(),
@@ -130,6 +133,11 @@ export const standardRequestFormSchema = z
   })
   .strict()
   .superRefine((data, context) => {
+    const torError = validateTorDocuments(
+      data.torDocuments ?? [],
+      data.documentChecklist?.categories ?? [],
+    );
+    if (torError) context.addIssue({ code: "custom", path: ["torDocuments"], message: torError });
     if (data.advanceFundingOption === "faculty_direct_pay_credit_vendor" && !data.vendor) {
       context.addIssue({ code: "custom", path: ["vendor"], message: "vendor is required" });
     }

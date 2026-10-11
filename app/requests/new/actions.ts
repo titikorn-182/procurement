@@ -186,7 +186,12 @@ export async function createRequestDraft(input: NewRequestInput) {
     };
   }
 
-  if (JSON.stringify(submittedFormData).length > 20_000) {
+  if (
+    JSON.stringify(submittedFormData).length >
+    (parsedFormData.data.formType === "standard" && parsedFormData.data.torDocuments?.length
+      ? 250_000
+      : 20_000)
+  ) {
     return { error: "ข้อมูลแบบฟอร์มมีขนาดใหญ่เกินไป", requestId: null, requestNo: null };
   }
 

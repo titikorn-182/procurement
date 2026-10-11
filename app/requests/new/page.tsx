@@ -1,4 +1,8 @@
 "use client";
+import { TorFields } from "../tor/fields";
+import { validateTorDocuments, type TorDocument } from "../tor/model";
+import { createTorAttachments } from "../tor/pdf";
+import { validateAttachmentCandidates } from "../../lib/request-attachments";
 
 import { useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
@@ -99,6 +103,7 @@ export default function NewRequestPage() {
   const [approvalDetails, setApprovalDetails] = useState(createDefaultPol01ApprovalDetails);
   const [attachments, setAttachments] = useState<SelectedAttachment[]>([]);
   const [documentChecklist, setDocumentChecklist] = useState(createPol01Checklist);
+  const [torDocuments, setTorDocuments] = useState<TorDocument[]>([]);
   const [draft, setDraft] = useState<{ id: string; requestNo: string } | null>(null);
   const [submissionMessage, setSubmissionMessage] = useState("");
   const [error, setError] = useState("");
@@ -200,6 +205,21 @@ export default function NewRequestPage() {
     setError("");
     setSubmissionMessage("กำลังจัดเตรียมฉบับร่าง...");
     startTransition(async () => {
+      let generated: SelectedAttachment[];
+      try {
+        const torError = validateTorDocuments(torDocuments, documentChecklist.categories);
+        if (torError) throw new Error(torError);
+        setSubmissionMessage("กำลังสร้าง PDF TOR จากข้อมูลล่าสุด…");
+        generated = await createTorAttachments(torDocuments);
+        const attachmentError = validateAttachmentCandidates(
+          [...attachments, ...generated].map((a) => a.file),
+        );
+        if (attachmentError) throw new Error(attachmentError);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "สร้าง TOR ไม่สำเร็จ กรุณาลองใหม่");
+        setSubmissionMessage("");
+        return;
+      }
       let activeDraft = draft;
       if (!activeDraft) {
         const result = await createRequestDraft({
@@ -225,6 +245,7 @@ export default function NewRequestPage() {
             requiresVendorDocuments: vendorSelection.kind === "new",
             approvalDetails,
             documentChecklist: reconcilePol01Checklist(documentChecklist, checklistContext),
+            torDocuments,
             budgetCodes: {
               sourceCode: sourceCode.trim(),
               departmentCode: departmentCode.trim(),
@@ -251,7 +272,7 @@ export default function NewRequestPage() {
       );
       const uploadResult = await uploadRequestAttachments(
         activeDraft.id,
-        attachments,
+        [...attachments, ...generated],
         ({ completed, total, currentFileName }) =>
           setSubmissionMessage(
             currentFileName
@@ -863,6 +884,15 @@ export default function NewRequestPage() {
                 </div>
               </section>
             )}
+            <TorFields
+              value={torDocuments}
+              onChange={setTorDocuments}
+              categories={documentChecklist.categories}
+              subject={title}
+              background={rationale}
+              disabled={isPending || Boolean(draft)}
+            />
+            <h3 className="mb-3 font-bold">เอกสารแนบอื่น</h3>
             <AttachmentPicker files={attachments} onChange={setAttachments} disabled={isPending} />
             <p className="text-sm leading-6 text-[var(--ink)]">
               ต้องการดาวน์โหลด POL-01 พร้อมเอกสารแนบเป็น PDF ไฟล์เดียว ให้แนบไฟล์ PDF, JPG หรือ PNG
@@ -935,6 +965,12 @@ export default function NewRequestPage() {
               </div>
             </dl>
             <Pol01ChecklistSummary value={documentChecklist} context={checklistContext} />
+            {torDocuments.length > 0 && (
+              <p className="mt-4 text-sm">
+                สร้าง PDF TOR แนบคำขอ {torDocuments.length} ฉบับ แยกตามประเภทพัสดุ
+                จากข้อมูลล่าสุดเมื่อส่งคำขอ
+              </p>
+            )}
             {vendorSelection.kind === "new" && (
               <div className="border border-amber-300 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
                 โปรดตรวจสอบว่าได้แนบเอกสารผู้ประกอบการ/ผู้รับจ้างรายใหม่แล้ว

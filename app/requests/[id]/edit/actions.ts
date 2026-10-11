@@ -83,7 +83,12 @@ export async function updateReturnedRequest(requestId: string, input: NewRequest
     }
   }
 
-  if (JSON.stringify(parsedFormData.data).length > 20_000) {
+  if (
+    JSON.stringify(parsedFormData.data).length >
+    (parsedFormData.data.formType === "standard" && parsedFormData.data.torDocuments?.length
+      ? 250_000
+      : 20_000)
+  ) {
     return { error: "ข้อมูลแบบฟอร์มมีขนาดใหญ่เกินไป" };
   }
 

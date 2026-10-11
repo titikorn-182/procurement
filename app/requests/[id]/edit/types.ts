@@ -44,6 +44,8 @@ export type ReturnedStandardRequestEditData = ReturnedRequestBase & {
   activityCode: string;
   approvalDetails: Pol01ApprovalDetails;
   documentChecklist: Pol01Checklist;
+  torDocuments?: import("../../tor/model").TorDocument[];
+  removedTorAttachmentIds?: string[];
   items: (ReturnedRequestItem & { marketPrice?: number | null; priceSource?: string })[];
 };
 
