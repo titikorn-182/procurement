@@ -9,6 +9,7 @@ import {
 } from "../../lib/vendor-directory.server";
 import { newRequestInputSchema, parseRequestFormData, type NewRequestInput } from "./schemas";
 import { getRequestDraftErrorMessage } from "./submission-errors";
+import { externalMetadataMatchesItems, externalAmountsValid } from "../pol-external/schema";
 
 export type { NewRequestInput } from "./schemas";
 
@@ -138,6 +139,21 @@ export async function createRequestDraft(input: NewRequestInput) {
 
   let submittedFormData: Record<string, unknown> = parsedFormData.data;
   if (parsedFormData.data.formType === "standard") {
+    if (
+      parsedFormData.data.externalPol01 &&
+      (!externalMetadataMatchesItems(
+        parsedFormData.data.externalPol01,
+        request.kind,
+        request.items,
+      ) ||
+        !externalAmountsValid(request.items))
+    ) {
+      return {
+        error: "ประเภทหรือหมายเหตุรายการของ POL- ภายนอกไม่ตรงกับคำขอ",
+        requestId: null,
+        requestNo: null,
+      };
+    }
     const { vendor } = parsedFormData.data;
     if (vendor?.type === "registered") {
       const registeredVendor = await findRegisteredVendor(supabase, vendor.id);

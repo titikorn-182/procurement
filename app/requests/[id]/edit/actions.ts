@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { toSafeActionError } from "@/lib/server/action-errors";
+import { externalMetadataMatchesItems, externalAmountsValid } from "../../pol-external/schema";
 import {
   newRequestInputSchema,
   parseRequestFormData,
@@ -63,6 +64,27 @@ export async function updateReturnedRequest(requestId: string, input: NewRequest
     parsedInput.data.items.some((item) => item.market_price == null || !item.price_source?.trim())
   ) {
     return { error: "กรุณาระบุราคากลางและแหล่งที่มาของราคาทุกรายการในแบบ ว119" };
+  }
+
+  if (parsedFormData.data.formType === "standard") {
+    const external = parsedFormData.data.externalPol01;
+    if (
+      Boolean("externalPol01" in storedForm && storedForm.externalPol01 != null) !==
+      Boolean(external)
+    ) {
+      return { error: "ไม่สามารถเปลี่ยนแบบ POL- ภายนอกเป็นแบบทั่วไปหรือกลับกันได้" };
+    }
+    if (
+      external &&
+      (!externalMetadataMatchesItems(external, parsedInput.data.kind, parsedInput.data.items) ||
+        !externalAmountsValid(parsedInput.data.items))
+    ) {
+      return { error: "ประเภทหรือหมายเหตุรายการของ POL- ภายนอกไม่ตรงกับคำขอ" };
+    }
+  }
+
+  if (JSON.stringify(parsedFormData.data).length > 20_000) {
+    return { error: "ข้อมูลแบบฟอร์มมีขนาดใหญ่เกินไป" };
   }
 
   let submittedFormData: Record<string, unknown> = parsedFormData.data;

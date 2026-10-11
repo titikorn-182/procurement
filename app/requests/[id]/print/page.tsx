@@ -7,6 +7,7 @@ import { Pol01Document } from "./pol01-document";
 import { toPol01PrintData } from "./pol01-print-data";
 import { W119Document } from "../../w119/w119-document";
 import { toW119PrintData, w119PdfFileName } from "../../w119/w119-print-data";
+import { ExternalDocument, toExternalPrintData } from "../../pol-external/document";
 
 function asObject(value: unknown): Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
@@ -36,6 +37,15 @@ export default async function RequestPrintPage({ params }: PageProps<"/requests/
 
   const attachments = (data.request_attachments ?? []) as Array<Record<string, unknown>>;
   const isW119 = asObject(data.form_data).formType === "w119";
+  const external = toExternalPrintData(data);
+  if (asObject(data.form_data).externalPol01 != null && !external) {
+    return (
+      <main className="p-8">
+        <h1>ไม่สามารถสร้างเอกสาร POL- ภายนอกได้</h1>
+        <p role="alert">ข้อมูลแบบฟอร์มไม่ครบถ้วน กรุณาแจ้งผู้ดูแลระบบตรวจสอบ</p>
+      </main>
+    );
+  }
   const documentId = "request-print-document";
   return (
     <main className="min-h-screen bg-stone-200 px-4 py-6 text-black print:bg-white print:p-0">
@@ -49,10 +59,14 @@ export default async function RequestPrintPage({ params }: PageProps<"/requests/
         <PrintButton
           targetId={documentId}
           fileName={
-            isW119 ? w119PdfFileName(String(data.request_no)) : pol01FileName(data.request_no)
+            isW119
+              ? w119PdfFileName(String(data.request_no))
+              : external
+                ? `external-${pol01FileName(data.request_no)}`
+                : pol01FileName(data.request_no)
           }
           paginated
-          isolatePrint={isW119}
+          isolatePrint={isW119 || Boolean(external)}
           attachments={attachments.map((attachment) => ({
             id: String(attachment.id),
             name: String(attachment.file_name),
@@ -61,7 +75,13 @@ export default async function RequestPrintPage({ params }: PageProps<"/requests/
           }))}
         />
       </div>
-      {isW119 ? (
+      {external ? (
+        <ExternalDocument
+          data={external}
+          targetId={documentId}
+          fontClassName={sarabunPsk.className}
+        />
+      ) : isW119 ? (
         <W119Document
           data={toW119PrintData(data)}
           targetId={documentId}

@@ -2,6 +2,7 @@ import { z } from "zod";
 import { pol01ChecklistSchema } from "../pol01-checklist-schema";
 import { reconcilePol01Checklist } from "../pol01-checklist";
 import { loanAgreementSchema } from "../w119/loan-agreement";
+import { externalPol01Schema } from "../pol-external/schema";
 
 const isoDateSchema = z
   .string()
@@ -107,6 +108,7 @@ const newVendorSchema = z
 
 export const standardRequestFormSchema = z
   .object({
+    externalPol01: externalPol01Schema.optional(),
     advanceFundingOption: z.enum([
       "borrow_before_purchase",
       "reimburse_after_purchase",

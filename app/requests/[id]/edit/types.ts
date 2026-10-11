@@ -34,6 +34,7 @@ type ReturnedRequestBase = {
 
 export type ReturnedStandardRequestEditData = ReturnedRequestBase & {
   formType: "standard";
+  externalPol01?: import("../../pol-external/schema").ExternalPol01;
   advanceFundingOption:
     "borrow_before_purchase" | "reimburse_after_purchase" | "faculty_direct_pay_credit_vendor";
   vendor: ReturnedRequestVendor;

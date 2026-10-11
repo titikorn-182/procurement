@@ -5,6 +5,7 @@ import { getReturnedRequestForEdit } from "../../../lib/live-data";
 import { ReturnedRequestEditor } from "./returned-request-editor";
 import { W119Form } from "../../w119/w119-form";
 import { sarabunPsk } from "@/app/components/print/fonts";
+import { ExternalForm } from "../../pol-external/form";
 
 export default async function EditReturnedRequestPage({
   params,
@@ -34,6 +35,14 @@ export default async function EditReturnedRequestPage({
 
   return data.formType === "w119" ? (
     <W119Form initial={data} printFontClassName={sarabunPsk.className} />
+  ) : data.externalPol01 ? (
+    <AppShell>
+      <ExternalForm
+        initial={data}
+        today={data.externalPol01.memoDate}
+        fontClassName={sarabunPsk.className}
+      />
+    </AppShell>
   ) : (
     <ReturnedRequestEditor initial={data} />
   );

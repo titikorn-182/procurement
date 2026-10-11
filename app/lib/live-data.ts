@@ -4,6 +4,7 @@ import type { ReturnedRequestEditData, ReturnedRequestVendor } from "../requests
 import { readPol01Checklist } from "../requests/pol01-checklist-schema";
 import { normalizePol01ApprovalDetails } from "../requests/pol01";
 import { readLoanAgreement } from "../requests/w119/loan-agreement";
+import { readExternalPol01 } from "../requests/pol-external/schema";
 import type { RequestStatus } from "./mock-data";
 
 const statusMap: Record<string, RequestStatus> = {
@@ -192,6 +193,10 @@ export async function getReturnedRequestForEdit(requestNo: string): Promise<{
     return { data: null, error: "แบบคำขอนี้ยังไม่รองรับการแก้ไขจากหน้านี้" };
   }
   const budgetCodes = editRecord(formData.budgetCodes);
+  const externalPol01 = readExternalPol01(formData.externalPol01);
+  if (formData.externalPol01 != null && !externalPol01) {
+    return { data: null, error: "ข้อมูลแบบ POL- ภายนอกไม่ถูกต้อง กรุณาแจ้งผู้ดูแลระบบตรวจสอบ" };
+  }
   const vendorRecord = editRecord(formData.vendor);
   const vendor: ReturnedRequestVendor =
     vendorRecord.type === "registered" && typeof vendorRecord.id === "string"
@@ -287,6 +292,7 @@ export async function getReturnedRequestForEdit(requestNo: string): Promise<{
     data: {
       ...common,
       formType: "standard",
+      ...(externalPol01 ? { externalPol01 } : {}),
       advanceFundingOption,
       vendor,
       sourceCode: String(budgetCodes.sourceCode ?? "2"),

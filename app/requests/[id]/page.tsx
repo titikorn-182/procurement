@@ -14,6 +14,7 @@ import { normalizePol01ApprovalDetails } from "../pol01";
 import { RequestDecisionPanel } from "./request-decision-panel";
 import { readPol01Checklist } from "../pol01-checklist-schema";
 import { Pol01ChecklistSummary } from "../components/pol01-checklist-summary";
+import { readExternalPol01, externalMethodLabels } from "../pol-external/schema";
 
 type AdvanceFundingOption =
   "borrow_before_purchase" | "reimburse_after_purchase" | "faculty_direct_pay_credit_vendor";
@@ -71,6 +72,7 @@ export default async function RequestDetailPage({ params }: PageProps<"/requests
     data.status,
   );
   const formData = asObject(data.form_data);
+  const external = readExternalPol01(formData.externalPol01);
   const advanceFundingOption = isAdvanceFundingOption(formData.advanceFundingOption)
     ? formData.advanceFundingOption
     : null;
@@ -122,7 +124,13 @@ export default async function RequestDetailPage({ params }: PageProps<"/requests
             </div>
             <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-5 gap-y-2 text-sm sm:col-start-2 2xl:col-start-auto">
               <dt className="text-stone-500">ประเภท</dt>
-              <dd className="font-semibold">{data.kind === "hire" ? "ขอจ้าง" : "ขอซื้อ"}</dd>
+              <dd className="font-semibold">
+                {external
+                  ? `POL- ภายนอก · ${externalMethodLabels[external.method]}`
+                  : data.kind === "hire"
+                    ? "ขอจ้าง"
+                    : "ขอซื้อ"}
+              </dd>
               <dt className="text-stone-500">สถานะ</dt>
               <dd className="font-semibold">{formatRequestStatus(data.status)}</dd>
               <dt className="text-stone-500">ขั้นตอน</dt>
@@ -135,6 +143,40 @@ export default async function RequestDetailPage({ params }: PageProps<"/requests
               </dd>
             </dl>
           </div>
+          {external && (
+            <section className="border-b border-[var(--line)] p-5">
+              <h2 className="text-lg font-bold">ข้อมูล POL- ภายนอก</h2>
+              <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2">
+                {[
+                  ["ส่วนราชการ", external.departmentName],
+                  ["โทรศัพท์", external.phone],
+                  ["เลขที่หนังสือ", external.documentNo],
+                  ["วันที่หนังสือ", external.memoDate],
+                  ["เรียน", external.addressee],
+                  ["งาน/สาขา", external.workUnit],
+                  ["หน่วยงานพัสดุ", external.procurementUnit],
+                  ["ข้อความ TOR", external.torNote],
+                ].map(([label, value]) => (
+                  <div key={label}>
+                    <dt className="text-stone-500">{label}</dt>
+                    <dd className="mt-1 break-words font-semibold">{value || "—"}</dd>
+                  </div>
+                ))}
+              </dl>
+              {external.itemNotes.some((item) => item.note) && (
+                <div className="mt-4 text-sm">
+                  <h3 className="font-bold">หมายเหตุรายการ</h3>
+                  {external.itemNotes
+                    .filter((item) => item.note)
+                    .map((item) => (
+                      <p key={item.lineNo} className="mt-2 break-words">
+                        รายการ {item.lineNo}: {item.note}
+                      </p>
+                    ))}
+                </div>
+              )}
+            </section>
+          )}
           <section className="p-5">
             <h2 className="text-lg font-bold">รายการสินค้า/บริการ</h2>
             {items.length === 0 ? (
@@ -234,7 +276,7 @@ export default async function RequestDetailPage({ params }: PageProps<"/requests
               </dl>
             </section>
           )}
-          {formData.formType === "standard" && (
+          {formData.formType === "standard" && !formData.externalPol01 && (
             <section className="border-t border-[var(--line)] p-5">
               <h2 className="text-lg font-bold">ผู้ลงนามและคณะกรรมการ/ผู้ตรวจรับพัสดุ</h2>
               <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2">
