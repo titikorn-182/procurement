@@ -51,7 +51,7 @@ export default async function RequestPrintPage({ params }: PageProps<"/requests/
     <main className="min-h-screen bg-stone-200 px-4 py-6 text-black print:bg-white print:p-0">
       <div className="print-hidden mx-auto mb-4 flex max-w-[210mm] flex-wrap items-center justify-between gap-3">
         <Link
-          href={`/requests/${id}`}
+          href={`/requests/${data.request_no}`}
           className="inline-flex min-h-10 items-center border border-[var(--line-dark)] bg-white px-4 font-semibold hover:bg-[var(--paper-warm)]"
         >
           กลับไปหน้าคำขอ

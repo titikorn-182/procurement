@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { toSafeActionError } from "@/lib/server/action-errors";
 import type { ReturnedRequestEditData } from "@/features/requests/edit-types";
 import type { RequestStatus } from "@/features/requests/status.types";
+import { resolveRequestNumber } from "./number-identity";
 
 const statusMap: Record<string, RequestStatus> = {
   draft: "ร่าง",
@@ -125,17 +126,30 @@ export async function getMyTasks() {
 
 export async function getRequestDetail(requestNo: string) {
   const supabase = await createClient();
+  const { identity, error: identityError } = await resolveRequestNumber(supabase, requestNo);
+  if (!identity) {
+    return {
+      data: null,
+      error: identityError
+        ? toSafeActionError(
+            "resolve-request-detail",
+            identityError,
+            "ไม่สามารถโหลดรายละเอียดคำขอได้",
+          )
+        : null,
+    };
+  }
   const { data, error } = await supabase
     .from("procurement_requests")
     .select(
       "id, request_no, requester_id, kind, title, rationale, required_date, budget_year, fund_source, plan_name, expense_category, form_data, estimated_amount, status, current_step, created_at, departments(name_th), profiles!procurement_requests_requester_id_fkey(full_name, position_title), request_items(line_no, description, quantity, unit, unit_price, market_price, price_source, total_amount), request_attachments(id, file_name, size_bytes, mime_type, created_at), workflow_actions(id, action, comment, created_at, profiles!workflow_actions_actor_id_fkey(full_name))",
     )
-    .eq("request_no", requestNo)
+    .eq("id", identity.request_id)
     .order("created_at", { referencedTable: "request_attachments", ascending: true })
     .order("id", { referencedTable: "request_attachments", ascending: true })
     .maybeSingle();
   return {
-    data,
+    data: data ? { ...data, previousRequestNos: identity.previous_request_nos } : null,
     error: error
       ? toSafeActionError("get-request-detail", error, "ไม่สามารถโหลดรายละเอียดคำขอได้")
       : null,
@@ -164,12 +178,22 @@ export async function getReturnedRequestForEdit(requestNo: string): Promise<{
   } = await supabase.auth.getUser();
   if (!user) return { data: null, error: "กรุณาเข้าสู่ระบบใหม่" };
 
+  const { identity, error: identityError } = await resolveRequestNumber(supabase, requestNo);
+  if (!identity) {
+    return {
+      data: null,
+      error: identityError
+        ? toSafeActionError("resolve-request-edit", identityError, "ไม่สามารถโหลดคำขอเพื่อแก้ไขได้")
+        : "ไม่พบฉบับร่างหรือคำขอที่ส่งกลับให้คุณแก้ไข",
+    };
+  }
+
   const { data, error } = await supabase
     .from("procurement_requests")
     .select(
       "id, request_no, requester_id, kind, title, rationale, required_date, budget_year, fund_source, plan_name, expense_category, form_data, status, current_step, request_items(line_no, description, quantity, unit, unit_price, market_price, price_source), request_attachments(id, file_name, size_bytes), workflow_actions(action, comment, created_at)",
     )
-    .eq("request_no", requestNo)
+    .eq("id", identity.request_id)
     .eq("requester_id", user.id)
     .in("status", ["returned", "draft"])
     .maybeSingle();

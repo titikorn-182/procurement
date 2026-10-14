@@ -192,6 +192,11 @@ describe("POL01 form controller", () => {
 });
 
 describe("W119 form controller", () => {
+  it("does not allocate or invent a request number for an unsaved preview", () => {
+    renderHook(useW119Form).openPreview();
+    expect(renderHook(useW119Form).previewData?.requestNo).toBe("");
+    expect(mocks.create).not.toHaveBeenCalled();
+  });
   it("restores historical saved values instead of replacing them with new-form defaults", () => {
     const initial = {
       ...w119EditFixture(),
@@ -211,6 +216,7 @@ describe("W119 form controller", () => {
     form.openPreview();
     let current = renderHook(useW119Form, initial);
     expect(current.previewData).not.toBeNull();
+    expect(current.previewData?.requestNo).toBe(initial.requestNo);
     current.setPreviewData(null);
     current = renderHook(useW119Form, initial);
     expect(current.title).toBe(initial.title);

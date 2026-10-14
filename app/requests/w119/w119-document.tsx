@@ -136,7 +136,7 @@ function W119Memorandum({
       title="แบบฟอร์มขอซื้อขอจ้าง"
       formCode="ว119"
       identifier={data.requestNo || "ฉบับร่าง"}
-      footer={`${data.requestNo || "ฉบับร่าง"} · แบบฟอร์มสำหรับลงนาม ไม่ใช่หลักฐานยืนยันการอนุมัติหรือการเบิกจ่าย`}
+      footer={`${data.requestNo ? `เลขคำขอ ${data.requestNo}` : "ฉบับร่าง"} · แบบฟอร์มสำหรับลงนาม ไม่ใช่หลักฐานยืนยันการอนุมัติหรือการเบิกจ่าย`}
       targetId={targetId}
       fontClassName={fontClassName}
       pageClassName={styles.page}

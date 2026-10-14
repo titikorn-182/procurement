@@ -2,7 +2,7 @@
 
 Runs real PostgreSQL semantics in memory with **synthetic fixtures only**. It never uses application credentials or connects to Supabase.
 
-PGlite is a pinned development dependency, not an application dependency. After `npm ci`, run both suites locally or in CI:
+PGlite is a pinned development dependency, not an application dependency. After `npm ci`, run all suites locally or in CI:
 
 ```sh
 npm run test:sql
@@ -15,6 +15,7 @@ npm.cmd install --prefix .impeccable/sql-runtime --no-save --package-lock=false 
 $env:PGLITE_MODULE = [System.Uri]::new((Resolve-Path '.impeccable/sql-runtime/node_modules/@electric-sql/pglite/dist/index.js').Path).AbsoluteUri
 node tests/sql/payment-flow.mjs
 node tests/sql/paginated-lists.mjs
+node tests/sql/w119-numbering.mjs
 ```
 
 Checks migration application, owner and non-owner RLS, mandatory return reasons, stale-revision rejection, revision audit retention and returned POL-02 resubmission to the same reviewer step. This isolated test does not replace staging verification against the deployed Supabase schema/storage service.

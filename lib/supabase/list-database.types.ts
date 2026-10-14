@@ -27,7 +27,14 @@ export type PaymentListRecord = Pick<
 };
 
 export type ListDatabase = Omit<Database, "public"> & {
-  public: Omit<Database["public"], "Views"> & {
+  public: Omit<Database["public"], "Views" | "Functions"> & {
+    // Additive contract for migration 202610140001; SQL tests verify RLS and shape.
+    Functions: Database["public"]["Functions"] & {
+      resolve_procurement_request_number: {
+        Args: { lookup_no: string };
+        Returns: { request_id: string; request_no: string; previous_request_nos: string[] }[];
+      };
+    };
     Views: {
       procurement_request_list: { Row: RequestListRecord; Relationships: [] };
       payment_request_list: { Row: PaymentListRecord; Relationships: [] };

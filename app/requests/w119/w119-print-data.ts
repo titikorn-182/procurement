@@ -97,5 +97,6 @@ export function toW119PrintData(data: Record<string, unknown>): W119PrintData {
 }
 
 export function w119PdfFileName(requestNo: string): string {
-  return `W119-${requestNo.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 80) || "draft"}.pdf`;
+  const safeNumber = requestNo.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 80) || "draft";
+  return `${safeNumber.startsWith("W119-") ? safeNumber : `W119-${safeNumber}`}.pdf`;
 }

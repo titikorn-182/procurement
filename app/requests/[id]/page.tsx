@@ -71,7 +71,7 @@ export default async function RequestDetailPage({ params }: PageProps<"/requests
           <div className="flex flex-wrap gap-2">
             {canEditReturnedRequest && (
               <Link
-                href={`/requests/${id}/edit`}
+                href={`/requests/${data.request_no}/edit`}
                 className="inline-flex min-h-10 items-center justify-center gap-2 bg-[var(--orange)] px-4 font-bold text-white hover:bg-[var(--orange-dark)] focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)]"
               >
                 <PencilLine size={17} aria-hidden="true" />
@@ -79,7 +79,7 @@ export default async function RequestDetailPage({ params }: PageProps<"/requests
               </Link>
             )}
             <Link
-              href={`/requests/${id}/print`}
+              href={`/requests/${data.request_no}/print`}
               className="inline-flex min-h-10 items-center justify-center gap-2 border border-[var(--line-dark)] bg-white px-4 font-semibold text-[var(--ink)] hover:bg-[var(--paper-warm)] focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)]"
             >
               <Printer size={17} aria-hidden="true" />
@@ -88,6 +88,11 @@ export default async function RequestDetailPage({ params }: PageProps<"/requests
           </div>
         }
       />
+      {data.previousRequestNos.length > 0 && (
+        <p className="mt-3 break-words text-sm text-stone-600">
+          เลขคำขอเดิม: {data.previousRequestNos.join(", ")} · ใช้อ้างอิงและเปิดลิงก์เดิมได้
+        </p>
+      )}
       <Link
         href="/requests"
         className="my-4 inline-flex items-center gap-1 font-semibold hover:text-[var(--orange-dark)]"

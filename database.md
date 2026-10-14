@@ -435,3 +435,20 @@ View เชื่อม `payment_requests` → `procurement_requests`/`profiles`
 ทั้งสอง view ใช้ `security_invoker=true`: RLS ของตารางต้นทางยังบังคับกับข้อมูล/การค้นหา/จำนวนแถว ให้ authenticated เฉพาะ SELECT; ไม่มีสิทธิ์ anon หรือ INSERT/UPDATE/DELETE และไม่ใช้ SECURITY DEFINER เปิดข้อมูล ส่วน index ใหม่ครอบคลุม `(created_at DESC,id DESC)` ของสองตารางหลัก และ `(request_id,due_at) WHERE status='pending'` ของ workflow_tasks
 
 ไม่สร้างตารางซ้ำหรือ materialized view จึงไม่ต้อง sync ข้อมูล หน้าแสดงครั้งละ 10 แถว CSV อ่าน batch ละ 500 และปฏิเสธอย่างชัดเจนเมื่อผลเกิน 10,000 แถว ไม่มี partial export แบบเงียบ รายละเอียดข้อจำกัด/ทดสอบ/ลำดับ deploy อยู่ใน `docs/type-safety.md` ขั้นตอน 6
+
+## เลขทะเบียน ว119 และประวัติเลขเดิม (202610140001–002)
+
+| ตาราง/ฟิลด์                           | ชนิด                               | ความหมาย                                                                           |
+| ------------------------------------- | ---------------------------------- | ---------------------------------------------------------------------------------- |
+| request_number_aliases.old_request_no | text PRIMARY KEY                   | เลขเดิมที่สงวนไว้ ห้ามนำกลับไปใช้กับคำขออื่น                                       |
+| request_number_aliases.request_id     | uuid NOT NULL FK                   | ชี้ procurement_requests.id แบบ ON DELETE RESTRICT; index รองรับค้นประวัติตาม UUID |
+| request_number_aliases.changed_at     | timestamptz NOT NULL DEFAULT now() | เวลาบันทึกการเปลี่ยนเลข                                                            |
+| request_number_aliases.reason         | text NOT NULL                      | เหตุผล/รหัส migration                                                              |
+
+หนึ่งคำขอมีเลขเดิมได้หลายเลข (1:N) ปัจจุบัน migration นี้เพิ่มหนึ่งเลขเดิมต่อคำขอ ว119 ที่เปลี่ยนเลข ให้ authenticated อ่านผ่าน RLS `private.can_read_request(request_id)` เท่านั้น ไม่ให้เขียน และไม่ให้ anonymous อ่าน
+
+RPC `resolve_procurement_request_number(lookup_no text)` ใช้ SECURITY INVOKER คืน `request_id uuid`, `request_no text`, `previous_request_nos text[]` ภายใต้ RLS ของผู้เรียก รองรับเลขปัจจุบันหรือเลขเดิม หน้า detail/print/edit อ่านข้อมูลต่อด้วย UUID และยังตรวจสิทธิ์/สถานะตามเดิม
+
+Sequence `w119_request_no_seq` แยกจาก `pol01_request_no_seq`; BEFORE INSERT trigger `assign_procurement_request_number` เลือกตัวนับจาก `form_data.formType` แทน column default เดิม เลขอย่างน้อย 3 หลัก ไม่ตัดหลักพัน ไม่รีเซ็ตตามปี และไม่รีเซ็ตตัวนับ POL01 ตอนย้ายคำขอ
+
+ทั้งสอง list view เพิ่มเลขเดิมของคำขอต้นทางใน `search_text` โดยคงคอลัมน์เดิมและ `security_invoker=true` เลขหนังสือราชการ `form_data.documentNo` และความสัมพันธ์ UUID ไม่เปลี่ยน รายละเอียดลำดับเปิดใช้สองช่วงและ rollback อยู่ใน `docs/w119-numbering.md`

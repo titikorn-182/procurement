@@ -96,8 +96,18 @@ describe("W119 memorandum print", () => {
     expect(data.total).toBe(1200.5);
   });
   it("uses safe draft and saved PDF filenames", () => {
+    expect(w119PdfFileName("W119-001")).toBe("W119-001.pdf");
+    expect(w119PdfFileName("W119-1000")).toBe("W119-1000.pdf");
     expect(w119PdfFileName("")).toBe("W119-draft.pdf");
     expect(w119PdfFileName("PW2610-00001")).toBe("W119-PW2610-00001.pdf");
     expect(w119PdfFileName("../PW2610-00001/?:")).toBe("W119-PW2610-00001.pdf");
+  });
+  it("prints the assigned request number without replacing the official document number", () => {
+    const data = { ...createW119Fixture(), requestNo: "W119-017", documentNo: "อว 0604.19/123" };
+    const html = renderToStaticMarkup(
+      createElement(W119Document, { data, targetId: "test", fontClassName: "psk" }),
+    );
+    expect(html).toContain("เลขคำขอ W119-017");
+    expect(html).toContain("อว 0604.19/123");
   });
 });

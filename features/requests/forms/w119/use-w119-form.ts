@@ -290,7 +290,9 @@ export function useW119Form(initial?: ReturnedW119RequestEditData) {
   function openPreview() {
     setPreviewData(
       toW119PrintData({
-        // An unsent preview has no official request number or approval signatures.
+        // Use only a number already assigned by the database. Unsaved previews
+        // stay unnumbered; editing never allocates another sequence value.
+        request_no: initial?.requestNo ?? draft?.requestNo ?? "",
         title,
         rationale,
         required_date: requiredDate,

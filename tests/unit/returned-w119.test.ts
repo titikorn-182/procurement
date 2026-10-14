@@ -115,7 +115,10 @@ beforeEach(() => {
   vi.resetAllMocks();
   mocks.getUser.mockResolvedValue({ data: { user: { id: owner } } });
   mocks.maybeSingle.mockResolvedValue({ data: structuredClone(stored), error: null });
-  mocks.rpc.mockResolvedValue({ data: [{ request_no: stored.request_no }], error: null });
+  mocks.rpc.mockResolvedValue({
+    data: [{ request_id: id, request_no: stored.request_no, previous_request_nos: [] }],
+    error: null,
+  });
   mocks.safeError.mockReturnValue("เกิดข้อผิดพลาด กรุณาลองใหม่");
 });
 
@@ -163,7 +166,10 @@ describe("returned W119 loading", () => {
         { description: "รายการที่สอง" },
       ],
     });
-    expect(mocks.eq).toHaveBeenCalledWith("request_no", stored.request_no);
+    expect(mocks.rpc).toHaveBeenCalledWith("resolve_procurement_request_number", {
+      lookup_no: stored.request_no,
+    });
+    expect(mocks.eq).toHaveBeenCalledWith("id", id);
     expect(mocks.eq).toHaveBeenCalledWith("requester_id", owner);
     expect(mocks.in).toHaveBeenCalledWith("status", ["returned", "draft"]);
     expect(mocks.select).toHaveBeenCalledWith(
