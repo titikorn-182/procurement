@@ -19,34 +19,43 @@ import {
 } from "./model";
 import { CommonFields, PurchaseFields, ResultsFields, Section, SignatureFields } from "./fields";
 import { W804Document } from "./document";
+import { useW804Registry } from "@/features/w804/use-w804-registry";
+import { w804PdfName, w804WorkspaceHref, type W804SavedDraft } from "@/features/w804/types";
 
 /* Operate / bounded extension: inherit Document Control Center (seed c8707b00).
- * Three report links share one in-memory draft; explicit local JSON saves only.
+ * Three reports share one centrally numbered draft. Local JSON remains a backup.
  * Source: supplied municipal memo/TOR examples, adapted to the faculty. No
- * sample people, expenses, signatures, approval assertions or database writes.
+ * sample people, expenses, signatures or approval assertions.
  * FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md
  */
 export function W804Workspace({
   kind,
   fiscalYear,
   fontClassName,
+  initial,
 }: {
   kind: W804DocumentKind;
   fiscalYear: string;
   fontClassName: string;
+  initial?: W804SavedDraft;
 }) {
-  const [data, setData] = useState(() => createW804Draft(fiscalYear));
+  const [data, setData] = useState(() => initial?.data ?? createW804Draft(fiscalYear));
+  const registry = useW804Registry(initial);
   const [dirty, setDirty] = useState(false);
   const [message, setMessage] = useState("");
   const [errors, setErrors] = useState<string[]>([]);
-  const [preview, setPreview] = useState<{ data: W804Draft; kind: W804DocumentKind } | null>(null);
+  const [preview, setPreview] = useState<{
+    data: W804Draft;
+    kind: W804DocumentKind;
+    requestNo: string;
+  } | null>(null);
   const [files, setFiles] = useState<Record<W804DocumentKind, SelectedAttachment[]>>({
     purchase: [],
     summary: [],
     settlement: [],
   });
   const [busyKind, setBusyKind] = useState<W804DocumentKind | null>(null);
-  const busy = busyKind === kind;
+  const busy = busyKind !== null || registry.saving;
   const onBusyChange = useCallback((active: boolean) => setBusyKind(active ? kind : null), [kind]);
   const [importing, setImporting] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -59,14 +68,19 @@ export function W804Workspace({
   const previewDocument = useMemo(
     () =>
       preview && (
-        <W804Document data={preview.data} kind={preview.kind} fontClassName={fontClassName} />
+        <W804Document
+          data={preview.data}
+          kind={preview.kind}
+          requestNo={preview.requestNo}
+          fontClassName={fontClassName}
+        />
       ),
     [preview, fontClassName],
   );
   const hasFiles = Object.values(files).some((attachments) => attachments.length > 0);
 
   useEffect(() => {
-    if (!dirty && !hasFiles) return;
+    if (!dirty && !hasFiles && !registry.saving) return;
     const unload = (event: BeforeUnloadEvent) => {
       event.preventDefault();
       event.returnValue = "";
@@ -84,10 +98,17 @@ export function W804Workspace({
       )
         return;
       const url = new URL(anchor.href, window.location.href);
-      if (url.origin === window.location.origin && url.pathname === "/requests/w804") return;
+      const current = new URL(window.location.href);
+      if (
+        !registry.saving &&
+        url.origin === current.origin &&
+        url.pathname === current.pathname &&
+        url.searchParams.get("request") === current.searchParams.get("request")
+      )
+        return;
       if (
         !window.confirm(
-          "ข้อมูลหรือไฟล์แนบของ ว804 จะไม่คงอยู่เมื่อออกจากหน้านี้ ควรบันทึกแบบร่างลงเครื่องก่อน ต้องการออกหรือไม่?",
+          "มีข้อมูลที่ยังไม่บันทึกทะเบียนหรือไฟล์แนบที่อยู่เฉพาะหน้านี้ ควรบันทึกทะเบียนหรือดาวน์โหลดแบบร่างก่อน ต้องการออกหรือไม่?",
         )
       ) {
         event.preventDefault();
@@ -100,7 +121,7 @@ export function W804Workspace({
       window.removeEventListener("beforeunload", unload);
       document.removeEventListener("click", navigate, true);
     };
-  }, [dirty, hasFiles]);
+  }, [dirty, hasFiles, registry.saving]);
   useEffect(() => {
     if (errors.length) alertRef.current?.focus();
   }, [errors]);
@@ -117,9 +138,11 @@ export function W804Workspace({
   }
   function confirmReplace() {
     return (
-      !(dirty || hasFiles) ||
+      !(dirty || hasFiles || registry.identity) ||
       window.confirm(
-        "การเปิดหรือสร้างแบบร่างใหม่จะแทนที่ข้อมูลปัจจุบันและล้างไฟล์แนบ ต้องการดำเนินการต่อหรือไม่?",
+        registry.identity
+          ? `จะแทนที่เนื้อหาใน ${registry.identity.requestNo} และล้างไฟล์แนบ แต่ยังไม่บันทึกทะเบียน หากต้องการเลขใหม่ให้เลือกสร้างชุดใหม่ก่อน ต้องการนำเข้าเนื้อหาหรือไม่?`
+          : "การเปิดหรือสร้างแบบร่างใหม่จะแทนที่ข้อมูลปัจจุบันและล้างไฟล์แนบ ต้องการดำเนินการต่อหรือไม่?",
       )
     );
   }
@@ -137,13 +160,12 @@ export function W804Workspace({
     const url = URL.createObjectURL(new Blob([contents], { type: "application/json" }));
     const link = document.createElement("a");
     link.href = url;
-    link.download = "W804-draft.json";
+    link.download = `${registry.identity?.requestNo ?? "W804"}-draft.json`;
     link.click();
     window.setTimeout(() => URL.revokeObjectURL(url), 10_000);
-    setDirty(false);
     setErrors([]);
     setMessage(
-      "สร้างไฟล์ W804-draft.json แล้ว กรุณาตรวจสอบโฟลเดอร์ดาวน์โหลด ไฟล์นี้เก็บข้อมูลทั้ง 3 รายงาน แต่ไม่รวมไฟล์แนบ",
+      "ดาวน์โหลดแบบร่างแล้ว ไฟล์นี้เก็บเนื้อหาทั้ง 3 รายงาน แต่ไม่รวมเลขทะเบียนและไฟล์แนบ การดาวน์โหลดไม่ใช่การบันทึกทะเบียน",
     );
   }
   async function openDraft(file?: File) {
@@ -154,10 +176,12 @@ export function W804Workspace({
       const next = parseW804Draft(await file.text());
       setData(next);
       setFiles({ purchase: [], summary: [], settlement: [] });
-      setDirty(false);
+      setDirty(true);
       setPreview(null);
       setErrors([]);
-      setMessage("เปิดข้อมูลทั้ง 3 รายงานแล้ว กรุณาเลือกไฟล์แนบใหม่หากต้องการรวม PDF");
+      setMessage(
+        `เปิดเนื้อหาทั้ง 3 รายงานแล้ว${registry.identity ? ` สำหรับแก้ไข ${registry.identity.requestNo}` : " เป็นชุดใหม่ที่ยังไม่มีเลข"} กรุณาบันทึกทะเบียนและเลือกไฟล์แนบใหม่หากต้องการรวม PDF`,
+      );
     } catch (error) {
       setErrors([
         error instanceof Error && !(error instanceof SyntaxError)
@@ -168,11 +192,26 @@ export function W804Workspace({
       setImporting(false);
     }
   }
-  function openPreview() {
+  async function saveRegistry() {
+    const result = await registry.save(data);
+    if (!result.ok) {
+      setErrors([result.error]);
+      return null;
+    }
+    setDirty(false);
+    setErrors([]);
+    setMessage(
+      `บันทึก ${result.record.requestNo} แล้ว ทั้ง 3 รายงานใช้เลขเดียวกัน (ไฟล์แนบไม่ได้บันทึกในทะเบียน)`,
+    );
+    return result.record;
+  }
+  async function openPreview() {
     const issues = documentErrors(data, kind);
     setErrors(issues);
     if (!issues.length) {
-      setPreview({ data: structuredClone(data), kind });
+      const saved = !dirty && registry.identity ? registry.identity : await saveRegistry();
+      if (!saved) return;
+      setPreview({ data: structuredClone(data), kind, requestNo: saved.requestNo });
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
   }
@@ -186,9 +225,20 @@ export function W804Workspace({
       <div className="print-hidden mt-5 border border-[var(--line)] bg-white px-4 py-3 text-sm leading-6">
         <strong>โหมดจัดทำและพิมพ์เอกสาร — ยังไม่เชื่อมสายอนุมัติ</strong>
         <p>
-          ข้อมูลทั้ง 3 รายงานใช้ร่วมกันในหน้านี้ ไม่บันทึกในฐานข้อมูล
-          กรุณาบันทึกแบบร่างลงเครื่องก่อนออกจากหน้า ไฟล์แนบต้องเลือกใหม่เมื่อเปิดแบบร่าง
+          บันทึกทะเบียนครั้งแรกเพื่อรับเลข W804 ทั้ง 3 รายงานใช้เลขเดียวกันตลอดการแก้ไขและพิมพ์ซ้ำ
+          ไฟล์แนบไม่บันทึกในทะเบียน ต้องเลือกใหม่เมื่อกลับมาเปิดคำขอ
         </p>
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+          <strong className="text-lg">
+            {registry.identity?.requestNo ?? "ยังไม่มีเลขคำขอ — ออกเลขเมื่อบันทึกทะเบียน"}
+          </strong>
+          <Link
+            href="/requests/w804/registry"
+            className="inline-flex min-h-11 items-center underline"
+          >
+            ทะเบียนคำขอ ว804
+          </Link>
+        </div>
       </div>
       <nav
         aria-label="เลือกรายงาน ว804"
@@ -197,7 +247,11 @@ export function W804Workspace({
         {W804_DOCUMENTS.map(({ id, label }, index) => (
           <Link
             key={id}
-            href={`/requests/w804?document=${id}`}
+            href={w804WorkspaceHref(initial?.requestNo, id)}
+            onClick={(event) => {
+              if (busy || importing) event.preventDefault();
+            }}
+            aria-disabled={busy || importing || undefined}
             aria-current={kind === id ? "page" : undefined}
             className={`flex min-h-12 flex-1 items-center gap-2 border-b border-[var(--line)] px-4 py-3 text-sm leading-6 last:border-b-0 sm:border-b-0 sm:border-r sm:last:border-r-0 ${kind === id ? "bg-[var(--graphite)] font-bold text-white" : "bg-white hover:bg-[var(--paper-warm)]"}`}
           >
@@ -207,8 +261,11 @@ export function W804Workspace({
         ))}
       </nav>
       <div className="print-hidden my-5 flex flex-wrap gap-2">
+        <Button onClick={() => void saveRegistry()} disabled={importing || busy}>
+          {registry.saving ? "กำลังบันทึกทะเบียน..." : "บันทึกทะเบียน"}
+        </Button>
         <Button variant="secondary" onClick={saveDraft} disabled={importing || busy}>
-          <Download size={17} aria-hidden="true" /> บันทึกแบบร่าง (.json)
+          <Download size={17} aria-hidden="true" /> ดาวน์โหลดแบบร่าง (.json)
         </Button>
         <Button
           variant="secondary"
@@ -222,7 +279,17 @@ export function W804Workspace({
           variant="secondary"
           disabled={importing || busy}
           onClick={() => {
-            if (confirmReplace()) {
+            if (
+              !(dirty || hasFiles) ||
+              window.confirm(
+                "สร้างชุดใหม่และออกจากข้อมูลปัจจุบันหรือไม่? ข้อมูลที่บันทึกทะเบียนแล้วจะยังอยู่ แต่ไฟล์แนบต้องเลือกใหม่",
+              )
+            ) {
+              if (initial) {
+                window.location.assign(w804WorkspaceHref());
+                return;
+              }
+              registry.reset();
               setData(createW804Draft(fiscalYear));
               setFiles({ purchase: [], summary: [], settlement: [] });
               setPreview(null);
@@ -247,7 +314,11 @@ export function W804Workspace({
           }}
         />
         <p className="self-center text-sm text-stone-600" aria-live="polite">
-          {dirty ? "มีข้อมูลที่ยังไม่บันทึกลงเครื่อง" : "ข้อมูลอยู่เฉพาะในหน้านี้/ไฟล์ที่ดาวน์โหลด"}
+          {dirty
+            ? "มีข้อมูลที่ยังไม่บันทึกทะเบียน"
+            : registry.identity
+              ? "ข้อมูลตรงกับทะเบียนแล้ว"
+              : "ยังไม่บันทึกทะเบียน"}
         </p>
       </div>
       {message && (
@@ -286,7 +357,7 @@ export function W804Workspace({
           <div className="mb-5">
             <PrintButton
               targetId="w804-print-document"
-              fileName={`W804-${kind}.pdf`}
+              fileName={w804PdfName(preview.requestNo, kind)}
               paginated
               isolatePrint
               attachments={bundleFiles}
@@ -303,7 +374,7 @@ export function W804Workspace({
               เป็นแบบฟอร์มสำหรับนำเสนอพิจารณา ไม่ใช่เอกสารที่ได้รับอนุมัติแล้ว
             </p>
           </div>
-          <fieldset disabled={importing} className="min-w-0">
+          <fieldset disabled={importing || busy} className="min-w-0">
             <CommonFields data={data} kind={kind} onChange={update} />
             {kind === "purchase" ? (
               <PurchaseFields data={data} onChange={update} />
@@ -323,11 +394,15 @@ export function W804Workspace({
             </Section>
           </fieldset>
           <div className="flex flex-wrap justify-between gap-3 border-t border-[var(--line)] py-5">
-            <Button variant="secondary" onClick={saveDraft} disabled={importing}>
-              บันทึกแบบร่าง (.json)
+            <Button
+              variant="secondary"
+              onClick={() => void saveRegistry()}
+              disabled={importing || busy}
+            >
+              {registry.saving ? "กำลังบันทึกทะเบียน..." : "บันทึกทะเบียน"}
             </Button>
-            <Button onClick={openPreview} disabled={importing}>
-              <Printer size={17} aria-hidden="true" /> ตรวจสอบ / พิมพ์ / ดาวน์โหลด PDF
+            <Button onClick={() => void openPreview()} disabled={importing || busy}>
+              <Printer size={17} aria-hidden="true" /> บันทึกและดูตัวอย่าง / พิมพ์
             </Button>
           </div>
         </div>

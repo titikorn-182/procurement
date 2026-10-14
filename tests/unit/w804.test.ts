@@ -12,6 +12,25 @@ import {
 import { documentKind, W804_DOCUMENTS } from "../../app/requests/w804/config";
 import { W804Document } from "../../app/requests/w804/document";
 import { createW804Fixture } from "../fixtures/w804";
+import { w804PdfName, w804WorkspaceHref } from "../../features/w804/types";
+
+describe("shared W804 registry identity", () => {
+  it.each(W804_DOCUMENTS)(
+    "uses the same canonical number for $id without replacing official memo numbers",
+    ({ id }) => {
+      const data = createW804Fixture();
+      const html = renderToStaticMarkup(
+        createElement(W804Document, { data, kind: id, fontClassName: "", requestNo: "W804-001" }),
+      );
+      expect(html).toContain("W804-001");
+      expect(html).toContain(data[id].number);
+      expect(w804PdfName("W804-001", id)).toBe(`W804-001-${id}.pdf`);
+      expect(w804WorkspaceHref("W804-001", id)).toBe(
+        `/requests/w804?document=${id}&request=W804-001`,
+      );
+    },
+  );
+});
 
 describe("W804 local document workspace", () => {
   it("defines exactly three report destinations and defaults safely", () => {

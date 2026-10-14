@@ -185,10 +185,12 @@ export function W804Document({
   data,
   kind,
   fontClassName,
+  requestNo,
 }: {
   data: W804Draft;
   kind: W804DocumentKind;
   fontClassName: string;
+  requestNo?: string;
 }) {
   const { requested, spent, budgetBalance, loanBalance } = totals(data);
   const label = W804_DOCUMENTS.find((entry) => entry.id === kind)!.label;
@@ -197,12 +199,12 @@ export function W804Document({
     <PaginatedDocument
       title={label}
       formCode="ว804"
-      identifier="ฉบับจัดทำเอกสาร"
+      identifier={requestNo ?? "ยังไม่บันทึกทะเบียน"}
       targetId="w804-print-document"
       fontClassName={fontClassName}
       pageClassName={styles.page}
       verifyCapture
-      footer="แบบฟอร์มสำหรับเสนอพิจารณา · ไม่ใช่หลักฐานยืนยันการอนุมัติหรือรับคืนเงิน"
+      footer={`${requestNo ?? "ยังไม่บันทึกทะเบียน"} · เอกสารเสนอพิจารณา ไม่ใช่หลักฐานยืนยันการอนุมัติหรือรับคืนเงิน`}
       header={
         <div className={styles.heading}>
           <table role="presentation">
@@ -222,6 +224,8 @@ export function W804Document({
                   <strong data-pdf-required-content>{W804_FACULTY}</strong>
                 </td>
                 <td data-pdf-required-content>
+                  <strong>{requestNo ?? "ยังไม่บันทึกทะเบียน"}</strong>
+                  <br />
                   จัดซื้อ ว804
                   <br />
                   ไม่เกิน 50,000 บาท

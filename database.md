@@ -35,22 +35,22 @@ SHA-256: `c90b519c07654f125fd19ff2ff989d599d345ec739fb9c64abb0818e6b8c17e3`
 
 ตรวจจาก routes, server actions, `app/lib/live-data.ts`, `PRODUCT.md` และ migration ทั้งหมด ไม่ใช้รายการความต้องการเป็นหลักฐานว่าเชื่อมต่อจริงแล้ว
 
-| ส่วนระบบ                        | ความสามารถที่มีในโค้ด                                            | ข้อมูล/ข้อกำหนด                                                                                                                   |
-| ------------------------------- | ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| Login / Auth callback           | Supabase session และ profile active/role                         | `auth.users`, `profiles`, `departments`; ตรวจสิทธิ์ server + RLS                                                                  |
-| Dashboard / requests / process  | รายการคำขอ สถานะ งานค้าง ภาพรวม workflow                         | `procurement_requests`, tasks/actions; ปัจจุบัน getRequests จำกัด 50 รายการ ต้องเพิ่ม pagination/aggregate ก่อนใช้เป็นรายงานทุกปี |
-| POL-01 `/requests/new`          | 5 ขั้นตอน ข้อมูลคำขอ รายการ งบ เอกสาร/checklist ตรวจสอบส่ง       | request/items/form_data/attachments; ช่องราคากลางมีแล้ว แต่แค็ตตาล็อกยังเป็น empty state                                          |
-| รายละเอียด / ตีกลับแก้ไข        | ตรวจเจ้าของและสถานะ เก็บรายการ/เอกสาร ส่งใหม่                    | RPC draft/resubmit, audit trail; ห้ามกระทบรายการเก่าเมื่อปรับ catalog                                                             |
-| ว119                            | แบบบันทึกข้อความ รายการ งบ เอกสาร สัญญายืมเงิน                   | `form_data` แบบ w119 + request_items ใช้ตารางคำขอเดิม                                                                             |
-| POL-ภายนอก                      | 5 ขั้นตอน โครงการภายนอกและสายอนุมัติ POL-01 เดิม                 | `form_data.externalPol01`; ไม่สร้าง workflow แยก                                                                                  |
-| ว804                            | รายงานขอซื้อ/TOR สรุปผล ส่งใช้เงินยืม ดาวน์โหลด draft JSON/พิมพ์ | จัดทำเอกสาร ยังไม่เข้าฐานคำขอหรือสายอนุมัติ ตามที่ผู้ใช้ยืนยัน                                                                    |
-| POL-02                          | ใบเบิกจ่าย รายการหลักฐาน/checklist ส่งตรวจ                       | payment_requests/items/attachments/tasks/actions; เชื่อมคำขอหลักการ                                                               |
-| Tasks                           | approve/return/reject/budget control ตามขั้นตอน                  | private permissions/step definitions; RPC เปลี่ยนสถานะและบันทึกผู้กระทำ                                                           |
-| Print/PDF                       | แบบเอกสารและรวมไฟล์แนบ                                           | metadata + private Storage; การรวมสำเนาไม่ใช่การรับรองลายเซ็นดิจิทัลใหม่                                                          |
-| Settings                        | ผู้ใช้ บทบาท หน่วยงาน ผู้ประกอบการ ตั้งค่าระบบ                   | admin-only server checks/RLS; vendor directory มีการค้นหาและเพิ่มชื่อ                                                             |
-| Reports                         | สรุป/ส่งออกจากคำขอที่ผู้ใช้มีสิทธิ์                              | ต้องระบุข้อจำกัด 50 แถวข้างต้น ไม่ถือเป็นบัญชีรายจ่ายครบถ้วน                                                                      |
-| สารสนเทศพัสดุ                   | ฝัง Looker Studio                                                | external report ไม่ใช่การ sync เข้าฐานข้อมูลนี้                                                                                   |
-| SSO/งบประมาณ/อีเมล/LINE/ลายเซ็น | บางส่วนเป็น requirement/settings ใน PRODUCT.md                   | ยังไม่มีหลักฐาน integration production ครบ ไม่สร้างข้อมูลจำลองแทน                                                                 |
+| ส่วนระบบ                        | ความสามารถที่มีในโค้ด                                                        | ข้อมูล/ข้อกำหนด                                                                                                                   |
+| ------------------------------- | ---------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| Login / Auth callback           | Supabase session และ profile active/role                                     | `auth.users`, `profiles`, `departments`; ตรวจสิทธิ์ server + RLS                                                                  |
+| Dashboard / requests / process  | รายการคำขอ สถานะ งานค้าง ภาพรวม workflow                                     | `procurement_requests`, tasks/actions; ปัจจุบัน getRequests จำกัด 50 รายการ ต้องเพิ่ม pagination/aggregate ก่อนใช้เป็นรายงานทุกปี |
+| POL-01 `/requests/new`          | 5 ขั้นตอน ข้อมูลคำขอ รายการ งบ เอกสาร/checklist ตรวจสอบส่ง                   | request/items/form_data/attachments; ช่องราคากลางมีแล้ว แต่แค็ตตาล็อกยังเป็น empty state                                          |
+| รายละเอียด / ตีกลับแก้ไข        | ตรวจเจ้าของและสถานะ เก็บรายการ/เอกสาร ส่งใหม่                                | RPC draft/resubmit, audit trail; ห้ามกระทบรายการเก่าเมื่อปรับ catalog                                                             |
+| ว119                            | แบบบันทึกข้อความ รายการ งบ เอกสาร สัญญายืมเงิน                               | `form_data` แบบ w119 + request_items ใช้ตารางคำขอเดิม                                                                             |
+| POL-ภายนอก                      | 5 ขั้นตอน โครงการภายนอกและสายอนุมัติ POL-01 เดิม                             | `form_data.externalPol01`; ไม่สร้าง workflow แยก                                                                                  |
+| ว804                            | ทะเบียนกลาง รายงานขอซื้อ/TOR สรุปผล ส่งใช้เงินยืม ดาวน์โหลด draft JSON/พิมพ์ | `w804_document_sets` หนึ่งเลข W804 ต่อชุด 3 รายงาน ไม่เข้าสายอนุมัติ ดูส่วนเพิ่มเติมท้ายเอกสาร                                    |
+| POL-02                          | ใบเบิกจ่าย รายการหลักฐาน/checklist ส่งตรวจ                                   | payment_requests/items/attachments/tasks/actions; เชื่อมคำขอหลักการ                                                               |
+| Tasks                           | approve/return/reject/budget control ตามขั้นตอน                              | private permissions/step definitions; RPC เปลี่ยนสถานะและบันทึกผู้กระทำ                                                           |
+| Print/PDF                       | แบบเอกสารและรวมไฟล์แนบ                                                       | metadata + private Storage; การรวมสำเนาไม่ใช่การรับรองลายเซ็นดิจิทัลใหม่                                                          |
+| Settings                        | ผู้ใช้ บทบาท หน่วยงาน ผู้ประกอบการ ตั้งค่าระบบ                               | admin-only server checks/RLS; vendor directory มีการค้นหาและเพิ่มชื่อ                                                             |
+| Reports                         | สรุป/ส่งออกจากคำขอที่ผู้ใช้มีสิทธิ์                                          | ต้องระบุข้อจำกัด 50 แถวข้างต้น ไม่ถือเป็นบัญชีรายจ่ายครบถ้วน                                                                      |
+| สารสนเทศพัสดุ                   | ฝัง Looker Studio                                                            | external report ไม่ใช่การ sync เข้าฐานข้อมูลนี้                                                                                   |
+| SSO/งบประมาณ/อีเมล/LINE/ลายเซ็น | บางส่วนเป็น requirement/settings ใน PRODUCT.md                               | ยังไม่มีหลักฐาน integration production ครบ ไม่สร้างข้อมูลจำลองแทน                                                                 |
 
 **ขอบเขตแก้เว็บรอบนี้:** แค็ตตาล็อกในขั้นตอนรายการ POL-01 เท่านั้น ส่วนอื่นเป็นผลวิเคราะห์และข้อเสนอ ไม่เปลี่ยนสายอนุมัติหรือคัดลอกประวัติซื้อเป็นคำขอใหม่
 
@@ -452,3 +452,24 @@ RPC `resolve_procurement_request_number(lookup_no text)` ใช้ SECURITY INVO
 Sequence `w119_request_no_seq` แยกจาก `pol01_request_no_seq`; BEFORE INSERT trigger `assign_procurement_request_number` เลือกตัวนับจาก `form_data.formType` แทน column default เดิม เลขอย่างน้อย 3 หลัก ไม่ตัดหลักพัน ไม่รีเซ็ตตามปี และไม่รีเซ็ตตัวนับ POL01 ตอนย้ายคำขอ
 
 ทั้งสอง list view เพิ่มเลขเดิมของคำขอต้นทางใน `search_text` โดยคงคอลัมน์เดิมและ `security_invoker=true` เลขหนังสือราชการ `form_data.documentNo` และความสัมพันธ์ UUID ไม่เปลี่ยน รายละเอียดลำดับเปิดใช้สองช่วงและ rollback อยู่ใน `docs/w119-numbering.md`
+
+## ทะเบียน ว804 (migration 202610140003)
+
+หนึ่งแถวของ `public.w804_document_sets` แทนชุดเอกสาร 3 รายงาน ไม่ใช่รายการในสายอนุมัติ POL-01 ความสัมพันธ์: `profiles` 1:N `w804_document_sets` ผ่าน `requester_id` โดยไม่ลบชุดเอกสารตามบัญชีผู้ใช้
+
+| ฟิลด์                   | ชนิดข้อมูล                         | ความหมาย/ข้อกำหนด                                                                    |
+| ----------------------- | ---------------------------------- | ------------------------------------------------------------------------------------ |
+| id                      | uuid PK                            | ID คงที่สำหรับชุดและการส่งซ้ำ ไม่มี default; ผู้เรียกสร้าง UUID แต่ไม่มีสิทธิ์ออกเลข |
+| request_no              | text UNIQUE NOT NULL               | `W804-001` ต่อเนื่องจาก sequence แยก ไม่รีเซ็ตปี เปลี่ยนผ่าน RPC ไม่ได้              |
+| requester_id            | uuid FK profiles(id) NOT NULL      | เจ้าของชุด ON DELETE RESTRICT                                                        |
+| title                   | text NOT NULL                      | ชื่อเรื่อง 1–500 ตัวอักษร                                                            |
+| fiscal_year             | text NOT NULL                      | ปี พ.ศ. 25xx จาก budget.fiscalYear                                                   |
+| total_amount            | numeric(12,2) NOT NULL             | คำนวณรวมจากจำนวน × ราคาต่อหน่วย ปัดสตางค์รายบรรทัด; 0–50,000                         |
+| form_data               | jsonb NOT NULL                     | W804Draft format `ubu-pol-w804`, version 1; เนื้อหาทั้งสามรายงาน ไม่เก็บไฟล์แนบ      |
+| revision                | integer NOT NULL DEFAULT 1         | รุ่นสำหรับป้องกันเขียนทับข้อมูลที่แก้ไขจากอีกหน้าต่าง                                |
+| created_at / updated_at | timestamptz NOT NULL DEFAULT now() | เวลาสร้างและแก้ไขล่าสุด                                                              |
+| search_text             | text GENERATED STORED              | เลขคำขอ + ชื่อเรื่อง สำหรับค้นหาทะเบียน                                              |
+
+RPC `save_w804_document_set(uuid, integer, jsonb)` คืน `id`, `request_no`, `revision` ตรวจบัญชี active user/admin, เจ้าของ, schema หลัก, วงเงิน, และรุ่นข้อมูลใน transaction; ใช้ advisory lock ต่อ UUID ป้องกันสร้างซ้ำจาก retry และ sequence `w804_request_no_seq` ป้องกันเลขซ้ำข้ามชุด
+
+RLS ให้ active user อ่านของตนและ admin อ่านทุกชุด ไม่มีสิทธิ์เขียนตรง/ลบ/เรียก sequence สำหรับ authenticated หรือ anon ตัวนับ POL-01/ว119 และข้อมูล workflow เดิมไม่ถูกแก้ไข รายละเอียดการนำเข้า JSON เดิม การทดสอบ และลำดับเปิดใช้: `docs/w804-numbering.md`
