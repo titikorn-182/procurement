@@ -11,7 +11,7 @@ const blank = "................................................";
 const show = (value: string) => value || blank;
 const dateBlank = "วันที่ ............ / ........................ / ............";
 
-/** Source: supplied POL-2569. Blank approvals and receipts are for actual execution. */
+/** Source: supplied POL-2569. Amounts are prefilled; signatures/dates await actual execution. */
 export function LoanAgreementDocument({
   loan,
   data,
@@ -24,6 +24,8 @@ export function LoanAgreementDocument({
   fontClassName: string;
 }) {
   const total = data.items.reduce((sum, item) => sum + Math.round(item.total * 100), 0) / 100;
+  const totalAmount = money(total);
+  const totalText = toThaiBahtText(total);
   return (
     <PaginatedDocument
       title="สัญญาการยืมเงิน"
@@ -125,10 +127,10 @@ export function LoanAgreementDocument({
           </tr>
           <tr className={styles.total}>
             <td colSpan={2}>
-              <span>({toThaiBahtText(total)})</span>
+              <span>({totalText})</span>
               <strong>รวมเงิน (บาท)</strong>
             </td>
-            <td className={styles.number}>{money(total)}</td>
+            <td className={styles.number}>{totalAmount}</td>
           </tr>
         </tbody>
       </table>
@@ -177,10 +179,10 @@ export function LoanAgreementDocument({
         ].map(([heading, text, role, secondRole]) => (
           <section key={heading}>
             <h2>{heading}</h2>
-            <p>{text} จำนวนเงิน ........................ บาท</p>
             <p>
-              (................................................................................)
+              {text} จำนวนเงิน {totalAmount} บาท
             </p>
+            <p>({totalText})</p>
             <div className={styles.approvalSignature}>
               <div className={styles.signSpace} />
               <p>( {blank} )</p>
@@ -194,8 +196,7 @@ export function LoanAgreementDocument({
       <section className={styles.receipt}>
         <h2>ใบรับเงิน</h2>
         <p>
-          ได้รับเงินยืมจำนวน ........................ บาท
-          (................................................................) ไปเป็นการถูกต้องแล้ว
+          ได้รับเงินยืมจำนวน {totalAmount} บาท ({totalText}) ไปเป็นการถูกต้องแล้ว
         </p>
         <div className={styles.receiptSignature}>
           <div>

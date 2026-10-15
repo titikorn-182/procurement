@@ -11,6 +11,7 @@ import { w119RequestFormSchema } from "../../app/requests/new/schemas";
 import { toW119PrintData } from "../../app/requests/w119/w119-print-data";
 import { W119Document } from "../../app/requests/w119/w119-document";
 import { LoanAgreementFields } from "../../app/requests/w119/loan-agreement-fields";
+import { LoanAgreementDocument } from "../../app/requests/w119/loan-agreement-document";
 import { createLoanAgreementFixture } from "../fixtures/w119-loan";
 import { createW119Fixture } from "../fixtures/w119-print";
 
@@ -109,7 +110,7 @@ describe("W119 loan contract", () => {
       }).loanAgreement,
     ).toBeUndefined();
   });
-  it("prints the contract after the memo with source sections and blank approvals/receipts", () => {
+  it("prints the contract after the memo with prefilled amounts and unsigned execution fields", () => {
     const data = { ...createW119Fixture(), loanAgreement: createLoanAgreementFixture() };
     const html = renderToStaticMarkup(
       createElement(W119Document, { data, targetId: "test", fontClassName: "psk" }),
@@ -126,7 +127,7 @@ describe("W119 loan contract", () => {
       expect(html).toContain(label);
     expect(html).not.toContain("นงลักษณ์ มีสุข");
     expect(html).not.toContain("จันทนสกุลวงศ์");
-    expect(html).toContain("ได้รับเงินยืมจำนวน ........................ บาท");
+    expect(html).toContain("ได้รับเงินยืมจำนวน 6,270.00 บาท (หกพันสองร้อยเจ็ดสิบบาทถ้วน)");
     expect(html).toContain('aria-label="รายการส่งใช้เงินยืม"');
     expect(html).toMatch(/<th colSpan="7"[^>]*>รายการส่งใช้เงินยืม<\/th>/);
     expect(html).not.toContain("<caption>");
@@ -139,4 +140,45 @@ describe("W119 loan contract", () => {
     );
     expect(disabled).not.toContain("สัญญาการยืมเงิน");
   });
+  it.each([
+    { amounts: [175600], number: "175,600.00", words: "หนึ่งแสนเจ็ดหมื่นห้าพันหกร้อยบาทถ้วน" },
+    { amounts: [1000.1, 200.15], number: "1,200.25", words: "หนึ่งพันสองร้อยบาทยี่สิบห้าสตางค์" },
+    { amounts: [0], number: "0.00", words: "ศูนย์บาทถ้วน" },
+    {
+      amounts: [999999.99],
+      number: "999,999.99",
+      words: "เก้าแสนเก้าหมื่นเก้าพันเก้าร้อยเก้าสิบเก้าบาทเก้าสิบเก้าสตางค์",
+    },
+  ])(
+    "uses the same numeric and written total in all six places: $number",
+    ({ amounts, number, words }) => {
+      const data = createW119Fixture();
+      data.items = amounts.map((total) => ({ ...data.items[0], total }));
+      // A stale stored estimate must not override the sum of the current items.
+      data.total = 1;
+      const html = renderToStaticMarkup(
+        createElement(LoanAgreementDocument, {
+          loan: createLoanAgreementFixture(),
+          data,
+          targetId: "loan-test",
+          fontClassName: "psk",
+        }),
+      );
+      expect(html.split(`(${words})`)).toHaveLength(7);
+      const panels = Array.from(
+        html.matchAll(/<section\b[^>]*>([\s\S]*?)<\/section>/g),
+        (match) => match[1],
+      ).filter((panel) => panel.includes("<h2"));
+      expect(panels).toHaveLength(5);
+      for (const panel of panels) {
+        expect(panel).toContain(`${number} บาท`);
+        expect(panel).toContain(`(${words})`);
+        expect(panel).toContain("วันที่ ............ / ........................ / ............");
+        expect(panel).toContain("................................................");
+      }
+      expect(html).toContain("แบบฟอร์มสำหรับลงนาม ยังไม่ใช่หลักฐานอนุมัติหรือรับเงิน");
+      expect(html).not.toContain("จำนวน ........................ บาท");
+      expect(html).not.toContain("จำนวนเงิน ........................ บาท");
+    },
+  );
 });
